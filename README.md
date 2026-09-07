@@ -33,6 +33,7 @@ See [docs/roadmap.md](./docs/roadmap.md) for the product roadmap,
 
 ```sh
 pnpm install
+cp apps/api/.dev.vars.example apps/api/.dev.vars  # local secrets, gitignored
 pnpm dev:api      # start Hono Workers dev server
 pnpm dev:admin    # start admin Vite dev server
 pnpm dev:order    # start order Vite dev server
