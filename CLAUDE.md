@@ -7,18 +7,15 @@ Bias toward caution over speed; on trivial tasks, use judgment.
 
 ## Approach
 
-- **Think before coding.** State assumptions. Make routine judgment calls yourself and
-  note them; ask only when different interpretations would lead to materially different
-  work. If a simpler path exists, say so and push back when warranted.
-- **Simplest thing that works.** No unasked-for abstractions, flexibility, or error
-  handling for impossible cases — if 200 lines could be 50, rewrite it.
-- **Surgical changes.** Every changed line should trace to the request. Don't refactor,
-  reformat, or "improve" adjacent code that isn't broken; match the surrounding style.
-  Remove only the imports and symbols your change orphaned; leave unrelated dead code alone
-  and mention it.
-- **Goal-driven.** Turn each task into a verifiable outcome ("fix the bug" → "write a
-  failing test that reproduces it, then make it pass"). For multi-step work, state a brief
-  plan before starting.
+- **Change scope.** Change only what was requested. Don't "improve" adjacent code,
+  comments, or formatting; match the existing style. Delete code your own change makes
+  unused, never leave it commented out. Point out pre-existing dead code only; don't
+  delete, split, or refactor it unless asked.
+- **Implementation size.** Don't add unrequested features, abstractions, or
+  configurability. Extract a helper only when it's used in 3+ places; otherwise inline
+  it. Don't write error handling for cases that can't happen.
+- **Uncertainty.** When more than one interpretation is possible, present the options
+  instead of silently picking one.
 
 ## Tooling
 
@@ -111,18 +108,13 @@ explicitly excludes visual regression checking from its scope).
 
 ## Language
 
-Write everything in **English** — in-code comments, console output, error and log
-messages, AI-readable instruction files, and docs meant for readers (README and the
-like). This rule applies to artifacts, not conversation: chat replies and
-development-time planning notes follow the language the user is working in.
+Default to the user's language for everything interactive — chat replies, plan-mode
+proposals, clarifying questions, and any other back-and-forth during the session.
 
-## Code Structure
-
-- Name variables, functions, and files to communicate intent.
-- One concern per file; split new code when a file exceeds ~300 lines. Don't split
-  existing files unless asked.
-- Extract a helper only when used in 3+ places; otherwise inline it.
-- Delete dead code you create; never comment it out.
+Switch to English only for durable artifacts: things other people or tools will read
+after the session ends — in-code comments, console/log/error output, AI-readable
+instruction files, and reader-facing docs (README and the like). Scratch notes and other
+throwaway dev artifacts stay in the user's language.
 
 ## Commits
 
