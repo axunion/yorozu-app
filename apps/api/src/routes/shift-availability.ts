@@ -5,8 +5,8 @@ import {
   now,
   periodDates,
   SaveAvailabilityInput,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import {

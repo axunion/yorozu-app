@@ -38,7 +38,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: "pnpm --filter @order/api dev",
+      command: "pnpm --filter @yorozu/api dev",
       // /api/auth/me answers 401 unauthenticated; Playwright treats 401 as
       // "server is up", while the 404 on / would read as "not ready yet".
       url: `${API_ORIGIN}/api/auth/me`,
@@ -46,19 +46,19 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: "pnpm --filter @order/admin dev",
+      command: "pnpm --filter @yorozu/admin dev",
       url: ADMIN_ORIGIN,
       reuseExistingServer: true,
       timeout: 120_000,
     },
     {
-      command: "pnpm --filter @order/order dev",
+      command: "pnpm --filter @yorozu/order dev",
       url: ORDER_ORIGIN,
       reuseExistingServer: true,
       timeout: 120_000,
     },
     {
-      command: "pnpm --filter @order/signup dev",
+      command: "pnpm --filter @yorozu/signup dev",
       url: SIGNUP_ORIGIN,
       reuseExistingServer: true,
       timeout: 120_000,

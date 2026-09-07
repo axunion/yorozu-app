@@ -4,8 +4,8 @@ import {
   newId,
   now,
   type SchedulePeriodResponse,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import {

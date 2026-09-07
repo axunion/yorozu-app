@@ -1,4 +1,4 @@
-import type { SeatSession, StoreSession } from "@order/core";
+import type { SeatSession, StoreSession } from "@yorozu/core";
 import {
   buildSessionCookie,
   errorResponse,
@@ -7,8 +7,8 @@ import {
   SESSION_REFRESH_INTERVAL_MS,
   SESSION_TOKEN_COOKIE,
   SESSION_TTL_MS,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, eq } from "drizzle-orm";
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";

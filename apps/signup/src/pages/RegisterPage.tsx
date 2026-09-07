@@ -1,4 +1,4 @@
-import { Card } from "@order/ui";
+import { Card } from "@yorozu/ui";
 import RegisterForm from "../components/RegisterForm";
 import styles from "./RegisterPage.module.css";
 

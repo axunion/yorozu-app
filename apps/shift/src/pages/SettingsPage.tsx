@@ -3,9 +3,9 @@ import type {
   ShiftMemberResponse,
   ShiftPatternResponse,
   StaffingRequirementResponse,
-} from "@order/core";
-import { apiFetch } from "@order/core/client";
-import { ErrorAlert } from "@order/ui";
+} from "@yorozu/core";
+import { apiFetch } from "@yorozu/core/client";
+import { ErrorAlert } from "@yorozu/ui";
 import { createMemo, createSignal, onMount, Show } from "solid-js";
 import MembersSection from "../components/MembersSection";
 import PatternsSection from "../components/PatternsSection";

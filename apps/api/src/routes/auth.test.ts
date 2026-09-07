@@ -1,7 +1,12 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 import { env } from "cloudflare:workers";
-import { hashToken, MAGIC_LINK_TTL_MS, now, SESSION_TTL_MS } from "@order/core";
-import { createDb, schema } from "@order/db";
+import {
+  hashToken,
+  MAGIC_LINK_TTL_MS,
+  now,
+  SESSION_TTL_MS,
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";

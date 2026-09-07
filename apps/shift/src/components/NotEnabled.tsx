@@ -1,4 +1,4 @@
-import { Card } from "@order/ui";
+import { Card } from "@yorozu/ui";
 import styles from "./NotEnabled.module.css";
 
 /**

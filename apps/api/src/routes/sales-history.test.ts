@@ -5,7 +5,7 @@
  * isolation, and cancelled-item handling.
  */
 import { env } from "cloudflare:workers";
-import { jstDayRange } from "@order/core";
+import { jstDayRange } from "@yorozu/core";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";
 import { jsonInit, seedStore, withAuth } from "../test-helpers";

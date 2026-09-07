@@ -4,7 +4,7 @@
  * wrapping to 01:00 — that is what tells a reader the shift runs overnight.
  */
 
-import { jstDayRange, toJstWeekday } from "@order/core";
+import { jstDayRange, toJstWeekday } from "@yorozu/core";
 
 /** 540 -> "09:00", 1500 -> "25:00". */
 export function formatMinutes(minutes: number): string {

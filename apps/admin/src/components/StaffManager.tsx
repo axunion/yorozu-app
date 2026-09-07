@@ -1,6 +1,6 @@
-import type { StaffMemberResponse } from "@order/core";
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, ConfirmDialog, ErrorAlert, Field, Select } from "@order/ui";
+import type { StaffMemberResponse } from "@yorozu/core";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, ConfirmDialog, ErrorAlert, Field, Select } from "@yorozu/ui";
 import { createMemo, createSignal, For, onMount, Show } from "solid-js";
 import { useStoreInfo } from "../layouts/AdminGuard";
 import styles from "./StaffManager.module.css";

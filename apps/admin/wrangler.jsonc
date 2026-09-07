@@ -1,5 +1,5 @@
 {
-  "name": "order-manager-admin",
+  "name": "yorozu-app-admin",
   "compatibility_date": "2025-01-01",
   "compatibility_flags": ["nodejs_compat"],
   // Pure static asset serving — no Worker script, no D1.

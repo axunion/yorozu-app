@@ -323,14 +323,14 @@ concurrently.
 - All amounts are **tax-inclusive JPY integers** (no decimals, no
   separate tax column) — `menu_items.tax_rate`/`order_items.tax_rate_snapshot`
   exist only to *decompose* an already-charged total into a receipt's
-  tax breakdown (`computeTaxBreakdown`, `@order/core`); they never
+  tax breakdown (`computeTaxBreakdown`, `@yorozu/core`); they never
   change what's charged.
 - All timestamps are **Unix milliseconds** (`integer` columns), generated
   in the Worker via `Date.now()` — D1 has no native datetime. The API
   stays timezone-agnostic; business-day boundaries (JST, UTC+9) are a
-  client concern via `jstDayRange`/`toJstDateString` (`@order/core`,
+  client concern via `jstDayRange`/`toJstDateString` (`@yorozu/core`,
   `domain/time.ts`), used by the sales-history date range.
 - Billing totals are always computed from
   `(unit_price_snapshot + Σ price_delta_snapshot) × quantity` per line
-  (`sumOrderItems`, `@order/core`), never from live menu or option
+  (`sumOrderItems`, `@yorozu/core`), never from live menu or option
   prices.

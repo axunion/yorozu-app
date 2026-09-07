@@ -4,8 +4,8 @@ import {
   newId,
   type PositionResponse,
   UpdatePositionInput,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import {

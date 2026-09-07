@@ -1,5 +1,5 @@
-import { apiFetch } from "@order/core/client";
-import { ErrorAlert } from "@order/ui";
+import { apiFetch } from "@yorozu/core/client";
+import { ErrorAlert } from "@yorozu/ui";
 import { createSignal, For, onMount, Show } from "solid-js";
 import styles from "./ReceiptScreen.module.css";
 

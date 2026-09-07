@@ -4,8 +4,8 @@ import type {
   ShiftMemberResponse,
   ShiftPatternResponse,
   ShiftResponse,
-} from "@order/core";
-import { Button, ConfirmDialog } from "@order/ui";
+} from "@yorozu/core";
+import { Button, ConfirmDialog } from "@yorozu/ui";
 import { createSignal, For, Show } from "solid-js";
 import { formatMinutes, formatWorkDate } from "../lib/format";
 import styles from "./ScheduleDay.module.css";

@@ -1,5 +1,5 @@
-import { menuImageUrl } from "@order/core/client";
-import { Button, ErrorAlert } from "@order/ui";
+import { menuImageUrl } from "@yorozu/core/client";
+import { Button, ErrorAlert } from "@yorozu/ui";
 import { createSignal, For, onCleanup, Show } from "solid-js";
 import ItemDetailSheet from "./ItemDetailSheet";
 import styles from "./MenuList.module.css";

@@ -1,4 +1,4 @@
-import { type createDb, schema } from "@order/db";
+import { type createDb, schema } from "@yorozu/db";
 import { and, eq, inArray } from "drizzle-orm";
 
 export type OrderItemOptionPayload = {

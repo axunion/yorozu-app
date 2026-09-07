@@ -10,7 +10,7 @@ All five apps deploy to Cloudflare Workers with `wrangler deploy`. Deployment is
 2. Create the production D1 database:
 
    ```sh
-   wrangler d1 create order-manager
+   wrangler d1 create yorozu-app
    ```
 
    Copy the returned `database_id` into `apps/api/wrangler.jsonc`
@@ -18,7 +18,7 @@ All five apps deploy to Cloudflare Workers with `wrangler deploy`. Deployment is
 3. Create the R2 bucket for menu item images:
 
    ```sh
-   wrangler r2 bucket create order-manager-images
+   wrangler r2 bucket create yorozu-app-images
    ```
 
    Update `bucket_name` in `apps/api/wrangler.jsonc` (`r2_buckets[0]`) if you
@@ -54,18 +54,18 @@ All five apps deploy to Cloudflare Workers with `wrangler deploy`. Deployment is
 
 ```sh
 # 1. Apply pending migrations to production D1 (from apps/api)
-pnpm --filter @order/api exec wrangler d1 migrations apply order-manager --remote
+pnpm --filter @yorozu/api exec wrangler d1 migrations apply yorozu-app --remote
 
 # 2. Deploy the API
-pnpm --filter @order/api exec wrangler deploy
+pnpm --filter @yorozu/api exec wrangler deploy
 
 # 3. Build and deploy each SPA
 #    VITE_API_BASE must point at the deployed API origin at build time.
-#    @order/admin additionally needs VITE_ORDER_BASE — it is baked into seat QR codes.
+#    @yorozu/admin additionally needs VITE_ORDER_BASE — it is baked into seat QR codes.
 VITE_API_BASE=https://api.example.com VITE_ORDER_BASE=https://order.example.com \
-  pnpm --filter @order/admin build
-pnpm --filter @order/admin exec wrangler deploy
-# repeat for @order/order, @order/signup and @order/shift (VITE_API_BASE only)
+  pnpm --filter @yorozu/admin build
+pnpm --filter @yorozu/admin exec wrangler deploy
+# repeat for @yorozu/order, @yorozu/signup and @yorozu/shift (VITE_API_BASE only)
 ```
 
 Apply migrations before deploying API code that depends on them.

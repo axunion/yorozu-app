@@ -15,7 +15,7 @@ paths:
 
 ## API fetch helpers
 
-Import from `@order/core/client`. Both return
+Import from `@yorozu/core/client`. Both return
 `{ ok: boolean; data?: T; message?: string; status?: number }` — `status` is the HTTP
 status when a response came back, for the rare caller that must tell one failure code
 from another (a 403 product gate is a screen, not an error banner).
@@ -29,7 +29,7 @@ Always check `result.ok` before accessing `result.data`.
 
 ## Shared UI components
 
-Check `@order/ui` before writing raw HTML. Available: `Button`, `Card`, `ConfirmDialog`, `ErrorAlert`, `Field`, `Select`.
+Check `@yorozu/ui` before writing raw HTML. Available: `Button`, `Card`, `ConfirmDialog`, `ErrorAlert`, `Field`, `Select`.
 
 - Use `ConfirmDialog` for all destructive actions — never `window.confirm`
 - Use `ErrorAlert` for API error messages

@@ -1,5 +1,5 @@
-import { apiFetch } from "@order/core/client";
 import { A, useNavigate } from "@solidjs/router";
+import { apiFetch } from "@yorozu/core/client";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import { useStoreInfo } from "./AdminGuard";

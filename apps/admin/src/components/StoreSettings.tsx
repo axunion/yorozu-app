@@ -1,6 +1,6 @@
-import type { EmailChangeResponse, StoreResponse } from "@order/core";
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, ConfirmDialog, ErrorAlert, Field } from "@order/ui";
+import type { EmailChangeResponse, StoreResponse } from "@yorozu/core";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, ConfirmDialog, ErrorAlert, Field } from "@yorozu/ui";
 import { createSignal, Show } from "solid-js";
 import { useStoreInfo } from "../layouts/AdminGuard";
 import { downloadJson } from "../lib/download";

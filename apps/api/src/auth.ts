@@ -1,13 +1,13 @@
-import type { SeatSession, StoreSession } from "@order/core";
+import type { SeatSession, StoreSession } from "@yorozu/core";
 import {
   hashToken,
   MAGIC_LINK_HOURLY_CAP,
   MAGIC_LINK_TTL_MS,
   newId,
   now,
-} from "@order/core";
-import type { Database } from "@order/db";
-import { schema } from "@order/db";
+} from "@yorozu/core";
+import type { Database } from "@yorozu/db";
+import { schema } from "@yorozu/db";
 import { and, eq, gt, isNull, ne } from "drizzle-orm";
 
 const HOUR_MS = 60 * 60 * 1000;

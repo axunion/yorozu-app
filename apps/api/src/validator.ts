@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { validationError } from "@order/core";
+import { validationError } from "@yorozu/core";
 import type { ZodType } from "zod";
 
 /** Wraps zValidator with the project's standard validation error format. */

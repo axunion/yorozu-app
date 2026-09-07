@@ -7,7 +7,7 @@
  */
 
 const RESEND_API_URL = "https://api.resend.com/emails";
-const DEFAULT_FROM = "noreply@order-manager.example.com";
+const DEFAULT_FROM = "noreply@yorozu-app.example.com";
 
 interface SendMagicLinkOptions {
   to: string;
@@ -52,7 +52,7 @@ export async function sendMagicLinkEmail(
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
       "Content-Type": "application/json",
-      "User-Agent": "order-manager/1.0",
+      "User-Agent": "yorozu-app/1.0",
     },
     body: JSON.stringify({ from, to, subject, html }),
   });

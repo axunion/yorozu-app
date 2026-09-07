@@ -1,5 +1,5 @@
-import "@order/ui/styles/tokens.css";
-import "@order/ui/styles/global.css";
+import "@yorozu/ui/styles/tokens.css";
+import "@yorozu/ui/styles/global.css";
 import "./styles/order-tokens.css";
 import { render } from "solid-js/web";
 import App from "./App";

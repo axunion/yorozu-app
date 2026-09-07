@@ -1,12 +1,12 @@
+import { useParams } from "@solidjs/router";
 import type {
   AvailabilityEntryResponse,
   AvailabilitySubmissionResponse,
   SchedulePeriodResponse,
-} from "@order/core";
-import { periodDates } from "@order/core";
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, Card, ErrorAlert } from "@order/ui";
-import { useParams } from "@solidjs/router";
+} from "@yorozu/core";
+import { periodDates } from "@yorozu/core";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, Card, ErrorAlert } from "@yorozu/ui";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { createStore } from "solid-js/store";
 import ShiftLayout from "../layouts/ShiftLayout";

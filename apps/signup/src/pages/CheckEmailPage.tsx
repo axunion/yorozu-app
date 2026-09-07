@@ -1,6 +1,6 @@
-import { MAGIC_LINK_VERIFY_PATH } from "@order/core";
-import { Card } from "@order/ui";
 import { useSearchParams } from "@solidjs/router";
+import { MAGIC_LINK_VERIFY_PATH } from "@yorozu/core";
+import { Card } from "@yorozu/ui";
 import { createMemo, Show } from "solid-js";
 import styles from "./CheckEmailPage.module.css";
 

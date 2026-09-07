@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { displayName, sortOrderValue } from "./primitives";
 
-// Shift management lives in its own file; re-exported so `@order/core/types`
+// Shift management lives in its own file; re-exported so `@yorozu/core/types`
 // stays one import for callers.
 export * from "./shift";
 

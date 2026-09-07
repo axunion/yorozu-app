@@ -120,7 +120,7 @@
 
 .positionChip:disabled {
   cursor: not-allowed;
-  /* Matches @order/ui Button, which sits beside these in the same row. */
+  /* Matches @yorozu/ui Button, which sits beside these in the same row. */
   opacity: 0.5;
 }
 

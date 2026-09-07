@@ -30,8 +30,8 @@ multi-hundred-MB download, so only run it if launching chromium fails with a
    all three SPAs) 8787.
    ```bash
    lsof -ti:<port> -sTCP:LISTEN | xargs -r kill
-   nohup pnpm dev:api > /tmp/order-manager-api-dev.log 2>&1 & disown
-   nohup pnpm dev:<admin|order|signup> > /tmp/order-manager-<app>-dev.log 2>&1 & disown
+   nohup pnpm dev:api > /tmp/yorozu-app-api-dev.log 2>&1 & disown
+   nohup pnpm dev:<admin|order|signup> > /tmp/yorozu-app-<app>-dev.log 2>&1 & disown
    ```
    macOS has no `timeout` command, so poll instead of a raw `timeout 30 curl ...`:
    ```bash

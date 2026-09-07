@@ -1,6 +1,6 @@
 /**
  * CSV download. Copied from apps/admin/src/lib/download.ts rather than
- * promoted to @order/ui: two call sites is not three, and the shift export
+ * promoted to @yorozu/ui: two call sites is not three, and the shift export
  * needs no JSON counterpart. Promote if a third app wants it.
  */
 

@@ -7,8 +7,8 @@
 // Import from cloudflare:workers is safe here because this file is only
 // executed in the workers test project.
 import { env } from "cloudflare:workers";
-import { hashToken, newId, now, SESSION_TTL_MS } from "@order/core";
-import { createDb, schema } from "@order/db";
+import { hashToken, newId, now, SESSION_TTL_MS } from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 
 // ---------------------------------------------------------------------------
 // Store + session seed helper

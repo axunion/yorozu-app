@@ -4,7 +4,7 @@
  * suspend/reactivate, and delete + export.
  */
 import { env } from "cloudflare:workers";
-import { createDb, schema } from "@order/db";
+import { createDb, schema } from "@yorozu/db";
 import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";

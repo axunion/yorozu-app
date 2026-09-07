@@ -86,7 +86,7 @@ renders both so staff can double-check the bill before settling it.
   total, average per check, per-method breakdown) but still render in
   the list — struck through, badged "取消済み" — for audit visibility.
 - The admin SalesPage (`/sales`) scopes each query to a JST calendar
-  day via `jstDayRange` (`@order/core`, `domain/time.ts`), with
+  day via `jstDayRange` (`@yorozu/core`, `domain/time.ts`), with
   prev/next-day navigation and a date picker (defaults to today JST).
 
 ### Sales reports (`/reports`, `apps/admin`)
@@ -121,7 +121,7 @@ renders both so staff can double-check the bill before settling it.
   not exposed in the admin UI in v1 (every item is dine-in
   standard-rate today), it exists so receipts stay correct if takeout
   or a rate change ever arrives.
-- `computeTaxBreakdown` (`@order/core`) buckets **pre-discount** line
+- `computeTaxBreakdown` (`@yorozu/core`) buckets **pre-discount** line
   totals by rate, then derives each bucket's tax portion via the
   inclusive-tax formula (`tax = total − round(total / (1 + rate/100))`)
   — rounded once per bucket (half down), never per line item. Used by

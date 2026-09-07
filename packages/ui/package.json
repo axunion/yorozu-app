@@ -1,5 +1,5 @@
 {
-  "name": "@order/ui",
+  "name": "@yorozu/ui",
   "private": true,
   "type": "module",
   "version": "0.0.1",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@kobalte/core": "catalog:",
-    "@order/core": "workspace:*",
+    "@yorozu/core": "workspace:*",
     "solid-js": "catalog:"
   },
   "devDependencies": {

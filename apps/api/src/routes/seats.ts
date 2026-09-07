@@ -3,8 +3,8 @@ import {
   errorResponse,
   newId,
   UpdateSeatInput,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { type AuthEnv, requireOwner, requireStore } from "../middleware";

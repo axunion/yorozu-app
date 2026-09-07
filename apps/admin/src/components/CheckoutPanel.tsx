@@ -1,5 +1,5 @@
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, ErrorAlert, Field } from "@order/ui";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, ErrorAlert, Field } from "@yorozu/ui";
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import styles from "./CheckoutPanel.module.css";
 import StatusBadge from "./StatusBadge";

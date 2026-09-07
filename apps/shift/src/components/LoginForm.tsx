@@ -1,6 +1,6 @@
-import type { LoginResponse } from "@order/core";
-import { jsonFetch } from "@order/core/client";
-import { Button, Field } from "@order/ui";
+import type { LoginResponse } from "@yorozu/core";
+import { jsonFetch } from "@yorozu/core/client";
+import { Button, Field } from "@yorozu/ui";
 import { createSignal, Show } from "solid-js";
 import styles from "./LoginForm.module.css";
 

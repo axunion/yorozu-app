@@ -270,15 +270,15 @@ importers:
 
   apps/admin:
     dependencies:
-      '@order/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@order/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@solidjs/router':
         specifier: 'catalog:'
         version: 0.15.4(solid-js@1.9.13)
+      '@yorozu/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@yorozu/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -316,10 +316,10 @@ importers:
       '@hono/zod-validator':
         specifier: ^0.8.0
         version: 0.8.0(hono@4.12.26)(zod@4.4.3)
-      '@order/core':
+      '@yorozu/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@order/db':
+      '@yorozu/db':
         specifier: workspace:*
         version: link:../../packages/db
       drizzle-orm:
@@ -356,15 +356,15 @@ importers:
       '@kobalte/core':
         specifier: 'catalog:'
         version: 0.13.11(solid-js@1.9.13)
-      '@order/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@order/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@solidjs/router':
         specifier: 'catalog:'
         version: 0.15.4(solid-js@1.9.13)
+      '@yorozu/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@yorozu/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       solid-js:
         specifier: 'catalog:'
         version: 1.9.13
@@ -393,15 +393,15 @@ importers:
 
   apps/shift:
     dependencies:
-      '@order/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@order/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@solidjs/router':
         specifier: 'catalog:'
         version: 0.15.4(solid-js@1.9.13)
+      '@yorozu/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@yorozu/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       solid-js:
         specifier: 'catalog:'
         version: 1.9.13
@@ -430,15 +430,15 @@ importers:
 
   apps/signup:
     dependencies:
-      '@order/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@order/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@solidjs/router':
         specifier: 'catalog:'
         version: 0.15.4(solid-js@1.9.13)
+      '@yorozu/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@yorozu/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       solid-js:
         specifier: 'catalog:'
         version: 1.9.13
@@ -493,7 +493,7 @@ importers:
       '@kobalte/core':
         specifier: 'catalog:'
         version: 0.13.11(solid-js@1.9.13)
-      '@order/core':
+      '@yorozu/core':
         specifier: workspace:*
         version: link:../core
       solid-js:

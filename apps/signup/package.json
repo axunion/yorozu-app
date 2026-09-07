@@ -1,5 +1,5 @@
 {
-  "name": "@order/signup",
+  "name": "@yorozu/signup",
   "private": true,
   "type": "module",
   "version": "0.0.1",
@@ -11,8 +11,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@order/core": "workspace:*",
-    "@order/ui": "workspace:*",
+    "@yorozu/core": "workspace:*",
+    "@yorozu/ui": "workspace:*",
     "@solidjs/router": "catalog:",
     "solid-js": "catalog:"
   },

@@ -9,8 +9,8 @@ import {
   hashToken,
   now,
   SESSION_TTL_MS,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";

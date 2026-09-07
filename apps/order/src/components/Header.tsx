@@ -1,4 +1,4 @@
-import { Button } from "@order/ui";
+import { Button } from "@yorozu/ui";
 import { Show } from "solid-js";
 import styles from "./Header.module.css";
 

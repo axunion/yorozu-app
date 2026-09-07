@@ -10,8 +10,8 @@ import {
   SESSION_TOKEN_COOKIE,
   SESSION_TTL_MS,
   sendMagicLinkEmail,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";

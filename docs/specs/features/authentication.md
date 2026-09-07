@@ -191,7 +191,7 @@ until a real billing system exists to trigger it.
   arbitrary address belongs to another member (across the whole
   `members.email` namespace, not just this store) and — unlike issuing a
   Magic Link — never touches `magic_link_tokens`, it has its own cap
-  (`EMAIL_CHANGE_HOURLY_CAP`, `@order/core` `domain/auth.ts`, 5/rolling
+  (`EMAIL_CHANGE_HOURLY_CAP`, `@yorozu/core` `domain/auth.ts`, 5/rolling
   hour) tracked on `members.email_change_attempt_count` /
   `email_change_window_started_at`, counted regardless of outcome
   (conflict or not) — `MAGIC_LINK_HOURLY_CAP` alone doesn't bound this
@@ -214,7 +214,7 @@ until a real billing system exists to trigger it.
 
 - `issueMagicLink` (`apps/api/src/auth.ts`) refuses to issue a token —
   returning `null` instead — once a **member** has reached
-  `MAGIC_LINK_HOURLY_CAP` (5, `@order/core` `domain/auth.ts`) issuances
+  `MAGIC_LINK_HOURLY_CAP` (5, `@yorozu/core` `domain/auth.ts`) issuances
   in the last rolling hour, across signup-resend, login, email-change,
   invite, and reactivate combined. Scoped per member (not per store): a
   store can

@@ -4,7 +4,7 @@
  * No server-side imports — safe to use in any client component.
  *
  * Usage:
- *   import { apiFetch, jsonFetch } from "@order/core/client";
+ *   import { apiFetch, jsonFetch } from "@yorozu/core/client";
  *
  * The API base URL is injected via the VITE_API_BASE environment variable,
  * which each SPA app sets in its .env / wrangler.jsonc (e.g. "https://api.example.com").

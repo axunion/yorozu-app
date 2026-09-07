@@ -9,7 +9,7 @@
  * shift route slice owes at least one 403 asserted through a real endpoint.
  */
 import { env } from "cloudflare:workers";
-import { createDb, schema } from "@order/db";
+import { createDb, schema } from "@yorozu/db";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";

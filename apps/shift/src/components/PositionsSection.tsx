@@ -1,6 +1,6 @@
-import type { PositionResponse } from "@order/core";
-import { jsonFetch } from "@order/core/client";
-import { Button, Card, Field } from "@order/ui";
+import type { PositionResponse } from "@yorozu/core";
+import { jsonFetch } from "@yorozu/core/client";
+import { Button, Card, Field } from "@yorozu/ui";
 import { createSignal, For, Show } from "solid-js";
 import styles from "./SettingsSection.module.css";
 

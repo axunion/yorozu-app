@@ -3,7 +3,7 @@
  * Seat lifecycle (roadmap Phase 2 item 5): rename, soft-delete, QR rotation.
  */
 import { env } from "cloudflare:workers";
-import { createDb, schema } from "@order/db";
+import { createDb, schema } from "@yorozu/db";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";

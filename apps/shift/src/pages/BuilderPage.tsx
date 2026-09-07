@@ -1,10 +1,11 @@
+import { useParams } from "@solidjs/router";
 import type {
   PositionResponse,
   ScheduleResponse,
   ShiftMemberResponse,
   ShiftPatternResponse,
   ShiftResponse,
-} from "@order/core";
+} from "@yorozu/core";
 import {
   type CoverageRow,
   coverage,
@@ -12,10 +13,9 @@ import {
   laborWarnings,
   periodDates,
   workedMinutes,
-} from "@order/core";
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, Card, ErrorAlert } from "@order/ui";
-import { useParams } from "@solidjs/router";
+} from "@yorozu/core";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, Card, ErrorAlert } from "@yorozu/ui";
 import { createMemo, createSignal, For, onMount, Show } from "solid-js";
 import CostSummary from "../components/CostSummary";
 import ScheduleDay, { type NewShift } from "../components/ScheduleDay";

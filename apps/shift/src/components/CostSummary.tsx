@@ -1,5 +1,5 @@
-import type { LaborCost } from "@order/core";
-import { Card } from "@order/ui";
+import type { LaborCost } from "@yorozu/core";
+import { Card } from "@yorozu/ui";
 import { createMemo, For, Show } from "solid-js";
 import { formatYen } from "../lib/format";
 import styles from "./CostSummary.module.css";

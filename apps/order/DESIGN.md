@@ -1,4 +1,4 @@
-# DESIGN.md — order-manager / apps/order
+# DESIGN.md — yorozu-app / apps/order
 
 > This file is the single source of truth for the visual specification of
 > `apps/order` (the customer-facing self-order SPA). Treat it as the canonical
@@ -527,7 +527,7 @@ Touch target:  44px minimum
 ### Prompt template
 
 ```
-Implement a UI screen following the order-manager apps/order design system.
+Implement a UI screen following the yorozu-app apps/order design system.
 
 Colors:
   Primary CTA:   #C0552F (terracotta)
@@ -564,17 +564,17 @@ The two apps serve different users (customers vs. store staff) and have distinct
 design requirements. Sharing components between them risks constraining either
 app's design flexibility.
 
-### Role of `@order/ui`
+### Role of `@yorozu/ui`
 
-`packages/ui` (`@order/ui`) provides **design tokens and minimal primitives
+`packages/ui` (`@yorozu/ui`) provides **design tokens and minimal primitives
 only** — it is not a shared component library.
 
-**What belongs in `@order/ui`:**
+**What belongs in `@yorozu/ui`:**
 - Design tokens (CSS custom properties in `packages/ui/src/styles/tokens.css`)
 - Truly generic primitives that every app can reuse unchanged (e.g. `Button`,
   `Field`, `Select` — kept intentionally generic with no app-specific variants)
 
-**What does not belong in `@order/ui`:**
+**What does not belong in `@yorozu/ui`:**
 - Components that embed app-specific layout or domain logic (e.g. `MenuList`,
   `OrderSummary`, `OrderBoard`)
 - App-specific visual decisions (e.g. the order app header color, the admin
@@ -583,11 +583,11 @@ only** — it is not a shared component library.
 ### Implementation guidelines
 
 - New components start inside the app's own `src/components/`.
-- Consider promoting to `@order/ui` only when three or more apps need
+- Consider promoting to `@yorozu/ui` only when three or more apps need
   near-identical logic and structure.
 - When promoting, keep the API generic and lean on design tokens rather than
   hardcoded values.
-- Existing `@order/ui` primitives (`Button`, `Card`, `Field`, `Select`,
+- Existing `@yorozu/ui` primitives (`Button`, `Card`, `Field`, `Select`,
   `ConfirmDialog`, `ErrorAlert`) remain as general-purpose building blocks. If
   the apps/order design spec diverges from a primitive's defaults, wrap it
   locally rather than modifying the primitive.

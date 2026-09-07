@@ -55,7 +55,7 @@ product, which registration does not grant:
    not `shift`, so insert one row by hand:
 
    ```sh
-   pnpm --filter @order/api exec wrangler d1 execute order-manager-db --local      --command "INSERT INTO subscriptions (id, store_id, product, plan, status, created_at)
+   pnpm --filter @yorozu/api exec wrangler d1 execute yorozu-app-db --local      --command "INSERT INTO subscriptions (id, store_id, product, plan, status, created_at)
                 SELECT lower(hex(randomblob(16))), id, 'shift', NULL, 'active',
                        CAST(strftime('%s','now') AS INTEGER) * 1000 FROM stores;"
    ```

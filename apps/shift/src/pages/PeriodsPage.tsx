@@ -1,8 +1,8 @@
-import type { SchedulePeriodResponse } from "@order/core";
-import { halfMonthPeriod, jstDayRange, todayJst } from "@order/core";
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, Card, ErrorAlert } from "@order/ui";
 import { A } from "@solidjs/router";
+import type { SchedulePeriodResponse } from "@yorozu/core";
+import { halfMonthPeriod, jstDayRange, todayJst } from "@yorozu/core";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, Card, ErrorAlert } from "@yorozu/ui";
 import { createSignal, For, onMount, Show } from "solid-js";
 import ShiftLayout from "../layouts/ShiftLayout";
 import { formatWorkDate, PERIOD_STATUS_LABEL } from "../lib/format";

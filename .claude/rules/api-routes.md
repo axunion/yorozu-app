@@ -19,12 +19,12 @@ paths:
 
 ## Database access
 
-- Always create the DB client inline per handler: `const db = createDb(c.env.DB)` from `@order/db`
+- Always create the DB client inline per handler: `const db = createDb(c.env.DB)` from `@yorozu/db`
 
 ## Response shape
 
 - Success: `c.json({ data: ... }, status)`
-- Error: `errorResponse(code, message, status)` from `@order/core`
+- Error: `errorResponse(code, message, status)` from `@yorozu/core`
 
 ## Authentication patterns
 

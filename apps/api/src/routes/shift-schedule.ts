@@ -12,8 +12,8 @@ import {
   type StaffingRequirementResponse,
   toJstDateString,
   UpdateShiftInput,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import {

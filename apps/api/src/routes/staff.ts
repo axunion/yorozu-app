@@ -6,8 +6,8 @@ import {
   now,
   StaffInviteInput,
   sendMagicLinkEmail,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, eq, gt, inArray, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import { issueMagicLink } from "../auth";

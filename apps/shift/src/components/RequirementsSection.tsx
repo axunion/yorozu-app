@@ -1,9 +1,9 @@
 import type {
   PositionResponse,
   StaffingRequirementResponse,
-} from "@order/core";
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, Card, ConfirmDialog } from "@order/ui";
+} from "@yorozu/core";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, Card, ConfirmDialog } from "@yorozu/ui";
 import { createSignal, For, Show } from "solid-js";
 import { formatMinutes, parseMinutes } from "../lib/format";
 import styles from "./SettingsSection.module.css";

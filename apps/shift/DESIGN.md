@@ -6,7 +6,7 @@ Design language for the shift-management SPA. Same 10-section shape as
 
 Tokens live in `src/styles/shift-tokens.css`, imported **only** from
 `src/main.tsx`. Everything not overridden there comes from
-`@order/ui/styles/tokens.css`.
+`@yorozu/ui/styles/tokens.css`.
 
 ## 1. Visual Theme & Atmosphere
 
@@ -77,17 +77,17 @@ Inherited from the base scale. Two rules specific to this app:
 - **Dropdowns** — native `<select>`, the same exception and for the same
   reason: a manager assigns shifts from a phone in the back of house, where
   the OS wheel picker beats a custom listbox. This is the only app in the
-  monorepo that does not use `@order/ui`'s Kobalte `Select`; use `Select`
+  monorepo that does not use `@yorozu/ui`'s Kobalte `Select`; use `Select`
   for anything that needs styling, grouping or a placeholder beyond what a
   native option list gives.
 - **Copy from the previous period** — a `ghost` Button above the day list
   with a one-line hint beside it. It prefills the form by weekday and saves
   nothing; the hint has to say so, because a button that silently wrote a
   fortnight of availability would be the worst button in the app.
-- **Cards** — `@order/ui`'s `Card`, one per logical group.
-- **Buttons** — `@order/ui`'s `Button`. Draft saves are `secondary`, the
+- **Cards** — `@yorozu/ui`'s `Card`, one per logical group.
+- **Buttons** — `@yorozu/ui`'s `Button`. Draft saves are `secondary`, the
   submit action is the default primary.
-- **Errors** — `@order/ui`'s `ErrorAlert`, wrapped in `<Show>`.
+- **Errors** — `@yorozu/ui`'s `ErrorAlert`, wrapped in `<Show>`.
 
 ## 5. Layout Principles
 
@@ -104,7 +104,7 @@ Inherited from the base scale. Two rules specific to this app:
 
 Flat. The sticky header sits on the primary colour and needs no shadow to read
 as a layer; cards use a border rather than elevation. The only shadow in the
-app is whatever `@order/ui`'s Card ships with.
+app is whatever `@yorozu/ui`'s Card ships with.
 
 ## 7. Do's and Don'ts
 
@@ -125,7 +125,7 @@ app is whatever `@order/ui`'s Card ships with.
   The API keeps those owner-only; the UI must not imply otherwise.
 - Don't block a save on a labour warning.
 - Don't add a colour outside the tokens above; add a token instead.
-- Don't reach for `@order/ui` for a shift-specific component — see § 10.
+- Don't reach for `@yorozu/ui` for a shift-specific component — see § 10.
 
 ## 8. Responsive Behavior
 
@@ -153,23 +153,23 @@ When adding a screen here, state:
 
 1. Which role sees it (owner or staff) — the API enforces this, but the UI
    should not offer what will 403.
-2. Which existing `@order/ui` primitives it uses.
+2. Which existing `@yorozu/ui` primitives it uses.
 3. Which tokens it needs, and whether any are net-new.
 4. What its empty, loading and error states say.
 
 Example: "Add an owner-only settings page for shift patterns. Use Card, Field
-and Button from @order/ui, existing tokens only. Empty state: 'パターンが未登録です'.
+and Button from @yorozu/ui, existing tokens only. Empty state: 'パターンが未登録です'.
 Errors through ErrorAlert."
 
 ## 10. Component Ownership Policy
 
-`apps/shift` owns its domain components. Promote something to `@order/ui` only
+`apps/shift` owns its domain components. Promote something to `@yorozu/ui` only
 when **three** apps need the identical thing — the same rule admin and order
 follow.
 
 Concretely: the choice-button group, the day row and the coverage grid are this
 app's, even though admin has visually similar controls. They encode shift
-semantics, and merging them would make `@order/ui` a component library, which
+semantics, and merging them would make `@yorozu/ui` a component library, which
 it deliberately is not.
 
 Token overrides belong in `src/styles/shift-tokens.css`, imported only from

@@ -5,8 +5,8 @@ import {
   newId,
   now,
   sumOrderItems,
-} from "@order/core";
-import { createDb, type Database, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, type Database, schema } from "@yorozu/db";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { requireSeat, type SeatEnv } from "../middleware";

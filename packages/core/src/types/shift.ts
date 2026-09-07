@@ -3,7 +3,7 @@
  *
  * Split out of types/index.ts (already the size of a file this project would
  * split) because this is a separate product; index.ts re-exports it, so
- * `@order/core` and `@order/core/types` are unchanged for callers.
+ * `@yorozu/core` and `@yorozu/core/types` are unchanged for callers.
  *
  * Times follow the schema's encoding: `start_minutes` is a time of day on
  * `work_date`, `end_minutes` may cross midnight but not run past the next one.

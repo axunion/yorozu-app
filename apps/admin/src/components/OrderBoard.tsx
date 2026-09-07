@@ -1,5 +1,5 @@
-import { apiFetch } from "@order/core/client";
-import { Button, ConfirmDialog, ErrorAlert } from "@order/ui";
+import { apiFetch } from "@yorozu/core/client";
+import { Button, ConfirmDialog, ErrorAlert } from "@yorozu/ui";
 import {
   createEffect,
   createMemo,

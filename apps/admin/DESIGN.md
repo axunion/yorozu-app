@@ -1,4 +1,4 @@
-# DESIGN.md — order-manager / apps/admin
+# DESIGN.md — yorozu-app / apps/admin
 
 > This file is the single source of truth for the visual specification of
 > `apps/admin` (the staff-facing administration SPA). Treat it as the canonical
@@ -215,7 +215,7 @@ narrow columns.
 
 ### Buttons
 
-Uses `@order/ui` `Button` component. All variants map directly to the existing
+Uses `@yorozu/ui` `Button` component. All variants map directly to the existing
 `Button` component's `variant` prop; no new variants are needed.
 
 | Variant | Background | Text | Border | Use |
@@ -568,7 +568,7 @@ pattern (Field + Button, `<Show>` toggles to a post-submit notice).
 Owner-only page (`/staff`, hidden from the dashboard nav for `staff`-role
 sessions). Two Surface cards, same shape as `SeatManager`/`StoreSettings`.
 
-- **Invite form**: `Field` (email, type="email") + `@order/ui` `Select`
+- **Invite form**: `Field` (email, type="email") + `@yorozu/ui` `Select`
   (role: スタッフ / オーナー, defaults to スタッフ) + inline "招待する"
   `Button`, laid out `flex-wrap` / `align-items: flex-end` like
   `SeatManager`'s add-seat form.
@@ -585,7 +585,7 @@ sessions). Two Surface cards, same shape as `SeatManager`/`StoreSettings`.
   directly, invite conflicts) surface via `ErrorAlert`, same placement
   convention as `SeatManager`.
 
-### Inputs / Field (`@order/ui` Field)
+### Inputs / Field (`@yorozu/ui` Field)
 
 - Background: `#FFFFFF`
 - Border: `1px solid #B8C2D0`
@@ -600,7 +600,7 @@ sessions). Two Surface cards, same shape as `SeatManager`/`StoreSettings`.
 
 ---
 
-### Alerts (`@order/ui` ErrorAlert)
+### Alerts (`@yorozu/ui` ErrorAlert)
 
 **Error**
 
@@ -819,7 +819,7 @@ Button radius: 8px (md) — badges/pills only: 9999px (radius-full)
 ### Prompt template
 
 ```
-Implement an admin UI screen following the order-manager apps/admin design system.
+Implement an admin UI screen following the yorozu-app apps/admin design system.
 The admin app uses a professional, high-contrast desktop palette.
 
 Colors (use var(--color-*) in CSS — hex shown for reference only):
@@ -868,17 +868,17 @@ fundamentally different design requirements and colour systems. Sharing
 components between them risks constraining either app's design flexibility
 and would force the shared component to accommodate two incompatible palettes.
 
-### Role of `@order/ui`
+### Role of `@yorozu/ui`
 
-`packages/ui` (`@order/ui`) provides **design tokens and minimal primitives
+`packages/ui` (`@yorozu/ui`) provides **design tokens and minimal primitives
 only** — it is not a shared component library.
 
-**What belongs in `@order/ui`:**
+**What belongs in `@yorozu/ui`:**
 - Design tokens (CSS custom properties in `packages/ui/src/styles/tokens.css`)
 - Truly generic primitives that every app can reuse unchanged: `Button`,
   `Card`, `Field`, `Select`, `ConfirmDialog`, `ErrorAlert`
 
-**What does not belong in `@order/ui`:**
+**What does not belong in `@yorozu/ui`:**
 - Components that embed app-specific layout or domain logic (e.g. `OrderBoard`,
   `CheckoutPanel`, `MenuManager`, `SeatManager`)
 - App-specific visual decisions (e.g. the admin palette, the order board grid)
@@ -951,11 +951,11 @@ These overrides are declared in `apps/admin` only and never touch
 ### Implementation guidelines
 
 - New components start inside `apps/admin/src/components/`.
-- Consider promoting to `@order/ui` only when three or more apps need
+- Consider promoting to `@yorozu/ui` only when three or more apps need
   near-identical logic and structure with a generic, token-driven API.
 - When promoting, keep the API generic and lean on design tokens rather than
   hardcoded values so both apps can theme it independently.
-- Existing `@order/ui` primitives (`Button`, `Card`, `Field`, `Select`,
+- Existing `@yorozu/ui` primitives (`Button`, `Card`, `Field`, `Select`,
   `ConfirmDialog`, `ErrorAlert`) are general-purpose building blocks. If the
   admin design spec diverges from a primitive's defaults, wrap it locally
   rather than modifying the shared primitive.

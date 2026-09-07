@@ -2,8 +2,8 @@
  * Reading availability entries, shared by the availability and schedule
  * routes — the same shape the order-item helpers play for order routes.
  */
-import type { AvailabilityEntryResponse } from "@order/core";
-import { type createDb, schema } from "@order/db";
+import type { AvailabilityEntryResponse } from "@yorozu/core";
+import { type createDb, schema } from "@yorozu/db";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
 /**

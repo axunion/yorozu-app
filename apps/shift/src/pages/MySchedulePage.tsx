@@ -1,8 +1,8 @@
-import type { SchedulePeriodResponse, ShiftResponse } from "@order/core";
-import { workedMinutes } from "@order/core";
-import { apiFetch } from "@order/core/client";
-import { Card, ErrorAlert } from "@order/ui";
 import { A } from "@solidjs/router";
+import type { SchedulePeriodResponse, ShiftResponse } from "@yorozu/core";
+import { workedMinutes } from "@yorozu/core";
+import { apiFetch } from "@yorozu/core/client";
+import { Card, ErrorAlert } from "@yorozu/ui";
 import { createSignal, For, onMount, Show } from "solid-js";
 import ShiftLayout from "../layouts/ShiftLayout";
 import { formatMinutes, formatWorkDate } from "../lib/format";

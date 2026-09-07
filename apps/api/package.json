@@ -1,5 +1,5 @@
 {
-  "name": "@order/api",
+  "name": "@yorozu/api",
   "private": true,
   "type": "module",
   "version": "0.0.1",
@@ -8,13 +8,13 @@
     "build": "wrangler deploy --dry-run --outdir dist",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "db:migrate": "wrangler d1 migrations apply order-manager --local",
+    "db:migrate": "wrangler d1 migrations apply yorozu-app --local",
     "db:reset": "rm -rf .wrangler/state/v3/d1 && pnpm db:migrate"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.8.0",
-    "@order/core": "workspace:*",
-    "@order/db": "workspace:*",
+    "@yorozu/core": "workspace:*",
+    "@yorozu/db": "workspace:*",
     "drizzle-orm": "catalog:",
     "hono": "^4.12.26",
     "zod": "catalog:"

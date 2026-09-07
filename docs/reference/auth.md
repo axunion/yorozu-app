@@ -1,6 +1,6 @@
 # Authentication
 
-Cross-origin authentication design for the order-manager monorepo.
+Cross-origin authentication design for the yorozu-app monorepo.
 
 ---
 
@@ -27,7 +27,7 @@ Two authentication mechanisms are used:
 
 ### Storage at rest
 
-Only a SHA-256 hash of the session token (`hashToken`, `@order/core` `domain/auth.ts`) is
+Only a SHA-256 hash of the session token (`hashToken`, `@yorozu/core` `domain/auth.ts`) is
 written to `sessions.session_token`. The same applies to `magic_link_tokens.token`. The raw
 value lives solely in the client-facing cookie / email link and is hashed on every lookup
 before comparison; a D1 read (backup export, console access, etc.) never yields a value that
@@ -53,7 +53,7 @@ Set-Cookie: session_token=<value>; HttpOnly; Secure; SameSite=None; Domain=.exam
 row (`sessions.expires_at`/`last_used_at`) and re-sends `Set-Cookie` with
 a fresh `Max-Age=2592000` on every request where the session's
 `last_used_at` is `null` or more than `SESSION_REFRESH_INTERVAL_MS` (1
-hour, `@order/core` `domain/auth.ts`) old. The throttle bounds the extra
+hour, `@yorozu/core` `domain/auth.ts`) old. The throttle bounds the extra
 D1 write (and cookie re-send) to at most once/hour of activity even
 under 5s-polling admin/order-board traffic. **Both halves matter**: a
 session is only durably logged out — by inactivity — after 30 days with
@@ -110,7 +110,7 @@ All API calls from frontend SPAs must include credentials so the browser sends t
 fetch(url, { credentials: "include", ...init })
 ```
 
-`apiFetch` and `jsonFetch` from `@order/core/client` do this automatically.
+`apiFetch` and `jsonFetch` from `@yorozu/core/client` do this automatically.
 
 ---
 

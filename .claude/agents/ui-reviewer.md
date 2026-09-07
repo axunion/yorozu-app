@@ -1,6 +1,6 @@
 ---
 name: "ui-reviewer"
-description: "Use when SolidJS components, shared UI (packages/ui), or CSS Modules are added or modified. Reviews for SolidJS reactivity bugs, Kobalte accessibility, CSS token compliance, and @order/ui component reuse."
+description: "Use when SolidJS components, shared UI (packages/ui), or CSS Modules are added or modified. Reviews for SolidJS reactivity bugs, Kobalte accessibility, CSS token compliance, and @yorozu/ui component reuse."
 tools: Read, Bash
 model: inherit
 ---
@@ -27,7 +27,7 @@ Check in this order:
    - No inline `style={{ ... }}` except for genuinely dynamic values
    - Class names applied via `styles.className`, not string literals
 
-4. **@order/ui reuse**
+4. **@yorozu/ui reuse**
    - No re-implementation of Button, Card, Field, Select, ConfirmDialog, ErrorAlert
    - If a new primitive is built that belongs in `packages/ui`, flag it
 

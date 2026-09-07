@@ -1,5 +1,5 @@
-import type { LaborWarning, LaborWarningCode } from "@order/core";
-import { Card } from "@order/ui";
+import type { LaborWarning, LaborWarningCode } from "@yorozu/core";
+import { Card } from "@yorozu/ui";
 import { For, Show } from "solid-js";
 import { formatWorkDate } from "../lib/format";
 import styles from "./WarningsPanel.module.css";

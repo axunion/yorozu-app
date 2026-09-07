@@ -5,8 +5,8 @@
  * prerequisite that makes the cap countable.
  */
 import { env } from "cloudflare:workers";
-import { hashToken } from "@order/core";
-import { createDb, schema } from "@order/db";
+import { hashToken } from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";

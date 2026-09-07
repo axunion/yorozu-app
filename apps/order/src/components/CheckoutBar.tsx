@@ -1,4 +1,4 @@
-import { Button, ErrorAlert } from "@order/ui";
+import { Button, ErrorAlert } from "@yorozu/ui";
 import { createSignal, Show } from "solid-js";
 import styles from "./CheckoutBar.module.css";
 import type { Order } from "./OrderScreen";

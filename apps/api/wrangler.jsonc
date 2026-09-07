@@ -1,13 +1,13 @@
 {
-  "name": "order-manager-api",
+  "name": "yorozu-app-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "order-manager",
-      // Replace with the real database_id from `wrangler d1 create order-manager`.
+      "database_name": "yorozu-app",
+      // Replace with the real database_id from `wrangler d1 create yorozu-app`.
       // A placeholder UUID is acceptable for local-only development.
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "../../packages/db/drizzle"
@@ -17,7 +17,7 @@
     {
       "binding": "IMAGES",
       // Replace with the real bucket name from `wrangler r2 bucket create`.
-      "bucket_name": "order-manager-images"
+      "bucket_name": "yorozu-app-images"
     }
   ],
   "vars": {

@@ -9,7 +9,7 @@ export default defineConfig({
     setupFiles: ["./src/setup.ts"],
     server: {
       deps: {
-        inline: [/@order\/ui/, /@kobalte\//, /solid-/, /@corvu\//],
+        inline: [/@yorozu\/ui/, /@kobalte\//, /solid-/, /@corvu\//],
       },
     },
   },

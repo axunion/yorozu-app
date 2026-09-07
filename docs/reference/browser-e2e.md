@@ -27,7 +27,7 @@ as the `[DEV]` link the run clicks. Without it there is no way to verify the
 store without an inbox. See
 [auth.md](./auth.md#local-dev-skipping-email-delivery).
 
-Other entry points: `pnpm --filter @order/e2e e2e:ui` for the Playwright UI,
+Other entry points: `pnpm --filter @yorozu/e2e e2e:ui` for the Playwright UI,
 and `pnpm exec playwright show-trace <path>` for a failed run's trace (traces
 and screenshots are retained on failure only).
 

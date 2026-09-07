@@ -6,7 +6,7 @@
  * conflict when the seat has already moved on.
  */
 import { env } from "cloudflare:workers";
-import { createDb, schema } from "@order/db";
+import { createDb, schema } from "@yorozu/db";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";

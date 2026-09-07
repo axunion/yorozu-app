@@ -1,5 +1,5 @@
 {
-  "name": "order-manager-shift",
+  "name": "yorozu-app-shift",
   "compatibility_date": "2025-01-01",
   "compatibility_flags": ["nodejs_compat"],
   // Pure static asset serving — no Worker script, no D1.

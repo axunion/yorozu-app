@@ -1,5 +1,5 @@
 {
-  "name": "@order/db",
+  "name": "@yorozu/db",
   "private": true,
   "type": "module",
   "version": "0.0.1",

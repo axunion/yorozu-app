@@ -1,5 +1,5 @@
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, ConfirmDialog, ErrorAlert } from "@order/ui";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, ConfirmDialog, ErrorAlert } from "@yorozu/ui";
 import QRCode from "qrcode";
 import { createMemo, createSignal, For, onMount, Show } from "solid-js";
 import styles from "./SeatManager.module.css";

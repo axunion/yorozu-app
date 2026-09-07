@@ -1,13 +1,13 @@
 {
   // Wrangler config for vitest-pool-workers (API integration tests).
   // Excludes "main" intentionally — tests import Hono routes directly.
-  "name": "order-manager-api-test",
+  "name": "yorozu-app-api-test",
   "compatibility_date": "2025-01-01",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "order-manager",
+      "database_name": "yorozu-app",
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "../../packages/db/drizzle"
     }
@@ -15,7 +15,7 @@
   "r2_buckets": [
     {
       "binding": "IMAGES",
-      "bucket_name": "order-manager-images-test"
+      "bucket_name": "yorozu-app-images-test"
     }
   ],
   "vars": {

@@ -6,8 +6,8 @@ import {
   now,
   type PaymentMethod,
   sumOrderItems,
-} from "@order/core";
-import { createDb, schema } from "@order/db";
+} from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, asc, desc, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import { Hono } from "hono";
 import { type AuthEnv, requireStore } from "../middleware";

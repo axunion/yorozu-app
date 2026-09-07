@@ -1,5 +1,5 @@
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, ConfirmDialog, ErrorAlert, Field } from "@order/ui";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, ConfirmDialog, ErrorAlert, Field } from "@yorozu/ui";
 import { createSignal, For, onMount, Show } from "solid-js";
 import styles from "./OptionGroupManager.module.css";
 

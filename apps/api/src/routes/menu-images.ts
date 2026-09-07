@@ -1,4 +1,4 @@
-import { errorResponse } from "@order/core";
+import { errorResponse } from "@yorozu/core";
 import { Hono } from "hono";
 
 // ---------------------------------------------------------------------------

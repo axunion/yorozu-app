@@ -1,5 +1,5 @@
 import { Dialog } from "@kobalte/core/dialog";
-import { Button, ErrorAlert } from "@order/ui";
+import { Button, ErrorAlert } from "@yorozu/ui";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import styles from "./ItemDetailSheet.module.css";
 import type {

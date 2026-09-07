@@ -18,7 +18,7 @@ conversation, which made the change, to address.
    happen in a Cloudflare Workers API + SolidJS SPA stack with no untrusted plugin code.
 3. **Conventions**: naming that communicates intent, one concern per file (split when a
    file exceeds ~300 lines), helpers extracted only at 3+ real uses (not speculative),
-   no commented-out code, `@order/*` path aliases for cross-package imports.
+   no commented-out code, `@yorozu/*` path aliases for cross-package imports.
 4. **Generated/protected files**: `packages/db/drizzle/*.sql` must never be hand-edited
    in the diff — migrations are generated via `pnpm db:generate` (the `/db-migrate`
    skill); a hand-edited migration will drift from `packages/db/src/schema.ts`.

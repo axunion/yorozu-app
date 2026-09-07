@@ -65,7 +65,7 @@ field (≤ 200 chars).
   later edits to the live option never change a placed order's total.
   The line total shown everywhere is
   `(unit_price_snapshot + Σ price_delta_snapshot) × quantity`
-  (`sumOrderItems`, `@order/core`).
+  (`sumOrderItems`, `@yorozu/core`).
 
 ### Calling staff (`POST /api/order/:seatToken/call`)
 

@@ -1,5 +1,5 @@
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { ErrorAlert } from "@order/ui";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { ErrorAlert } from "@yorozu/ui";
 import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
 import CategoryNav from "./CategoryNav";
 import CheckoutBar from "./CheckoutBar";

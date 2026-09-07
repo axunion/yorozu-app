@@ -6,9 +6,9 @@ import {
   toJstDateString,
   toJstHour,
   toJstWeekday,
-} from "@order/core";
-import { apiFetch } from "@order/core/client";
-import { Button, ErrorAlert } from "@order/ui";
+} from "@yorozu/core";
+import { apiFetch } from "@yorozu/core/client";
+import { Button, ErrorAlert } from "@yorozu/ui";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { downloadCsv } from "../lib/download";
 import styles from "./ReportsManager.module.css";

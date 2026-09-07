@@ -1,6 +1,6 @@
-import { jstDayRange, todayJst } from "@order/core";
-import { apiFetch, jsonFetch } from "@order/core/client";
-import { Button, ConfirmDialog, ErrorAlert, Field } from "@order/ui";
+import { jstDayRange, todayJst } from "@yorozu/core";
+import { apiFetch, jsonFetch } from "@yorozu/core/client";
+import { Button, ConfirmDialog, ErrorAlert, Field } from "@yorozu/ui";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import styles from "./SalesHistory.module.css";
 import StatusBadge from "./StatusBadge";

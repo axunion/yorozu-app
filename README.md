@@ -1,4 +1,4 @@
-# order-manager
+# yorozu-app
 
 Mobile order and point-of-sale SaaS for restaurants — pnpm monorepo.
 

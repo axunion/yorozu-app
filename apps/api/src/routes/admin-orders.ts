@@ -1,5 +1,5 @@
-import { errorResponse, now, sumOrderItems } from "@order/core";
-import { createDb, schema } from "@order/db";
+import { errorResponse, now, sumOrderItems } from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { and, asc, eq, gt, inArray, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import { type AuthEnv, requireStore } from "../middleware";

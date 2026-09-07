@@ -18,8 +18,8 @@
  * covered here — the TypeScript types are the guard a caller actually meets.
  */
 import { env } from "cloudflare:workers";
-import { newId } from "@order/core";
-import { createDb, schema } from "@order/db";
+import { newId } from "@yorozu/core";
+import { createDb, schema } from "@yorozu/db";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { seedStore } from "./test-helpers";

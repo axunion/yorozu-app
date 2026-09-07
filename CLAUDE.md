@@ -1,4 +1,4 @@
-# order-manager
+# yorozu-app
 
 pnpm + Cloudflare Workers monorepo. SolidJS SPA frontends + a Hono API Worker
 on D1, with shared logic in `packages/*`.
@@ -29,7 +29,7 @@ Bias toward caution over speed; on trivial tasks, use judgment.
   `check`/`test`/`build` on pushes and PRs. Deployment is manual — see
   `docs/reference/deploy.md`.
 - **TypeScript:** every workspace extends `tsconfig.base.json` (strict,
-  `noUncheckedIndexedAccess`, `verbatimModuleSyntax`). Use `@order/*` path
+  `noUncheckedIndexedAccess`, `verbatimModuleSyntax`). Use `@yorozu/*` path
   aliases for cross-package imports.
 - **Testing runtime split:** `apps/api` tests run on the Workers runtime via
   `@cloudflare/vitest-pool-workers` (D1 migrations applied in setup). Frontend
@@ -134,9 +134,9 @@ Format — plain prose, no prefixes or labels (`feat:`, `fix:`, and the like):
 
 ## Layout
 
-- `packages/ui` (`@order/ui`) — design tokens (CSS variables) and minimal
+- `packages/ui` (`@yorozu/ui`) — design tokens (CSS variables) and minimal
   primitives (Button, Field, Select, …). **Not a shared component library.**
-  Each app owns its domain components; move to `@order/ui` only when 3+ apps
+  Each app owns its domain components; move to `@yorozu/ui` only when 3+ apps
   need identical logic. See `apps/order/DESIGN.md § Component Ownership Policy`
   and `apps/admin/DESIGN.md § Component Ownership Policy`.
 - `docs/` — developer docs. `roadmap.md` is the phased product plan; `specs/` holds product

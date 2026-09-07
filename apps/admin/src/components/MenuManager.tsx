@@ -1,5 +1,5 @@
-import { apiFetch, jsonFetch, menuImageUrl } from "@order/core/client";
-import { Button, ConfirmDialog, ErrorAlert, Field, Select } from "@order/ui";
+import { apiFetch, jsonFetch, menuImageUrl } from "@yorozu/core/client";
+import { Button, ConfirmDialog, ErrorAlert, Field, Select } from "@yorozu/ui";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { downscaleImage } from "../lib/downscaleImage";
 import styles from "./MenuManager.module.css";

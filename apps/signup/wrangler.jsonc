@@ -1,5 +1,5 @@
 {
-  "name": "order-manager-signup",
+  "name": "yorozu-app-signup",
   "compatibility_date": "2025-01-01",
   "compatibility_flags": ["nodejs_compat"],
   // Pure static asset serving — no Worker script, no D1.

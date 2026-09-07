@@ -2,18 +2,18 @@
 
 ## Package naming convention
 
-All workspace packages use the `@order/` scope:
+All workspace packages use the `@yorozu/` scope:
 
 | Directory | Package name |
 |---|---|
-| `apps/admin` | `@order/admin` |
-| `apps/order` | `@order/order` |
-| `apps/signup` | `@order/signup` |
-| `apps/shift` | `@order/shift` |
-| `apps/api` | `@order/api` |
-| `packages/db` | `@order/db` |
-| `packages/core` | `@order/core` |
-| `packages/ui` | `@order/ui` |
+| `apps/admin` | `@yorozu/admin` |
+| `apps/order` | `@yorozu/order` |
+| `apps/signup` | `@yorozu/signup` |
+| `apps/shift` | `@yorozu/shift` |
+| `apps/api` | `@yorozu/api` |
+| `packages/db` | `@yorozu/db` |
+| `packages/core` | `@yorozu/core` |
+| `packages/ui` | `@yorozu/ui` |
 
 All packages are `"private": true` — nothing is published to npm.
 
@@ -44,9 +44,9 @@ When bumping pnpm, change both fields together — pnpm warns and ignores
 ### Targeting a single package
 
 ```sh
-pnpm --filter @order/admin dev
-pnpm --filter @order/api test
-pnpm --filter @order/db db:generate
+pnpm --filter @yorozu/admin dev
+pnpm --filter @yorozu/api test
+pnpm --filter @yorozu/db db:generate
 ```
 
 ### Running across all packages
@@ -75,10 +75,10 @@ Always add dependencies to the specific package that uses them, not to the root:
 
 ```sh
 # Add a runtime dep to the api app
-pnpm --filter @order/api add hono
+pnpm --filter @yorozu/api add hono
 
 # Add a dev dep to the admin app
-pnpm --filter @order/admin add -D @types/some-lib
+pnpm --filter @yorozu/admin add -D @types/some-lib
 
 # Add a shared tool to the root workspace
 pnpm add -D -w some-tool
@@ -95,7 +95,7 @@ Use the `workspace:*` protocol so pnpm links the local package:
 ```json
 {
   "dependencies": {
-    "@order/core": "workspace:*"
+    "@yorozu/core": "workspace:*"
   }
 }
 ```
@@ -107,7 +107,7 @@ Then run `pnpm install` to create the symlink.
 ## Adding a new app or package
 
 1. Create the directory under `apps/` or `packages/`.
-2. Add a `package.json` with `"name": "@order/<name>"` and `"private": true`.
+2. Add a `package.json` with `"name": "@yorozu/<name>"` and `"private": true`.
 3. Run `pnpm install` — pnpm will discover it automatically from `pnpm-workspace.yaml`.
 4. Update the root `tsconfig.json` paths if the package exports types consumed by other packages.
 
@@ -121,10 +121,10 @@ Biome-only, so no ESLint-based rule).
 
 Forbidden imports to watch for:
 
-- `import ... from "@order/db"` inside any `apps/admin`, `apps/order`, `apps/signup`, or
+- `import ... from "@yorozu/db"` inside any `apps/admin`, `apps/order`, `apps/signup`, or
   `apps/shift` file
-- `import ... from "@order/ui"` inside any `apps/api` file
-- `import ... from "@order/core/client"` inside any `apps/api` file
+- `import ... from "@yorozu/ui"` inside any `apps/api` file
+- `import ... from "@yorozu/core/client"` inside any `apps/api` file
 
 ---
 

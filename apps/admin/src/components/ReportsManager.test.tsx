@@ -1,6 +1,6 @@
-import { jstMonthRange, jstWeekRange, todayJst } from "@order/core";
 import { render, screen, within } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
+import { jstMonthRange, jstWeekRange, todayJst } from "@yorozu/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as download from "../lib/download";
 import ReportsManager from "./ReportsManager";

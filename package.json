@@ -1,5 +1,5 @@
 {
-  "name": "order-manager",
+  "name": "yorozu-app",
   "private": true,
   "type": "module",
   "version": "0.0.1",
@@ -18,21 +18,21 @@
   "scripts": {
     "prepare": "lefthook install || true",
     "dev": "pnpm -r --if-present --parallel run dev",
-    "dev:admin": "pnpm --filter @order/admin dev",
-    "dev:order": "pnpm --filter @order/order dev",
-    "dev:signup": "pnpm --filter @order/signup dev",
-    "dev:shift": "pnpm --filter @order/shift dev",
-    "dev:api": "pnpm --filter @order/api dev",
+    "dev:admin": "pnpm --filter @yorozu/admin dev",
+    "dev:order": "pnpm --filter @yorozu/order dev",
+    "dev:signup": "pnpm --filter @yorozu/signup dev",
+    "dev:shift": "pnpm --filter @yorozu/shift dev",
+    "dev:api": "pnpm --filter @yorozu/api dev",
     "build": "pnpm -r build",
     "check": "biome check && pnpm -r exec tsc --noEmit",
     "fix": "biome check --write",
     "test": "pnpm -r test",
-    "e2e": "pnpm --filter @order/e2e e2e",
-    "db:generate": "pnpm --filter @order/db db:generate",
-    "db:migrate": "pnpm --filter @order/api db:migrate",
-    "db:reset": "pnpm --filter @order/api db:reset",
+    "e2e": "pnpm --filter @yorozu/e2e e2e",
+    "db:generate": "pnpm --filter @yorozu/db db:generate",
+    "db:migrate": "pnpm --filter @yorozu/api db:migrate",
+    "db:reset": "pnpm --filter @yorozu/api db:reset",
     "db:rebuild": "pnpm db:generate && pnpm db:reset",
-    "db:studio": "pnpm --filter @order/db db:studio"
+    "db:studio": "pnpm --filter @yorozu/db db:studio"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
