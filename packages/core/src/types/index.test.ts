@@ -5,9 +5,11 @@ import {
   CreateItemInput,
   CreateOptionGroupInput,
   CreateOptionInput,
+  EmailChangeVerifyInput,
   UpdateItemInput,
   UpdateOptionGroupInput,
   UpdateOptionInput,
+  VerifyCodeInput,
 } from "./index";
 
 const baseCreate = { name: "Coffee", price: 500 };
@@ -230,5 +232,87 @@ describe("AddOrderItemsInput note", () => {
       items: [{ ...baseItem, option_ids: ["opt1", "opt2"] }],
     });
     expect(result.items[0]?.option_ids).toEqual(["opt1", "opt2"]);
+  });
+});
+
+describe("VerifyCodeInput code", () => {
+  const base = { email: "owner@example.com" };
+
+  it("accepts six plain digits", () => {
+    expect(VerifyCodeInput.parse({ ...base, code: "123456" }).code).toBe(
+      "123456",
+    );
+  });
+
+  it("keeps a leading zero", () => {
+    expect(VerifyCodeInput.parse({ ...base, code: "012345" }).code).toBe(
+      "012345",
+    );
+  });
+
+  it("normalizes full-width digits from a Japanese IME", () => {
+    expect(VerifyCodeInput.parse({ ...base, code: "１２３４５６" }).code).toBe(
+      "123456",
+    );
+  });
+
+  it("strips spaces the code was displayed with", () => {
+    expect(VerifyCodeInput.parse({ ...base, code: " 123 456 " }).code).toBe(
+      "123456",
+    );
+  });
+
+  it("strips hyphens", () => {
+    expect(VerifyCodeInput.parse({ ...base, code: "123-456" }).code).toBe(
+      "123456",
+    );
+  });
+
+  it("rejects a five-digit code", () => {
+    expect(() => VerifyCodeInput.parse({ ...base, code: "12345" })).toThrow();
+  });
+
+  it("rejects a seven-digit code", () => {
+    expect(() => VerifyCodeInput.parse({ ...base, code: "1234567" })).toThrow();
+  });
+
+  it("rejects non-numeric input", () => {
+    expect(() => VerifyCodeInput.parse({ ...base, code: "12345a" })).toThrow();
+  });
+
+  it("rejects an invalid email", () => {
+    expect(() =>
+      VerifyCodeInput.parse({ email: "nope", code: "123456" }),
+    ).toThrow();
+  });
+});
+
+describe("VerifyCodeInput app", () => {
+  const base = { email: "owner@example.com", code: "123456" };
+
+  it("defaults to admin when omitted", () => {
+    expect(VerifyCodeInput.parse(base).app).toBe("admin");
+  });
+
+  it("accepts shift", () => {
+    expect(VerifyCodeInput.parse({ ...base, app: "shift" }).app).toBe("shift");
+  });
+
+  it("rejects an app outside the enum, so it can never name an origin", () => {
+    expect(() =>
+      VerifyCodeInput.parse({ ...base, app: "https://evil.example.com" }),
+    ).toThrow();
+  });
+});
+
+describe("EmailChangeVerifyInput", () => {
+  it("normalizes the code the same way as VerifyCodeInput", () => {
+    expect(EmailChangeVerifyInput.parse({ code: "１２３ ４５６" }).code).toBe(
+      "123456",
+    );
+  });
+
+  it("rejects a malformed code", () => {
+    expect(() => EmailChangeVerifyInput.parse({ code: "abc" })).toThrow();
   });
 });

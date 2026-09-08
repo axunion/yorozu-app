@@ -29,6 +29,94 @@ export const SESSION_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 /** Magic Link token lifetime: 15 minutes in milliseconds. */
 export const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
 
+/** Number of digits in an emailed one-time passcode. */
+export const OTP_CODE_LENGTH = 6;
+
+/**
+ * One-time passcode lifetime: 10 minutes in milliseconds.
+ *
+ * Shorter than a Magic Link's 15 because a 6-digit code is guessable in a way
+ * a 122-bit UUID is not, but not so short that Resend's delivery latency or a
+ * receiving server's greylisting eats the whole window.
+ */
+export const OTP_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Verification attempts allowed against a member's live passcodes before they
+ * are consumed. Bounds online guessing to OTP_MAX_ATTEMPTS * the issuance cap
+ * (25 tries per member per hour) against a 10^6 space.
+ *
+ * Distinct from MAGIC_LINK_HOURLY_CAP, which caps *issuance* and does nothing
+ * to stop an attacker guessing at a code that has already been sent.
+ */
+export const OTP_MAX_ATTEMPTS = 5;
+
+/**
+ * Generates a uniformly random passcode of OTP_CODE_LENGTH digits, keeping
+ * any leading zeros.
+ *
+ * Rejection sampling, not `% max` on a raw uint32: 2^32 is not a multiple of
+ * 10^6, so the plain modulo would make the lowest ~4967 codes slightly more
+ * likely than the rest. The bias is small but free to avoid, and this value
+ * is an authentication secret.
+ */
+export function generateOtpCode(): string {
+  const max = 10 ** OTP_CODE_LENGTH;
+  const limit = Math.floor(2 ** 32 / max) * max;
+  const buf = new Uint32Array(1);
+  let value = limit;
+  while (value >= limit) {
+    crypto.getRandomValues(buf);
+    // buf[0] cannot actually be undefined; falling back to `limit` retries
+    // rather than letting noUncheckedIndexedAccess push us to a fixed code.
+    value = buf[0] ?? limit;
+  }
+  return String(value % max).padStart(OTP_CODE_LENGTH, "0");
+}
+
+/**
+ * Derives the value stored in `magic_link_tokens.token` for a passcode.
+ *
+ * HMAC keyed on a Worker secret (`OTP_PEPPER`), not a bare SHA-256 like
+ * `hashToken`. A 6-digit code only has 10^6 possibilities, so an unkeyed
+ * digest of one is reversible by brute force in well under a second — a D1
+ * backup export would hand an attacker every live passcode. The pepper lives
+ * outside the database, so reading D1 alone yields nothing to brute-force
+ * against.
+ *
+ * `rowId` (the token row's own primary key) is mixed in so two rows never
+ * share a digest, which keeps the UNIQUE index on `token` intact: without it,
+ * a member drawing the same 6-digit code twice would fail the INSERT.
+ *
+ * Throws when the pepper is missing rather than falling back to an unkeyed
+ * hash — a silent downgrade here would be invisible in production.
+ */
+export async function hashOtpCode(
+  rowId: string,
+  code: string,
+  pepper: string,
+): Promise<string> {
+  if (!pepper) {
+    throw new Error("OTP_PEPPER is not configured");
+  }
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(pepper),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(`${rowId}:${code}`),
+  );
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /**
  * Max Magic Link tokens issued per member per rolling hour (login,
  * signup-resend, email-change, and invite combined). Protects the Resend

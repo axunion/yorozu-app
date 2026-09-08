@@ -33,6 +33,8 @@ export interface StoreCreatedResponse {
   slug: string;
   /** Magic Link URL. Only present when ENVIRONMENT !== "production". */
   verify_url?: string;
+  /** Passcode. Only present when ENVIRONMENT !== "production". */
+  code?: string;
 }
 
 export const UpdateStoreNameInput = z.object({
@@ -68,6 +70,8 @@ export interface EmailChangeResponse {
   sent: true;
   /** Magic Link URL. Only present when ENVIRONMENT !== "production". */
   verify_url?: string;
+  /** Passcode. Only present when ENVIRONMENT !== "production". */
+  code?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +93,46 @@ export interface LoginResponse {
   sent: true;
   /** Magic Link URL. Only present when ENVIRONMENT !== "production" and a token was issued. */
   verify_url?: string;
+  /** Passcode. Only present when ENVIRONMENT !== "production" and a code was issued. */
+  code?: string;
 }
+
+/**
+ * A passcode as the user typed it. Japanese IMEs happily produce full-width
+ * digits, and people paste codes with the spacing they were displayed with,
+ * so normalize before validating rather than rejecting input that is correct
+ * to the person who entered it.
+ */
+const otpCodeValue = z
+  .string()
+  .transform((s) => s.normalize("NFKC").replace(/[\s-]/g, ""))
+  .pipe(z.string().regex(/^\d{6}$/));
+
+export const VerifyCodeInput = z.object({
+  email: z.email(),
+  code: otpCodeValue,
+  /**
+   * Which SPA to land in after verifying. An enum, not a URL: the API maps it
+   * to an origin from its own env, so a caller can never redirect somewhere of
+   * its choosing.
+   */
+  app: z.enum(["admin", "shift"]).default("admin"),
+});
+export type VerifyCodeInput = z.infer<typeof VerifyCodeInput>;
+
+export interface VerifyCodeResponse {
+  /**
+   * Absolute origin to send the browser to. Resolved server-side from `app`
+   * because the signup SPA has to cross to the admin origin and does not carry
+   * that URL in its own env.
+   */
+  redirect_to: string;
+}
+
+export const EmailChangeVerifyInput = z.object({
+  code: otpCodeValue,
+});
+export type EmailChangeVerifyInput = z.infer<typeof EmailChangeVerifyInput>;
 
 // ---------------------------------------------------------------------------
 // Staff (members)
@@ -110,6 +153,8 @@ export interface StaffMemberResponse {
   activated_at: number | null;
   /** Magic Link URL. Only present when ENVIRONMENT !== "production" (POST only). */
   verify_url?: string;
+  /** Passcode. Only present when ENVIRONMENT !== "production" (POST only). */
+  code?: string;
 }
 
 // ---------------------------------------------------------------------------
