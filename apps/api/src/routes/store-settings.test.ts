@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 import { app } from "../app";
 import { jsonInit, seedStore, withAuth } from "../test-helpers";
 
-// Magic Link responses only include verify_url when ENVIRONMENT=development
+// Email-change responses only include the code when ENVIRONMENT=development
 // (see stores.ts / auth.ts's isDev gate). Tests that need to extract a token
 // from the response body must pass this override explicitly — relying on
 // .dev.vars's default is not safe in CI/fresh-checkout environments.
@@ -208,16 +208,11 @@ describe("POST /api/stores/me/email-change", () => {
       withAuth(token, jsonInit("POST", { new_email: firstEmail })),
       devEnv,
     );
-    const firstBody = (await firstRes.json()) as {
-      data: { verify_url?: string };
-    };
-    if (!firstBody.data.verify_url) {
-      throw new Error("verify_url missing (ENVIRONMENT dev bypass off?)");
+    const firstBody = (await firstRes.json()) as { data: { code?: string } };
+    const firstCode = firstBody.data.code;
+    if (!firstCode) {
+      throw new Error("code missing (ENVIRONMENT dev bypass off?)");
     }
-    const firstToken = new URL(firstBody.data.verify_url).searchParams.get(
-      "token",
-    );
-    if (!firstToken) throw new Error("verify_url has no token param");
 
     const secondEmail = `second-${crypto.randomUUID()}@test.internal`;
     await app.request(
@@ -226,10 +221,10 @@ describe("POST /api/stores/me/email-change", () => {
       env,
     );
 
-    // The first token was superseded (deleted/invalidated) by the re-request.
+    // The first code was superseded by the re-request.
     const verifyRes = await app.request(
-      `/api/auth/verify?token=${firstToken}`,
-      {},
+      "/api/stores/me/email-change/verify",
+      withAuth(token, jsonInit("POST", { code: firstCode })),
       env,
     );
     expect(verifyRes.status).toBe(400);
@@ -259,19 +254,18 @@ describe("POST /api/stores/me/email-change", () => {
       withAuth(token, jsonInit("POST", { new_email: newEmail })),
       devEnv,
     );
-    const changeBody = (await changeRes.json()) as {
-      data: { verify_url?: string };
-    };
-    if (!changeBody.data.verify_url) {
-      throw new Error("verify_url missing (ENVIRONMENT dev bypass off?)");
+    const changeBody = (await changeRes.json()) as { data: { code?: string } };
+    const changeCode = changeBody.data.code;
+    if (!changeCode) {
+      throw new Error("code missing (ENVIRONMENT dev bypass off?)");
     }
 
     const verifyRes = await app.request(
-      changeBody.data.verify_url.replace(/^https?:\/\/[^/]+/, ""),
-      {},
+      "/api/stores/me/email-change/verify",
+      withAuth(token, jsonInit("POST", { code: changeCode })),
       env,
     );
-    expect(verifyRes.status).toBe(302);
+    expect(verifyRes.status).toBe(200);
 
     const afterRows = await db
       .select({ email: schema.members.email })
@@ -287,9 +281,9 @@ describe("POST /api/stores/me/email-change", () => {
     );
     expect(oldLoginRes.status).toBe(200);
     const oldLoginBody = (await oldLoginRes.json()) as {
-      data: { sent: true; verify_url?: string };
+      data: { sent: true; code?: string };
     };
-    expect(oldLoginBody.data.verify_url).toBeUndefined();
+    expect(oldLoginBody.data.code).toBeUndefined();
 
     // Login with the new email issues a real token.
     const newLoginRes = await app.request(
@@ -299,9 +293,9 @@ describe("POST /api/stores/me/email-change", () => {
     );
     expect(newLoginRes.status).toBe(200);
     const newLoginBody = (await newLoginRes.json()) as {
-      data: { sent: true; verify_url?: string };
+      data: { sent: true; code?: string };
     };
-    expect(newLoginBody.data.verify_url).toBeTruthy();
+    expect(newLoginBody.data.code).toBeTruthy();
   });
 
   it("does not affect a second member's session or login when one member changes email", async () => {
@@ -337,15 +331,14 @@ describe("POST /api/stores/me/email-change", () => {
       withAuth(tokenA, jsonInit("POST", { new_email: newEmailA })),
       devEnv,
     );
-    const changeBody = (await changeRes.json()) as {
-      data: { verify_url?: string };
-    };
-    if (!changeBody.data.verify_url) {
-      throw new Error("verify_url missing (ENVIRONMENT dev bypass off?)");
+    const changeBody = (await changeRes.json()) as { data: { code?: string } };
+    const changeCodeA = changeBody.data.code;
+    if (!changeCodeA) {
+      throw new Error("code missing (ENVIRONMENT dev bypass off?)");
     }
     await app.request(
-      changeBody.data.verify_url.replace(/^https?:\/\/[^/]+/, ""),
-      {},
+      "/api/stores/me/email-change/verify",
+      withAuth(tokenA, jsonInit("POST", { code: changeCodeA })),
       env,
     );
 
@@ -370,12 +363,12 @@ describe("POST /api/stores/me/email-change", () => {
       devEnv,
     );
     const loginBody = (await loginRes.json()) as {
-      data: { verify_url?: string };
+      data: { code?: string };
     };
-    expect(loginBody.data.verify_url).toBeTruthy();
+    expect(loginBody.data.code).toBeTruthy();
   });
 
-  it("fails at verify with INVALID_TOKEN when a UNIQUE race claims the email first", async () => {
+  it("fails at verify when a UNIQUE race claims the email first", async () => {
     const { member_id: memberId, session_token: token } = await seedStore(
       `Race Test ${crypto.randomUUID()}`,
     );
@@ -386,16 +379,11 @@ describe("POST /api/stores/me/email-change", () => {
       withAuth(token, jsonInit("POST", { new_email: raceEmail })),
       devEnv,
     );
-    const changeBody = (await changeRes.json()) as {
-      data: { verify_url?: string };
-    };
-    if (!changeBody.data.verify_url) {
-      throw new Error("verify_url missing (ENVIRONMENT dev bypass off?)");
+    const changeBody = (await changeRes.json()) as { data: { code?: string } };
+    const raceCode = changeBody.data.code;
+    if (!raceCode) {
+      throw new Error("code missing (ENVIRONMENT dev bypass off?)");
     }
-    const raceToken = new URL(changeBody.data.verify_url).searchParams.get(
-      "token",
-    );
-    if (!raceToken) throw new Error("verify_url has no token param");
 
     // Simulate a concurrent claim: another member takes the target email
     // after the token was issued but before it's verified.
@@ -407,15 +395,17 @@ describe("POST /api/stores/me/email-change", () => {
       .where(eq(schema.members.id, racer.member_id));
 
     const verifyRes = await app.request(
-      `/api/auth/verify?token=${raceToken}`,
-      {},
+      "/api/stores/me/email-change/verify",
+      withAuth(token, jsonInit("POST", { code: raceCode })),
       env,
     );
     expect(verifyRes.status).toBe(400);
     const verifyBody = (await verifyRes.json()) as {
       error: { code: string };
     };
-    expect(verifyBody.error.code).toBe("INVALID_TOKEN");
+    // Authenticated caller, so the reason can be specific — unlike the
+    // anti-enumeration INVALID_CODE the unauthenticated route returns.
+    expect(verifyBody.error.code).toBe("VALIDATION_ERROR");
 
     // The original member's email was NOT changed.
     const rows = await db

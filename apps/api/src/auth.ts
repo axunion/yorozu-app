@@ -4,7 +4,6 @@ import {
   hashOtpCode,
   hashToken,
   MAGIC_LINK_HOURLY_CAP,
-  MAGIC_LINK_TTL_MS,
   newId,
   now,
   OTP_TTL_MS,
@@ -39,99 +38,16 @@ export function isSecureRequest(
 }
 
 /**
- * Issues a Magic Link token for the given member and purpose, or returns
- * null if the member has hit MAGIC_LINK_HOURLY_CAP issuances in the last
- * rolling hour (login, signup-resend, email-change, and invite combined) —
- * callers must treat null as "silently skip sending" and keep their
- * response identical to the success case (anti-enumeration; a visible 429
- * would leak that the email/member exists).
- *
- * Scoped per member_id (not store_id): a store can have multiple members
- * now, and two members of the same store issuing unrelated tokens (e.g.
- * concurrent logins, or two simultaneous staff invites) must not
- * invalidate each other's link.
- *
- * Supersedes (not deletes) any previous unused token for the same
- * member+purpose so only one link is valid at a time: consumed tokens are
- * already kept for audit, and `verify` already rejects any token with
- * `used_at` set, so marking a superseded token used is equally safe —
- * but unlike DELETE, the row (and its created_at) survives for the cap
- * count above to see.
- *
- * `newEmail` is required for purpose 'email_change' — it is the pending
- * target address, applied to members.email only once the token is verified.
- *
- * Insert-first ordering: the new token is written before old ones are
- * superseded so an UPDATE failure leaves two temporarily valid tokens
- * (harmless — the old one expires naturally) while an INSERT failure
- * leaves the old token intact.
- *
- * Only a SHA-256 hash of the token is persisted (`hashToken`) — the raw
- * value returned here is the one that goes into the email link and must
- * never be written to D1.
- */
-export async function issueMagicLink(
-  db: Database,
-  storeId: string,
-  memberId: string,
-  purpose: "signup" | "login" | "email_change" | "invite" | "reactivate",
-  newEmail?: string,
-): Promise<string | null> {
-  const ts = now();
-
-  const recent = await db
-    .select({ id: schema.magicLinkTokens.id })
-    .from(schema.magicLinkTokens)
-    .where(
-      and(
-        eq(schema.magicLinkTokens.member_id, memberId),
-        gt(schema.magicLinkTokens.created_at, ts - HOUR_MS),
-      ),
-    )
-    .limit(MAGIC_LINK_HOURLY_CAP);
-  if (recent.length >= MAGIC_LINK_HOURLY_CAP) {
-    console.log(`[auth] rate-limited magic link for member ${memberId}`);
-    return null;
-  }
-
-  const token = newId();
-  const tokenHash = await hashToken(token);
-  const expires_at = ts + MAGIC_LINK_TTL_MS;
-
-  await db.insert(schema.magicLinkTokens).values({
-    id: newId(),
-    store_id: storeId,
-    member_id: memberId,
-    token: tokenHash,
-    purpose,
-    new_email: newEmail ?? null,
-    expires_at,
-  });
-
-  await db
-    .update(schema.magicLinkTokens)
-    .set({ used_at: ts })
-    .where(
-      and(
-        eq(schema.magicLinkTokens.member_id, memberId),
-        eq(schema.magicLinkTokens.purpose, purpose),
-        isNull(schema.magicLinkTokens.used_at),
-        ne(schema.magicLinkTokens.token, tokenHash),
-      ),
-    );
-
-  return token;
-}
-
-/**
  * Issues an emailed passcode for the given member and purpose, or returns
  * null when the member has hit MAGIC_LINK_HOURLY_CAP issuances in the last
- * rolling hour. Callers must treat null exactly as `issueMagicLink`'s null:
- * skip sending, keep the response identical to the success case.
+ * rolling hour. Callers must treat null as "skip sending" and keep their
+ * response identical to the success case — a visible 429 would leak that the
+ * address belongs to someone.
  *
- * Shares `magic_link_tokens` (and its per-member cap and supersession) with
- * the Magic Link flow; only what goes in `token` differs. The stored value is
- * `hashOtpCode(rowId, code, pepper)` rather than `hashToken(uuid)`:
+ * Rows live in `magic_link_tokens`, which kept its name through the move off
+ * Magic Links: renaming it would touch every query and migration for no
+ * behavioural gain. The stored value is `hashOtpCode(rowId, code, pepper)`
+ * rather than the `hashToken(uuid)` that table used to hold:
  *
  *  - keyed on the pepper, because a 6-digit code has 10^6 possibilities and
  *    an unkeyed digest of one falls to brute force from a database read;
@@ -145,9 +61,9 @@ export async function issueMagicLink(
  * up directly — it resolves the member first, then tests the candidate rows.
  * See `POST /api/auth/verify-code`.
  *
- * Insert-first ordering matches issueMagicLink: an UPDATE failure leaves two
- * briefly valid codes (harmless, both expire), an INSERT failure leaves the
- * previous one intact.
+ * Insert-first ordering: the new row is written before the old ones are
+ * superseded, so an UPDATE failure leaves two briefly valid codes (harmless —
+ * both expire), while an INSERT failure leaves the previous one intact.
  */
 export async function issueVerificationCode(
   db: Database,

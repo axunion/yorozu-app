@@ -379,8 +379,8 @@ describe("POST /api/auth/login on a suspended store", () => {
       devEnv,
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { verify_url?: string } };
-    expect(body.data.verify_url).toBeTruthy();
+    const body = (await res.json()) as { data: { code?: string } };
+    expect(body.data.code).toBeTruthy();
 
     const tokens = await db
       .select({ purpose: schema.magicLinkTokens.purpose })
@@ -425,8 +425,8 @@ describe("POST /api/auth/login on a suspended store", () => {
       devEnv,
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { verify_url?: string } };
-    expect(body.data.verify_url).toBeUndefined();
+    const body = (await res.json()) as { data: { code?: string } };
+    expect(body.data.code).toBeUndefined();
 
     const tokens = await db
       .select()
@@ -466,8 +466,8 @@ describe("POST /api/auth/login on a suspended store", () => {
       devEnv,
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { verify_url?: string } };
-    expect(body.data.verify_url).toBeTruthy();
+    const body = (await res.json()) as { data: { code?: string } };
+    expect(body.data.code).toBeTruthy();
 
     const tokens = await db
       .select({ purpose: schema.magicLinkTokens.purpose })
@@ -513,8 +513,8 @@ describe("POST /api/auth/login on a suspended store", () => {
       devEnv,
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { verify_url?: string } };
-    expect(body.data.verify_url).toBeUndefined();
+    const body = (await res.json()) as { data: { code?: string } };
+    expect(body.data.code).toBeUndefined();
 
     const reactivateTokens = await db
       .select({ id: schema.magicLinkTokens.id })
@@ -529,7 +529,7 @@ describe("POST /api/auth/login on a suspended store", () => {
   });
 });
 
-describe("GET /api/auth/verify with a reactivate token", () => {
+describe("POST /api/auth/verify-code with a reactivate code", () => {
   it("reactivates the store and creates a working session", async () => {
     const {
       id: storeId,
@@ -555,20 +555,16 @@ describe("GET /api/auth/verify with a reactivate token", () => {
       jsonInit("POST", { email: ownerEmail }),
       devEnv,
     );
-    const loginBody = (await loginRes.json()) as {
-      data: { verify_url?: string };
-    };
-    const reactivateToken = new URL(
-      loginBody.data.verify_url ?? "",
-    ).searchParams.get("token");
-    if (!reactivateToken) throw new Error("verify_url missing a token");
+    const loginBody = (await loginRes.json()) as { data: { code?: string } };
+    const reactivateCode = loginBody.data.code;
+    if (!reactivateCode) throw new Error("reactivate code missing");
 
     const verifyRes = await app.request(
-      `/api/auth/verify?token=${reactivateToken}`,
-      {},
+      "/api/auth/verify-code",
+      jsonInit("POST", { email: ownerEmail, code: reactivateCode }),
       env,
     );
-    expect(verifyRes.status).toBe(302);
+    expect(verifyRes.status).toBe(200);
 
     const storeRows = await db
       .select({ status: schema.stores.status })

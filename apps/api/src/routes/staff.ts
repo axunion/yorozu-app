@@ -1,16 +1,15 @@
 import {
   errorResponse,
   MAGIC_LINK_HOURLY_CAP,
-  MAGIC_LINK_VERIFY_PATH,
   newId,
   now,
   StaffInviteInput,
-  sendMagicLinkEmail,
+  sendVerificationCodeEmail,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
 import { and, eq, gt, inArray, ne } from "drizzle-orm";
 import { Hono } from "hono";
-import { issueMagicLink } from "../auth";
+import { issueVerificationCode } from "../auth";
 import { type AuthEnv, requireOwner, requireStore } from "../middleware";
 import { bodyValidator } from "../validator";
 
@@ -28,7 +27,7 @@ export const staffRouter = new Hono<AuthEnv>()
    * caller is authenticated/owner here, so anti-enumeration doesn't apply.
    *
    * Rate limit: MAGIC_LINK_HOURLY_CAP invites per store per rolling hour.
-   * issueMagicLink's own cap is member-scoped and can never trigger here
+   * issueVerificationCode's own cap is member-scoped and can never trigger here
    * (each invite creates a brand-new member with no prior history), so
    * without this store-scoped check an owner session could mint unlimited
    * invite emails.
@@ -80,13 +79,19 @@ export const staffRouter = new Hono<AuthEnv>()
       role,
     });
 
-    let token: string | null = null;
+    let code: string | null = null;
     try {
-      token = await issueMagicLink(db, storeId, memberId, "invite");
+      code = await issueVerificationCode(
+        db,
+        storeId,
+        memberId,
+        "invite",
+        c.env.OTP_PEPPER,
+      );
     } catch {
-      token = null;
+      code = null;
     }
-    if (!token) {
+    if (!code) {
       // Compensate by removing the member row so the owner can retry.
       await db.delete(schema.members).where(eq(schema.members.id, memberId));
       return errorResponse(
@@ -96,11 +101,14 @@ export const staffRouter = new Hono<AuthEnv>()
       );
     }
 
-    const baseUrl = new URL(c.req.url).origin;
-    const magicLinkUrl = `${baseUrl}${MAGIC_LINK_VERIFY_PATH}?token=${token}`;
+    // The invitee is the one person with no screen already waiting for a
+    // code, so their email carries the address of one. It is a plain login
+    // URL, not a credential: a mail-security scanner that follows it ahead of
+    // them loads a login form and consumes nothing.
+    const loginUrl = `${c.env.ADMIN_ORIGIN}/login?email=${encodeURIComponent(email)}`;
     try {
-      await sendMagicLinkEmail(
-        { to: email, magicLinkUrl, purpose: "invite" },
+      await sendVerificationCodeEmail(
+        { to: email, code, purpose: "invite", loginUrl },
         { resendApiKey: c.env.RESEND_API_KEY, mailFrom: c.env.MAIL_FROM },
       );
     } catch {
@@ -121,7 +129,7 @@ export const staffRouter = new Hono<AuthEnv>()
     }
 
     // Checked as an explicit opt-in (not "!== production") so an unset or
-    // misconfigured ENVIRONMENT never accidentally leaks the Magic Link.
+    // misconfigured ENVIRONMENT never accidentally leaks the passcode.
     const isDev = c.env.ENVIRONMENT === "development";
     return c.json(
       {
@@ -132,7 +140,7 @@ export const staffRouter = new Hono<AuthEnv>()
           status: "pending" as const,
           created_at: Date.now(),
           activated_at: null,
-          ...(isDev && { verify_url: magicLinkUrl }),
+          ...(isDev && { code, invite_url: loginUrl }),
         },
       },
       201,

@@ -5,7 +5,6 @@ import {
   generateOtpCode,
   hashOtpCode,
   MAGIC_LINK_HOURLY_CAP,
-  MAGIC_LINK_TTL_MS,
   OTP_CODE_LENGTH,
   OTP_MAX_ATTEMPTS,
   OTP_TTL_MS,
@@ -22,12 +21,6 @@ describe("SESSION_TOKEN_COOKIE", () => {
 describe("SESSION_TTL_MS", () => {
   it("is 30 days in milliseconds", () => {
     expect(SESSION_TTL_MS).toBe(30 * 24 * 60 * 60 * 1000);
-  });
-});
-
-describe("MAGIC_LINK_TTL_MS", () => {
-  it("is 15 minutes in milliseconds", () => {
-    expect(MAGIC_LINK_TTL_MS).toBe(15 * 60 * 1000);
   });
 });
 
@@ -120,10 +113,6 @@ describe("buildClearSessionCookie", () => {
 describe("OTP_TTL_MS", () => {
   it("is 10 minutes in milliseconds", () => {
     expect(OTP_TTL_MS).toBe(10 * 60 * 1000);
-  });
-
-  it("is shorter than a Magic Link's lifetime", () => {
-    expect(OTP_TTL_MS).toBeLessThan(MAGIC_LINK_TTL_MS);
   });
 });
 

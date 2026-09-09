@@ -80,12 +80,6 @@ export interface EmailChangeResponse {
 
 export const LoginInput = z.object({
   email: z.email(),
-  /**
-   * Which SPA the Magic Link should land in. An enum, not a URL: the API maps
-   * it to an origin from its own env, so a caller can never redirect the link
-   * somewhere of its choosing.
-   */
-  app: z.enum(["admin", "shift"]).default("admin"),
 });
 export type LoginInput = z.infer<typeof LoginInput>;
 
@@ -134,6 +128,11 @@ export const EmailChangeVerifyInput = z.object({
 });
 export type EmailChangeVerifyInput = z.infer<typeof EmailChangeVerifyInput>;
 
+export interface EmailChangeVerifyResponse {
+  /** The address now on the member, so the caller can update what it shows. */
+  email: string;
+}
+
 // ---------------------------------------------------------------------------
 // Staff (members)
 // ---------------------------------------------------------------------------
@@ -155,6 +154,12 @@ export interface StaffMemberResponse {
   verify_url?: string;
   /** Passcode. Only present when ENVIRONMENT !== "production" (POST only). */
   code?: string;
+  /**
+   * Where the invitee enters their code. Carries no credential, so unlike the
+   * passcode it would be safe to send in any environment; it is dev-gated only
+   * because it is useless without the code beside it.
+   */
+  invite_url?: string;
 }
 
 // ---------------------------------------------------------------------------

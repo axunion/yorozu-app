@@ -26,18 +26,15 @@ export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
  */
 export const SESSION_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 
-/** Magic Link token lifetime: 15 minutes in milliseconds. */
-export const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
-
 /** Number of digits in an emailed one-time passcode. */
 export const OTP_CODE_LENGTH = 6;
 
 /**
  * One-time passcode lifetime: 10 minutes in milliseconds.
  *
- * Shorter than a Magic Link's 15 because a 6-digit code is guessable in a way
- * a 122-bit UUID is not, but not so short that Resend's delivery latency or a
- * receiving server's greylisting eats the whole window.
+ * Shorter than the 15 minutes the Magic Link used, because a 6-digit code is
+ * guessable in a way a 122-bit UUID is not — but not so short that Resend's
+ * delivery latency or a receiving server's greylisting eats the whole window.
  */
 export const OTP_TTL_MS = 10 * 60 * 1000;
 

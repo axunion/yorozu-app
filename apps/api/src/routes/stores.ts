@@ -5,17 +5,19 @@ import {
   EMAIL_CHANGE_HOURLY_CAP,
   EMAIL_CHANGE_WINDOW_MS,
   EmailChangeInput,
+  EmailChangeVerifyInput,
   errorResponse,
-  MAGIC_LINK_VERIFY_PATH,
+  hashOtpCode,
   newId,
   now,
-  sendMagicLinkEmail,
+  OTP_MAX_ATTEMPTS,
+  sendVerificationCodeEmail,
   UpdateStoreNameInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { issueMagicLink } from "../auth";
+import { issueVerificationCode } from "../auth";
 import { requireOwner, requireStore } from "../middleware";
 import { bodyValidator } from "../validator";
 
@@ -23,10 +25,10 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
   /**
    * POST /api/stores
    * Registers a new store (status="pending") and its owner member
-   * (role="owner", status="pending"), then sends a signup Magic Link.
-   * No cookie is set here; the session is created on GET /api/auth/verify.
-   * Response: 201 { data: { id, name, slug, verify_url? } }
-   * (verify_url is only included when ENVIRONMENT === "development")
+   * (role="owner", status="pending"), then emails a signup passcode.
+   * No cookie is set here; the session is created on POST /api/auth/verify-code.
+   * Response: 201 { data: { id, name, slug, code? } }
+   * (code is only included when ENVIRONMENT === "development")
    */
   .post("/", bodyValidator(CreateStoreInput), async (c) => {
     const { name, email } = c.req.valid("json");
@@ -87,17 +89,23 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
       );
     }
 
-    // Issue a signup Magic Link (also invalidates any previous unused signup
-    // token). A null return (MAGIC_LINK_HOURLY_CAP hit) is practically
+    // Issue a signup passcode (also invalidates any previous unused signup
+    // code). A null return (MAGIC_LINK_HOURLY_CAP hit) is practically
     // unreachable for a brand-new member_id, but is handled the same as an
     // issuance failure for type-safety and future-proofing.
-    let token: string | null = null;
+    let code: string | null = null;
     try {
-      token = await issueMagicLink(db, id, memberId, "signup");
+      code = await issueVerificationCode(
+        db,
+        id,
+        memberId,
+        "signup",
+        c.env.OTP_PEPPER,
+      );
     } catch {
-      token = null;
+      code = null;
     }
-    if (!token) {
+    if (!code) {
       // Compensate by removing the store + member + subscription rows so the
       // user can retry registration without hitting "email already
       // registered". The subscription must go before the store it references,
@@ -117,12 +125,9 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
       );
     }
 
-    const baseUrl = new URL(c.req.url).origin;
-    const magicLinkUrl = `${baseUrl}${MAGIC_LINK_VERIFY_PATH}?token=${token}`;
-
     try {
-      await sendMagicLinkEmail(
-        { to: email, magicLinkUrl, purpose: "signup" },
+      await sendVerificationCodeEmail(
+        { to: email, code, purpose: "signup" },
         {
           resendApiKey: c.env.RESEND_API_KEY,
           mailFrom: c.env.MAIL_FROM,
@@ -138,7 +143,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
     }
 
     // Checked as an explicit opt-in (not "!== production") so an unset or
-    // misconfigured ENVIRONMENT never accidentally leaks the Magic Link.
+    // misconfigured ENVIRONMENT never accidentally leaks the passcode.
     const isDev = c.env.ENVIRONMENT === "development";
     return c.json(
       {
@@ -146,7 +151,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
           id,
           name,
           slug,
-          ...(isDev && { verify_url: magicLinkUrl }),
+          ...(isDev && { code }),
         },
       },
       201,
@@ -323,13 +328,14 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
         );
       }
 
-      let token: string | null;
+      let code: string | null;
       try {
-        token = await issueMagicLink(
+        code = await issueVerificationCode(
           db,
           storeId,
           memberId,
           "email_change",
+          c.env.OTP_PEPPER,
           new_email,
         );
       } catch {
@@ -343,14 +349,10 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
       // null means the store hit MAGIC_LINK_HOURLY_CAP — silently skip
       // sending but keep the response identical to the success case, same
       // anti-abuse posture as /api/auth/login.
-      let magicLinkUrl: string | undefined;
-      if (token) {
-        const baseUrl = new URL(c.req.url).origin;
-        magicLinkUrl = `${baseUrl}${MAGIC_LINK_VERIFY_PATH}?token=${token}`;
-
+      if (code) {
         try {
-          await sendMagicLinkEmail(
-            { to: new_email, magicLinkUrl, purpose: "email_change" },
+          await sendVerificationCodeEmail(
+            { to: new_email, code, purpose: "email_change" },
             {
               resendApiKey: c.env.RESEND_API_KEY,
               mailFrom: c.env.MAIL_FROM,
@@ -369,9 +371,105 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
       return c.json({
         data: {
           sent: true,
-          ...(isDev && magicLinkUrl && { verify_url: magicLinkUrl }),
+          ...(isDev && code && { code }),
         },
       });
+    },
+  )
+
+  /**
+   * POST /api/stores/me/email-change/verify
+   *
+   * Applies a pending email change once the member proves control of the new
+   * address by entering the passcode sent to it.
+   *
+   * Authenticated by session rather than keyed on a submitted email, because
+   * the code went to an address that is not yet in members.email — there is
+   * nothing to resolve the member by. Requiring both a live session and the
+   * code is strictly stronger than the Magic Link this replaces, which proved
+   * only the latter.
+   *
+   * No new session is issued: the caller already has one, so they stay on the
+   * settings screen instead of being bounced through a redirect.
+   *
+   * Errors are specific here, unlike POST /api/auth/verify-code — the caller
+   * is already authenticated, so there is no enumeration to defend against.
+   *
+   * Response: 200 { data: { email } } — the address now on the member.
+   */
+  .post(
+    "/me/email-change/verify",
+    requireStore,
+    bodyValidator(EmailChangeVerifyInput),
+    async (c) => {
+      const { member_id: memberId } = c.var.store;
+      const { code } = c.req.valid("json");
+      const db = createDb(c.env.DB);
+      const ts = now();
+
+      const liveCodes = and(
+        eq(schema.magicLinkTokens.member_id, memberId),
+        eq(schema.magicLinkTokens.purpose, "email_change"),
+        isNull(schema.magicLinkTokens.used_at),
+        gt(schema.magicLinkTokens.expires_at, ts),
+      );
+
+      const candidates = await db
+        .select({
+          id: schema.magicLinkTokens.id,
+          token: schema.magicLinkTokens.token,
+          new_email: schema.magicLinkTokens.new_email,
+        })
+        .from(schema.magicLinkTokens)
+        .where(liveCodes);
+
+      let matched: (typeof candidates)[number] | undefined;
+      for (const row of candidates) {
+        if ((await hashOtpCode(row.id, code, c.env.OTP_PEPPER)) === row.token) {
+          matched = row;
+          break;
+        }
+      }
+
+      if (!matched?.new_email) {
+        // Same single statement as verify-code: D1 has no transactions, so the
+        // increment and the consume-at-limit decision must travel together.
+        await db
+          .update(schema.magicLinkTokens)
+          .set({
+            attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1`,
+            used_at: sql`CASE WHEN ${schema.magicLinkTokens.attempt_count} + 1 >= ${OTP_MAX_ATTEMPTS} THEN ${ts} ELSE ${schema.magicLinkTokens.used_at} END`,
+          })
+          .where(liveCodes);
+        return errorResponse(
+          "INVALID_CODE",
+          "コードが正しくないか、有効期限が切れています。",
+          400,
+        );
+      }
+
+      await db
+        .update(schema.magicLinkTokens)
+        .set({ used_at: ts })
+        .where(eq(schema.magicLinkTokens.id, matched.id));
+
+      const newEmail = matched.new_email;
+      try {
+        await db
+          .update(schema.members)
+          .set({ email: newEmail })
+          .where(eq(schema.members.id, memberId));
+      } catch {
+        // Someone else claimed the address between issuance and verification.
+        // The code is already spent, so the member has to start over.
+        return errorResponse(
+          "VALIDATION_ERROR",
+          "このメールアドレスはすでに使用されています。",
+          400,
+        );
+      }
+
+      return c.json({ data: { email: newEmail } });
     },
   )
 

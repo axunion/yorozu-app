@@ -27,12 +27,12 @@ import {
 // ---------------------------------------------------------------------------
 
 /**
- * Registers a store via HTTP, then follows the Magic Link verification flow
- * to obtain an active session_token.
+ * Registers a store via HTTP, then redeems the emailed passcode to obtain an
+ * active session_token.
  *
- * Only a hash of the magic link token is persisted to D1, so the raw value
- * must come from the dev-mode verify_url in the registration response, not
- * a DB read.
+ * Only a keyed digest of the passcode is persisted to D1, so the raw value
+ * must come from the dev-mode `code` in the registration response, not a
+ * DB read.
  */
 async function registerAndVerify(
   storeName: string,
@@ -46,19 +46,16 @@ async function registerAndVerify(
   if (storeRes.status !== 201)
     throw new Error(`Store registration failed: ${storeRes.status}`);
 
-  const body = (await storeRes.json()) as { data: { verify_url?: string } };
-  const token = body.data.verify_url
-    ? new URL(body.data.verify_url).searchParams.get("token")
-    : null;
-  if (!token) throw new Error("verify_url/token missing (dev mode)");
+  const body = (await storeRes.json()) as { data: { code?: string } };
+  const code = body.data.code;
+  if (!code) throw new Error("code missing (dev mode)");
 
   const verifyRes = await app.request(
-    `/api/auth/verify?token=${token}`,
-    {},
+    "/api/auth/verify-code",
+    jsonInit("POST", { email, code }),
     env,
   );
-  if (verifyRes.status !== 302)
-    throw new Error(`Verify failed: ${verifyRes.status}`);
+  if (!verifyRes.ok) throw new Error(`Verify failed: ${verifyRes.status}`);
 
   return extractSessionToken(verifyRes);
 }
