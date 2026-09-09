@@ -383,6 +383,13 @@ export const magicLinkTokens = sqliteTable(
     expires_at: integer("expires_at").notNull(),
     /** Set when the token is consumed; kept for audit trail (not deleted) */
     used_at: integer("used_at"), // nullable
+    /**
+     * Failed verification attempts against this row. A 6-digit passcode is
+     * guessable in a way the Magic Link UUID was not, so issuance limits
+     * (MAGIC_LINK_HOURLY_CAP) are not enough on their own — this bounds online
+     * guessing. Reaching OTP_MAX_ATTEMPTS consumes the row via used_at.
+     */
+    attempt_count: integer("attempt_count").notNull().default(0),
     created_at: integer("created_at")
       .notNull()
       .$defaultFn(() => Date.now()), // Unix ms
