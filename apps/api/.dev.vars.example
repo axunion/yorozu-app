@@ -12,3 +12,7 @@ ENVIRONMENT=development
 # Leave unset to log Magic Link URLs to the Worker console instead of sending email.
 # RESEND_API_KEY=re_...
 # MAIL_FROM=noreply@example.com
+
+# HMAC key for emailed passcodes. Required — passcode issuance fails without it.
+# Any non-empty string works locally; production uses `wrangler secret put`.
+OTP_PEPPER=local-dev-pepper

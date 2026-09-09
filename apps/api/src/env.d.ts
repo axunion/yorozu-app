@@ -30,6 +30,13 @@ interface Env {
    * instead of requiring email delivery.
    */
   ENVIRONMENT: string;
+  /**
+   * HMAC key for emailed passcodes (`hashOtpCode`). A 6-digit code has only
+   * 10^6 possibilities, so an unkeyed digest of one is reversible from a
+   * database read; keeping this key outside D1 is what makes the stored
+   * digests useless on their own. Required — issuance throws without it.
+   */
+  OTP_PEPPER: string;
 }
 
 // Augment Cloudflare.Env for `import { env } from "cloudflare:workers"` in tests.
@@ -45,5 +52,6 @@ declare namespace Cloudflare {
     RESEND_API_KEY: string;
     MAIL_FROM: string;
     ENVIRONMENT: string;
+    OTP_PEPPER: string;
   }
 }

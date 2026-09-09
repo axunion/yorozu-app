@@ -1,10 +1,13 @@
 import type { SeatSession, StoreSession } from "@yorozu/core";
 import {
+  generateOtpCode,
+  hashOtpCode,
   hashToken,
   MAGIC_LINK_HOURLY_CAP,
   MAGIC_LINK_TTL_MS,
   newId,
   now,
+  OTP_TTL_MS,
 } from "@yorozu/core";
 import type { Database } from "@yorozu/db";
 import { schema } from "@yorozu/db";
@@ -118,6 +121,85 @@ export async function issueMagicLink(
     );
 
   return token;
+}
+
+/**
+ * Issues an emailed passcode for the given member and purpose, or returns
+ * null when the member has hit MAGIC_LINK_HOURLY_CAP issuances in the last
+ * rolling hour. Callers must treat null exactly as `issueMagicLink`'s null:
+ * skip sending, keep the response identical to the success case.
+ *
+ * Shares `magic_link_tokens` (and its per-member cap and supersession) with
+ * the Magic Link flow; only what goes in `token` differs. The stored value is
+ * `hashOtpCode(rowId, code, pepper)` rather than `hashToken(uuid)`:
+ *
+ *  - keyed on the pepper, because a 6-digit code has 10^6 possibilities and
+ *    an unkeyed digest of one falls to brute force from a database read;
+ *  - salted with the row's own id, so two rows can never produce the same
+ *    digest and the UNIQUE index on `token` still holds. Salting on
+ *    `member_id` instead would leave a 1-in-10^6 chance of one member drawing
+ *    a code they have used before, and that INSERT failure would surface as a
+ *    login that silently never arrives.
+ *
+ * Because the digest depends on the row id, verification cannot look a code
+ * up directly — it resolves the member first, then tests the candidate rows.
+ * See `POST /api/auth/verify-code`.
+ *
+ * Insert-first ordering matches issueMagicLink: an UPDATE failure leaves two
+ * briefly valid codes (harmless, both expire), an INSERT failure leaves the
+ * previous one intact.
+ */
+export async function issueVerificationCode(
+  db: Database,
+  storeId: string,
+  memberId: string,
+  purpose: "signup" | "login" | "email_change" | "invite" | "reactivate",
+  pepper: string,
+  newEmail?: string,
+): Promise<string | null> {
+  const ts = now();
+
+  const recent = await db
+    .select({ id: schema.magicLinkTokens.id })
+    .from(schema.magicLinkTokens)
+    .where(
+      and(
+        eq(schema.magicLinkTokens.member_id, memberId),
+        gt(schema.magicLinkTokens.created_at, ts - HOUR_MS),
+      ),
+    )
+    .limit(MAGIC_LINK_HOURLY_CAP);
+  if (recent.length >= MAGIC_LINK_HOURLY_CAP) {
+    console.log(`[auth] rate-limited passcode for member ${memberId}`);
+    return null;
+  }
+
+  const rowId = newId();
+  const code = generateOtpCode();
+
+  await db.insert(schema.magicLinkTokens).values({
+    id: rowId,
+    store_id: storeId,
+    member_id: memberId,
+    token: await hashOtpCode(rowId, code, pepper),
+    purpose,
+    new_email: newEmail ?? null,
+    expires_at: ts + OTP_TTL_MS,
+  });
+
+  await db
+    .update(schema.magicLinkTokens)
+    .set({ used_at: ts })
+    .where(
+      and(
+        eq(schema.magicLinkTokens.member_id, memberId),
+        eq(schema.magicLinkTokens.purpose, purpose),
+        isNull(schema.magicLinkTokens.used_at),
+        ne(schema.magicLinkTokens.id, rowId),
+      ),
+    );
+
+  return code;
 }
 
 /**

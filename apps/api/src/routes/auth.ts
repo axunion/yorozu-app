@@ -2,17 +2,20 @@ import {
   buildClearSessionCookie,
   buildSessionCookie,
   errorResponse,
+  hashOtpCode,
   hashToken,
   LoginInput,
   MAGIC_LINK_VERIFY_PATH,
   newId,
   now,
+  OTP_MAX_ATTEMPTS,
   SESSION_TOKEN_COOKIE,
   SESSION_TTL_MS,
   sendMagicLinkEmail,
+  VerifyCodeInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { deleteSession, isSecureRequest, issueMagicLink } from "../auth";
@@ -172,6 +175,146 @@ export const authRouter = new Hono<{ Bindings: Env }>()
     // fixed env-backed map, never from a caller-supplied URL, so there is no
     // open-redirect surface: an unknown or missing value lands on admin.
     return c.redirect(landingOrigin(c.env, c.req.query("app")), 302);
+  })
+
+  /**
+   * POST /api/auth/verify-code
+   *
+   * Verifies an emailed passcode and creates a session, replacing the browser
+   * navigation through GET /verify. Handles signup / login / reactivate /
+   * invite.
+   *
+   * `email_change` is deliberately out of scope: its code is sent to the *new*
+   * address, which is not yet in members.email, so the member cannot be
+   * resolved from the submitted email. That flow verifies against the caller's
+   * session at POST /api/stores/me/email-change/verify instead. Its rows are
+   * excluded from both the candidate lookup and the attempt counter below, so
+   * a pending email change cannot be burned through this endpoint.
+   *
+   * Codes cannot be looked up directly: the stored digest is salted with the
+   * token row's own id (see issueVerificationCode), so this resolves the
+   * member first and then tests each of their live rows.
+   *
+   * Every failure returns the same INVALID_CODE — an unknown address, no live
+   * code, a wrong code and an exhausted attempt budget must be
+   * indistinguishable, or the response reveals which addresses are registered
+   * and which have a code outstanding.
+   */
+  .post("/verify-code", bodyValidator(VerifyCodeInput), async (c) => {
+    const { email, code, app: targetApp } = c.req.valid("json");
+    const db = createDb(c.env.DB);
+    const ts = now();
+    const pepper = c.env.OTP_PEPPER;
+    const invalidCode = () =>
+      errorResponse("INVALID_CODE", "Invalid or expired code", 400);
+
+    const memberRows = await db
+      .select({ id: schema.members.id, store_id: schema.members.store_id })
+      .from(schema.members)
+      .where(eq(schema.members.email, email))
+      .limit(1);
+    const member = memberRows[0];
+
+    if (!member) {
+      // Spend one hash anyway. Returning here without it would make an
+      // unregistered address measurably quicker to reject than a registered
+      // one, which is the enumeration leak POST /login defers email delivery
+      // to avoid.
+      await hashOtpCode(newId(), code, pepper);
+      return invalidCode();
+    }
+
+    const liveCodes = and(
+      eq(schema.magicLinkTokens.member_id, member.id),
+      ne(schema.magicLinkTokens.purpose, "email_change"),
+      isNull(schema.magicLinkTokens.used_at),
+      gt(schema.magicLinkTokens.expires_at, ts),
+    );
+
+    const candidates = await db
+      .select({
+        id: schema.magicLinkTokens.id,
+        token: schema.magicLinkTokens.token,
+        purpose: schema.magicLinkTokens.purpose,
+        store_id: schema.magicLinkTokens.store_id,
+      })
+      .from(schema.magicLinkTokens)
+      .where(liveCodes);
+
+    let matched: (typeof candidates)[number] | undefined;
+    for (const row of candidates) {
+      if ((await hashOtpCode(row.id, code, pepper)) === row.token) {
+        matched = row;
+        break;
+      }
+    }
+
+    if (!matched) {
+      // One statement, not read-then-write: D1 has no transactions, so the
+      // increment and the consume-at-limit decision have to travel together
+      // or concurrent guesses can each read the same pre-increment count.
+      await db
+        .update(schema.magicLinkTokens)
+        .set({
+          attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1`,
+          used_at: sql`CASE WHEN ${schema.magicLinkTokens.attempt_count} + 1 >= ${OTP_MAX_ATTEMPTS} THEN ${ts} ELSE ${schema.magicLinkTokens.used_at} END`,
+        })
+        .where(liveCodes);
+      return invalidCode();
+    }
+
+    await db
+      .update(schema.magicLinkTokens)
+      .set({ used_at: ts })
+      .where(eq(schema.magicLinkTokens.id, matched.id));
+
+    if (matched.purpose === "signup") {
+      await db
+        .update(schema.stores)
+        .set({ status: "active", activated_at: ts })
+        .where(eq(schema.stores.id, matched.store_id));
+      await db
+        .update(schema.members)
+        .set({ status: "active", activated_at: ts })
+        .where(eq(schema.members.id, member.id));
+    }
+
+    if (matched.purpose === "invite") {
+      await db
+        .update(schema.members)
+        .set({ status: "active", activated_at: ts })
+        .where(eq(schema.members.id, member.id));
+    }
+
+    if (matched.purpose === "reactivate") {
+      await db
+        .update(schema.stores)
+        .set({ status: "active" })
+        .where(eq(schema.stores.id, matched.store_id));
+    }
+
+    const sessionToken = newId();
+    await db.insert(schema.sessions).values({
+      id: newId(),
+      store_id: matched.store_id,
+      member_id: member.id,
+      session_token: await hashToken(sessionToken),
+      expires_at: ts + SESSION_TTL_MS,
+    });
+
+    const secure = isSecureRequest(c.req.url, c.env.ENVIRONMENT);
+    const cookieDomain = c.env.COOKIE_DOMAIN || undefined;
+    c.header(
+      "Set-Cookie",
+      buildSessionCookie(sessionToken, { secure, domain: cookieDomain }),
+    );
+    // The caller is told where to go rather than redirected: the signup SPA
+    // has to cross to the admin origin and does not carry that URL in its own
+    // env. Resolved from the same fixed env-backed map GET /verify redirects
+    // through, so this is not a caller-supplied destination.
+    return c.json({
+      data: { redirect_to: landingOrigin(c.env, targetApp) },
+    });
   })
 
   /**

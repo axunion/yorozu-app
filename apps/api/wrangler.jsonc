@@ -33,7 +33,7 @@
     // Set to "development" in .dev.vars for local dev to expose the Magic
     // Link URL in API responses, bypassing the need for email delivery.
     "ENVIRONMENT": "production"
-    // RESEND_API_KEY and MAIL_FROM are secrets — set via `wrangler secret put`
-    // or in .dev.vars for local development.
+    // RESEND_API_KEY, MAIL_FROM and OTP_PEPPER are secrets — set via
+    // `wrangler secret put` or in .dev.vars for local development.
   }
 }
