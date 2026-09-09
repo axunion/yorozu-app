@@ -523,11 +523,12 @@ pattern (Field + Button, `<Show>` toggles to a post-submit notice).
 - **Email form** ("自分のメールアドレス" — the calling member's own login
   email, not the store's): current email shown as static text above the
   form (`--color-muted-foreground`), stays visible after submit since the
-  address hasn't actually changed until the link is clicked. On submit,
-  the form itself is replaced (`<Show fallback>`) by a "check your new
-  inbox" notice, plus the same `[DEV]` verify-link box as `LoginForm`
-  (`--color-warning-bg` / `-border` / `-fg`) when `verify_url` is
-  present.
+  address hasn't actually changed until the passcode is confirmed. On
+  submit the form is replaced (`<Show fallback>`) by `CodeEntryForm`, plus
+  the same `[DEV]` code box as `LoginForm` (`--color-warning-bg` /
+  `-border` / `-fg`) when the API echoed one. Confirming the code swaps
+  that for a success line in place — no redirect, because the caller
+  already holds a session.
 - **Session section** ("セッション"): one line of explanatory text plus a
   single `secondary` Button ("ログアウト（全端末）") calling
   `POST /api/auth/logout-all`. On click, does a hard

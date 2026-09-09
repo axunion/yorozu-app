@@ -43,7 +43,26 @@ describe("CodeEntryForm", () => {
     expect(input.type).toBe("text");
     expect(input.inputMode).toBe("numeric");
     expect(input.autocomplete).toBe("one-time-code");
-    expect(input.maxLength).toBe(6);
+    // Room for the separators the API normalizes away, not just six digits.
+    expect(input.maxLength).toBeGreaterThan(6);
+  });
+
+  it("lets a pasted code keep its separators, which the API strips", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const { getByLabelText, getByRole } = render(() => (
+      <CodeEntryForm
+        id="sep-code"
+        submitLabel="送信"
+        onSubmit={onSubmit}
+        onResend={noop}
+      />
+    ));
+
+    await user.type(getByLabelText("確認コード"), "123-456");
+    await user.click(getByRole("button", { name: "送信" }));
+
+    expect(onSubmit).toHaveBeenCalledWith("123-456");
   });
 
   it("keeps a leading zero in what it submits", async () => {
@@ -94,7 +113,7 @@ describe("CodeEntryForm", () => {
     );
   });
 
-  it("disables both buttons and the input while submitting", () => {
+  it("locks the input and both buttons while submitting", () => {
     const { getByLabelText, getByRole } = render(() => (
       <CodeEntryForm
         id="busy-code"
@@ -112,10 +131,27 @@ describe("CodeEntryForm", () => {
       (getByRole("button", { name: "確認中..." }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+    // Held inert by aria-disabled rather than the attribute, so it keeps focus.
     expect(
-      (getByRole("button", { name: "コードを再送する" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
+      getByRole("button", { name: "コードを再送する" }).getAttribute(
+        "aria-disabled",
+      ),
+    ).toBe("true");
+  });
+
+  it("moves focus to the code input on mount", () => {
+    // This step replaces the previous one wholesale, so without it focus would
+    // land on <body>.
+    const { getByLabelText } = render(() => (
+      <CodeEntryForm
+        id="focus-code"
+        submitLabel="ログイン"
+        onSubmit={noop}
+        onResend={noop}
+      />
+    ));
+
+    expect(document.activeElement).toBe(getByLabelText("確認コード"));
   });
 
   it("calls onResend and then holds the button on a cooldown", async () => {
@@ -136,16 +172,35 @@ describe("CodeEntryForm", () => {
 
     // Resending is silently rate-limited server-side, so the cooldown is what
     // stops a user burning their remaining sends with no feedback.
-    const cooling = getByRole("button", {
-      name: /再送できます/,
-    }) as HTMLButtonElement;
-    expect(cooling.disabled).toBe(true);
+    const cooling = getByRole("button", { name: /あと\d+秒で再送できます/ });
+    expect(cooling.getAttribute("aria-disabled")).toBe("true");
+    // Still focusable — the button does not vanish from under the pointer.
+    expect((cooling as HTMLButtonElement).disabled).toBe(false);
+
+    // ...and clicking it again during the cooldown does nothing.
+    await user.click(cooling);
+    expect(onResend).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(60_000);
 
-    const ready = getByRole("button", {
-      name: "コードを再送する",
-    }) as HTMLButtonElement;
-    expect(ready.disabled).toBe(false);
+    const ready = getByRole("button", { name: "コードを再送する" });
+    expect(ready.getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it("announces the resend, since the label change alone is not spoken", async () => {
+    vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { getByRole } = render(() => (
+      <CodeEntryForm
+        id="announce-code"
+        submitLabel="ログイン"
+        onSubmit={noop}
+        onResend={noop}
+      />
+    ));
+
+    await user.click(getByRole("button", { name: "コードを再送する" }));
+
+    expect(getByRole("status").textContent).toContain("再送しました");
   });
 });

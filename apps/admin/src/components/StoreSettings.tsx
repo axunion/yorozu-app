@@ -148,7 +148,15 @@ export default function StoreSettings() {
     void jsonFetch<EmailChangeResponse>("/api/stores/me/email-change", "POST", {
       new_email: newEmail(),
     }).then((result) => {
-      if (result.ok) setDevCode(result.data?.code);
+      // Unlike /api/auth/login, this endpoint answers with real failures —
+      // RATE_LIMITED past EMAIL_CHANGE_HOURLY_CAP, or VALIDATION_ERROR if the
+      // address was claimed meanwhile. Swallowing them would leave the owner
+      // waiting out a cooldown for mail that was never sent.
+      if (!result.ok) {
+        setEmailError(result.message ?? "再送に失敗しました。");
+        return;
+      }
+      setDevCode(result.data?.code);
     });
   };
 

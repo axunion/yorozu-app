@@ -85,7 +85,7 @@ stores 1 ──── * subscriptions          (which products this store has bo
   `store_id` (avoids a join on every `requireStore`-guarded request).
   `magic_link_tokens.purpose` is `'signup' | 'login' | 'email_change' |
   'invite'`; the nullable `new_email` column holds the pending target
-  address for `email_change` tokens only. `issueMagicLink`'s supersede
+  address for `email_change` tokens only. `issueVerificationCode`'s supersede
   (only one valid link per purpose) and hourly rate cap are scoped by
   `member_id`, not `store_id` — a store can have multiple members now,
   and unrelated members issuing tokens concurrently must not invalidate

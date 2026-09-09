@@ -15,7 +15,7 @@ import {
   UpdateStoreNameInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { issueVerificationCode } from "../auth";
 import { requireOwner, requireStore } from "../middleware";
@@ -131,6 +131,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
         {
           resendApiKey: c.env.RESEND_API_KEY,
           mailFrom: c.env.MAIL_FROM,
+          environment: c.env.ENVIRONMENT,
         },
       );
     } catch {
@@ -211,7 +212,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
    * session's own expires_at could otherwise be extended by this very
    * call. Deleting the rows makes both moot. Reactivation goes through
    * the normal POST /api/auth/login flow (an owner-role member logging in
-   * to a suspended store gets a 'reactivate' Magic Link instead of the
+   * to a suspended store gets a 'reactivate' passcode instead of the
    * usual silent no-op) — there is no separate unsuspend endpoint, since
    * no session survives suspension to call one.
    * Response: 200 { data: { id, status } }
@@ -240,7 +241,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
   /**
    * POST /api/stores/me/email-change
    * Requests a change of the calling member's own login email: issues a
-   * Magic Link (purpose 'email_change') sent to the NEW address, proving
+   * passcode (purpose 'email_change') sent to the NEW address, proving
    * control before the change takes effect at GET /api/auth/verify. Any
    * active member (owner or staff) can change their own email; not
    * owner-gated. stores.email is untouched — it stays fixed at whatever
@@ -356,6 +357,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
             {
               resendApiKey: c.env.RESEND_API_KEY,
               mailFrom: c.env.MAIL_FROM,
+              environment: c.env.ENVIRONMENT,
             },
           );
         } catch {
@@ -402,26 +404,39 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
     requireStore,
     bodyValidator(EmailChangeVerifyInput),
     async (c) => {
-      const { member_id: memberId } = c.var.store;
+      const { id: storeId, member_id: memberId } = c.var.store;
       const { code } = c.req.valid("json");
       const db = createDb(c.env.DB);
       const ts = now();
 
       const liveCodes = and(
         eq(schema.magicLinkTokens.member_id, memberId),
+        eq(schema.magicLinkTokens.store_id, storeId),
         eq(schema.magicLinkTokens.purpose, "email_change"),
         isNull(schema.magicLinkTokens.used_at),
         gt(schema.magicLinkTokens.expires_at, ts),
       );
 
+      // Claim the attempt before comparing, exactly as POST /api/auth/verify-code
+      // does and for the same reason: comparing first would let concurrent
+      // requests share one pre-increment count and each spend a free guess.
       const candidates = await db
-        .select({
+        .update(schema.magicLinkTokens)
+        .set({
+          attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1`,
+        })
+        .where(
+          and(
+            liveCodes,
+            lt(schema.magicLinkTokens.attempt_count, OTP_MAX_ATTEMPTS),
+          ),
+        )
+        .returning({
           id: schema.magicLinkTokens.id,
           token: schema.magicLinkTokens.token,
           new_email: schema.magicLinkTokens.new_email,
-        })
-        .from(schema.magicLinkTokens)
-        .where(liveCodes);
+          attempt_count: schema.magicLinkTokens.attempt_count,
+        });
 
       let matched: (typeof candidates)[number] | undefined;
       for (const row of candidates) {
@@ -432,15 +447,15 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
       }
 
       if (!matched?.new_email) {
-        // Same single statement as verify-code: D1 has no transactions, so the
-        // increment and the consume-at-limit decision must travel together.
-        await db
-          .update(schema.magicLinkTokens)
-          .set({
-            attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1`,
-            used_at: sql`CASE WHEN ${schema.magicLinkTokens.attempt_count} + 1 >= ${OTP_MAX_ATTEMPTS} THEN ${ts} ELSE ${schema.magicLinkTokens.used_at} END`,
-          })
-          .where(liveCodes);
+        const exhausted = candidates
+          .filter((row) => row.attempt_count >= OTP_MAX_ATTEMPTS)
+          .map((row) => row.id);
+        if (exhausted.length > 0) {
+          await db
+            .update(schema.magicLinkTokens)
+            .set({ used_at: ts })
+            .where(inArray(schema.magicLinkTokens.id, exhausted));
+        }
         return errorResponse(
           "INVALID_CODE",
           "コードが正しくないか、有効期限が切れています。",

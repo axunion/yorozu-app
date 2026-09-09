@@ -43,7 +43,7 @@ async function createPeriod(token: string): Promise<string> {
 
 /**
  * Invites a staff member into an existing store. The member stays `pending`
- * until they verify their Magic Link — which is deliberate here: a pending
+ * until they verify their passcode — which is deliberate here: a pending
  * invitee still counts as a non-submitter in the manager's list.
  */
 async function addStaff(ownerToken: string): Promise<string> {

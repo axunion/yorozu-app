@@ -36,7 +36,7 @@ export const stores = sqliteTable(
     name: text("name").notNull(),
     /** URL-friendly identifier */
     slug: text("slug").notNull().unique(),
-    /** Owner email; used as the Magic Link delivery address */
+    /** Owner email; where the signup passcode was sent */
     email: text("email").notNull().unique(),
     /**
      * Lifecycle state:
@@ -351,7 +351,9 @@ export const sessions = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
-// magic_link_tokens — short-lived one-time-use tokens for Magic Link auth
+// magic_link_tokens — short-lived one-time-use passcodes. Named for the
+// Magic Link flow it was built for; renaming it would touch every query and
+// migration for no behavioural gain.
 // ---------------------------------------------------------------------------
 export const magicLinkTokens = sqliteTable(
   "magic_link_tokens",
@@ -366,7 +368,12 @@ export const magicLinkTokens = sqliteTable(
     member_id: text("member_id")
       .notNull()
       .references(() => members.id),
-    /** UUID v4 embedded in the Magic Link URL */
+    /**
+     * Keyed digest of the passcode: `hashOtpCode(id, code, OTP_PEPPER)` —
+     * HMAC-SHA-256, salted with this row's own id so two rows can never
+     * collide and this UNIQUE index still holds. Not a plain hash: six digits
+     * is brute-forceable from a database read without the key.
+     */
     token: text("token").notNull().unique(),
     /**
      * 'signup' for first-time onboarding; 'login' for returning members;
@@ -385,7 +392,7 @@ export const magicLinkTokens = sqliteTable(
     used_at: integer("used_at"), // nullable
     /**
      * Failed verification attempts against this row. A 6-digit passcode is
-     * guessable in a way the Magic Link UUID was not, so issuance limits
+     * guessable in a way the Magic Link UUID it replaced was not, so issuance limits
      * (MAGIC_LINK_HOURLY_CAP) are not enough on their own — this bounds online
      * guessing. Reaching OTP_MAX_ATTEMPTS consumes the row via used_at.
      */

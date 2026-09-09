@@ -1,7 +1,7 @@
 import { render, screen } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { writeSignupHandoff } from "../handoff";
+import { readSignupHandoff, writeSignupHandoff } from "../handoff";
 import CheckEmailPage from "./CheckEmailPage";
 
 /**
@@ -108,6 +108,38 @@ describe("CheckEmailPage", () => {
     render(() => <CheckEmailPage />);
 
     expect(screen.getByText(/\[DEV\] 確認コード: 654321/)).toBeTruthy();
+  });
+
+  it("resends through /api/auth/login and refreshes the dev code", async () => {
+    // The owner is still pending at this point, so a login request reissues
+    // the signup code rather than a login one.
+    writeSignupHandoff({ email: "owner@example.com", code: "111111" });
+    const fetchMock = stubFetch({ data: { sent: true, code: "222222" } });
+    const user = userEvent.setup();
+
+    render(() => <CheckEmailPage />);
+    await user.click(screen.getByRole("button", { name: "コードを再送する" }));
+
+    const call = fetchMock.mock.calls.at(-1) as [string, RequestInit];
+    expect(String(call[0])).toContain("/api/auth/login");
+    expect(JSON.parse(String(call[1].body))).toEqual({
+      email: "owner@example.com",
+    });
+    expect(await screen.findByText(/\[DEV\] 確認コード: 222222/)).toBeTruthy();
+  });
+
+  it("clears the handoff once the code is accepted", async () => {
+    // Otherwise returning to /check-email in the same tab offers a code screen
+    // for an account that is already active.
+    writeSignupHandoff({ email: "owner@example.com" });
+    stubFetch({ data: { redirect_to: "http://admin.localhost" } });
+    const user = userEvent.setup();
+
+    render(() => <CheckEmailPage />);
+    await user.type(screen.getByLabelText("確認コード"), "123456");
+    await user.click(screen.getByRole("button", { name: "登録を完了する" }));
+
+    expect(readSignupHandoff()).toBeUndefined();
   });
 
   it("tells a direct visitor to start again when there is nothing handed over", () => {

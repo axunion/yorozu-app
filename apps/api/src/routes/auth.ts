@@ -14,7 +14,7 @@ import {
   VerifyCodeInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { deleteSession, isSecureRequest, issueVerificationCode } from "../auth";
@@ -22,7 +22,7 @@ import { requireStore } from "../middleware";
 import { bodyValidator } from "../validator";
 
 /**
- * Maps the `app` query parameter to the SPA origin the Magic Link should land
+ * Maps the caller's `app` to the SPA origin a verified session should land
  * in. A fixed env-backed allowlist rather than a caller-supplied URL, so this
  * can never become an open redirect; anything unrecognised lands on admin.
  */
@@ -56,7 +56,7 @@ export const authRouter = new Hono<{ Bindings: Env }>()
    * POST /api/auth/verify-code
    *
    * Verifies an emailed passcode and creates a session, replacing the browser
-   * navigation through GET /verify. Handles signup / login / reactivate /
+   * navigation the Magic Link flow used. Handles signup / login / reactivate /
    * invite.
    *
    * `email_change` is deliberately out of scope: its code is sent to the *new*
@@ -91,30 +91,50 @@ export const authRouter = new Hono<{ Bindings: Env }>()
     const member = memberRows[0];
 
     if (!member) {
-      // Spend one hash anyway. Returning here without it would make an
-      // unregistered address measurably quicker to reject than a registered
-      // one, which is the enumeration leak POST /login defers email delivery
-      // to avoid.
+      // Spend one hash so the work done here is not trivially smaller than the
+      // registered path. It does not equalize the two — the registered path
+      // also makes a D1 write, which dominates — so the defence that actually
+      // holds is the identical response below, not this.
       await hashOtpCode(newId(), code, pepper);
       return invalidCode();
     }
 
     const liveCodes = and(
       eq(schema.magicLinkTokens.member_id, member.id),
+      // Redundant while member_id is globally unique, but it is the house rule
+      // for every tenant-scoped query and it pins the store this session will
+      // be issued against to the member's own.
+      eq(schema.magicLinkTokens.store_id, member.store_id),
       ne(schema.magicLinkTokens.purpose, "email_change"),
       isNull(schema.magicLinkTokens.used_at),
       gt(schema.magicLinkTokens.expires_at, ts),
     );
 
+    // Claim an attempt *before* comparing anything, and only compare rows this
+    // statement actually claimed. Selecting first and incrementing after would
+    // keep the counter consistent while doing nothing about the limit it
+    // exists to enforce: a burst of concurrent requests would all read the
+    // same live row and each get a free guess, which against a 10^6 space is
+    // the difference between 25 tries an hour and as many as the attacker can
+    // open connections for. Putting `attempt_count < OTP_MAX_ATTEMPTS` inside
+    // the UPDATE makes D1 serialize them, so only the first OTP_MAX_ATTEMPTS
+    // get a row back at all.
     const candidates = await db
-      .select({
+      .update(schema.magicLinkTokens)
+      .set({ attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1` })
+      .where(
+        and(
+          liveCodes,
+          lt(schema.magicLinkTokens.attempt_count, OTP_MAX_ATTEMPTS),
+        ),
+      )
+      .returning({
         id: schema.magicLinkTokens.id,
         token: schema.magicLinkTokens.token,
         purpose: schema.magicLinkTokens.purpose,
         store_id: schema.magicLinkTokens.store_id,
-      })
-      .from(schema.magicLinkTokens)
-      .where(liveCodes);
+        attempt_count: schema.magicLinkTokens.attempt_count,
+      });
 
     let matched: (typeof candidates)[number] | undefined;
     for (const row of candidates) {
@@ -125,16 +145,17 @@ export const authRouter = new Hono<{ Bindings: Env }>()
     }
 
     if (!matched) {
-      // One statement, not read-then-write: D1 has no transactions, so the
-      // increment and the consume-at-limit decision have to travel together
-      // or concurrent guesses can each read the same pre-increment count.
-      await db
-        .update(schema.magicLinkTokens)
-        .set({
-          attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1`,
-          used_at: sql`CASE WHEN ${schema.magicLinkTokens.attempt_count} + 1 >= ${OTP_MAX_ATTEMPTS} THEN ${ts} ELSE ${schema.magicLinkTokens.used_at} END`,
-        })
-        .where(liveCodes);
+      // Consume whatever just reached the limit, so it cannot be retried once
+      // the `attempt_count <` predicate stops matching it.
+      const exhausted = candidates
+        .filter((row) => row.attempt_count >= OTP_MAX_ATTEMPTS)
+        .map((row) => row.id);
+      if (exhausted.length > 0) {
+        await db
+          .update(schema.magicLinkTokens)
+          .set({ used_at: ts })
+          .where(inArray(schema.magicLinkTokens.id, exhausted));
+      }
       return invalidCode();
     }
 
@@ -185,7 +206,7 @@ export const authRouter = new Hono<{ Bindings: Env }>()
     );
     // The caller is told where to go rather than redirected: the signup SPA
     // has to cross to the admin origin and does not carry that URL in its own
-    // env. Resolved from the same fixed env-backed map GET /verify redirects
+    // env. Resolved from the same fixed env-backed map the Magic Link redirect
     // through, so this is not a caller-supplied destination.
     return c.json({
       data: { redirect_to: landingOrigin(c.env, targetApp) },
@@ -265,6 +286,7 @@ export const authRouter = new Hono<{ Bindings: Env }>()
             {
               resendApiKey: c.env.RESEND_API_KEY,
               mailFrom: c.env.MAIL_FROM,
+              environment: c.env.ENVIRONMENT,
             },
           ).catch(() => {
             console.error(

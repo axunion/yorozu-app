@@ -262,6 +262,29 @@ describe("POST /api/auth/verify-code — rejection", () => {
     expect((await verify({ email, code })).status).toBe(400);
   });
 
+  it("never lets a concurrent burst exceed the attempt budget", async () => {
+    const store = await seedStore(`同時攻撃店 ${crypto.randomUUID()}`);
+    const email = await memberEmail(store.member_id);
+    const code = await issueCode(store.id, store.member_id, "login");
+    const tokenId = await liveTokenIdFor(store.member_id);
+
+    // Twenty guesses at once. The budget has to be claimed inside the UPDATE:
+    // comparing first and incrementing after would let every one of these read
+    // the same live row and spend a guess, leaving attempt_count at 20 and the
+    // limit doing nothing.
+    await Promise.all(
+      Array.from({ length: 20 }, () =>
+        verify({ email, code: wrongCode(code) }),
+      ),
+    );
+
+    const row = await tokenRow(tokenId);
+    expect(row?.attempt_count).toBeLessThanOrEqual(OTP_MAX_ATTEMPTS);
+    expect(row?.used_at).not.toBeNull();
+    // And the real code is spent along with the budget.
+    expect((await verify({ email, code })).status).toBe(400);
+  });
+
   it("answers an unregistered email with the same INVALID_CODE", async () => {
     const res = await verify({
       email: `${crypto.randomUUID()}@test.internal`,
@@ -302,6 +325,17 @@ describe("POST /api/auth/verify-code — rejection", () => {
     const emailB = await memberEmail(storeB.member_id);
 
     expect((await verify({ email: emailB, code: codeForA })).status).toBe(400);
+  });
+
+  it("rejects a body missing the code or the email outright", async () => {
+    // The deleted GET /verify had an explicit "token param absent" case; this
+    // is its analogue under the email+code model.
+    const store = await seedStore(`欠落店 ${crypto.randomUUID()}`);
+    const email = await memberEmail(store.member_id);
+
+    expect((await verify({ email })).status).toBe(400);
+    expect((await verify({ code: "123456" })).status).toBe(400);
+    expect((await verify({})).status).toBe(400);
   });
 
   it("rejects a malformed code before touching the database", async () => {

@@ -22,7 +22,7 @@ export const staffRouter = new Hono<AuthEnv>()
   /**
    * POST /api/staff
    * Invites a new member to the calling store: creates a pending member
-   * (role defaults to 'staff') and issues an 'invite' Magic Link.
+   * (role defaults to 'staff') and emails an 'invite' passcode.
    * 400 if the email already belongs to any member (global uniqueness) —
    * caller is authenticated/owner here, so anti-enumeration doesn't apply.
    *
@@ -109,7 +109,11 @@ export const staffRouter = new Hono<AuthEnv>()
     try {
       await sendVerificationCodeEmail(
         { to: email, code, purpose: "invite", loginUrl },
-        { resendApiKey: c.env.RESEND_API_KEY, mailFrom: c.env.MAIL_FROM },
+        {
+          resendApiKey: c.env.RESEND_API_KEY,
+          mailFrom: c.env.MAIL_FROM,
+          environment: c.env.ENVIRONMENT,
+        },
       );
     } catch {
       // Compensate by removing the token and member row so the owner can

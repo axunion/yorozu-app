@@ -76,14 +76,14 @@ describe("buildEmailContent", () => {
 });
 
 describe("sendVerificationCodeEmail", () => {
-  it("logs the code to the console instead of calling fetch when resendApiKey is absent", async () => {
+  it("logs the code to the console instead of calling fetch in development", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await sendVerificationCodeEmail(
       { to: "owner@example.com", code: "123456", purpose: "login" },
-      {},
+      { environment: "development" },
     );
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -91,6 +91,38 @@ describe("sendVerificationCodeEmail", () => {
       expect.stringContaining("owner@example.com"),
     );
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("123456"));
+  });
+
+  it("prints neither the code nor the address when the key is missing outside development", async () => {
+    // Reachable in production by accident — a rotated-out Resend key must not
+    // turn the log into a feed of live credentials.
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await sendVerificationCodeEmail(
+      { to: "owner@example.com", code: "123456", purpose: "login" },
+      { environment: "production" },
+    );
+
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.not.stringContaining("123456"),
+    );
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.not.stringContaining("owner@example.com"),
+    );
+  });
+
+  it("stays quiet about the code when no environment is given at all", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await sendVerificationCodeEmail(
+      { to: "owner@example.com", code: "123456", purpose: "login" },
+      {},
+    );
+
+    expect(logSpy).not.toHaveBeenCalled();
   });
 
   it("calls the Resend API with the purpose's subject and the code", async () => {

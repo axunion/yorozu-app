@@ -5,7 +5,7 @@
  * Drives the full workflow exclusively via HTTP API calls — no direct DB seeding
  * — to verify that all steps are connected end-to-end:
  *
- *   Store registration → Magic Link verification → Menu setup →
+ *   Store registration → passcode verification → Menu setup →
  *   Seat/QR issuance → Customer orders → Admin polling → Serve items →
  *   Payment request → Checkout → Post-payment state
  *
@@ -66,7 +66,7 @@ async function registerAndVerify(
 
 describe("Business cycle: full happy path (申込み → 会計完了)", () => {
   it("completes a full order-to-payment cycle end-to-end", async () => {
-    // ── Step 1: Store registration + Magic Link verification ────────────────
+    // ── Step 1: Store registration + passcode verification ──────────────────
     const token = await registerAndVerify(
       "結合テスト食堂",
       `cycle-${crypto.randomUUID()}@test.internal`,

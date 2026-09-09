@@ -25,10 +25,17 @@ interface SendVerificationCodeOptions {
 }
 
 interface EmailConfig {
-  /** Resend API key. Omit in local dev to log the URL to the console instead. */
+  /** Resend API key. Omit in local dev to log the code to the console instead. */
   resendApiKey?: string;
   /** Sender address. Defaults to DEFAULT_FROM when not provided. */
   mailFrom?: string;
+  /**
+   * `ENVIRONMENT`. Gates the console fallback's contents: a passcode is a live
+   * credential for ten minutes, so it is only ever printed in development.
+   * Keying that on a missing API key alone would spill codes and addresses
+   * into production logs the first time a Resend key was rotated out.
+   */
+  environment?: string;
 }
 
 /**
@@ -43,15 +50,23 @@ interface EmailConfig {
  */
 export async function sendVerificationCodeEmail(
   { to, code, purpose, loginUrl }: SendVerificationCodeOptions,
-  { resendApiKey, mailFrom }: EmailConfig,
+  { resendApiKey, mailFrom, environment }: EmailConfig,
 ): Promise<void> {
   // Local-dev fallback: no API key → log the code to console.
   if (!resendApiKey) {
-    console.log(
-      `[email] Passcode (${purpose}) for ${to}: ${code}${
-        loginUrl ? `\n  Enter it at: ${loginUrl}` : ""
-      }`,
-    );
+    if (environment === "development") {
+      console.log(
+        `[email] Passcode (${purpose}) for ${to}: ${code}${
+          loginUrl ? `\n  Enter it at: ${loginUrl}` : ""
+        }`,
+      );
+    } else {
+      // Deployed without a Resend key: say so, but print neither the address
+      // nor the code — this branch is reachable in production by accident.
+      console.error(
+        `[email] RESEND_API_KEY unset — no ${purpose} passcode was delivered`,
+      );
+    }
     return;
   }
 

@@ -20,13 +20,13 @@ interface Env {
    * Leave empty in local dev so the cookie is scoped to localhost only.
    */
   COOKIE_DOMAIN: string;
-  /** Resend API key for Magic Link email delivery. Omit in local dev → console fallback. */
+  /** Resend API key for passcode email delivery. Omit in local dev → console fallback. */
   RESEND_API_KEY: string;
   /** Sender address used in outgoing emails. */
   MAIL_FROM: string;
   /**
    * "production" in deployed environments; set to "development" in local
-   * `.dev.vars` to expose the Magic Link URL directly in API responses
+   * `.dev.vars` to echo the passcode directly in API responses
    * instead of requiring email delivery.
    */
   ENVIRONMENT: string;

@@ -2,7 +2,7 @@ import type { LoginResponse, VerifyCodeResponse } from "@yorozu/core";
 import { jsonFetch } from "@yorozu/core/client";
 import { Card, CodeEntryForm } from "@yorozu/ui";
 import { createSignal, Show } from "solid-js";
-import { readSignupHandoff } from "../handoff";
+import { clearSignupHandoff, readSignupHandoff } from "../handoff";
 import styles from "./CheckEmailPage.module.css";
 
 export default function CheckEmailPage() {
@@ -25,6 +25,7 @@ export default function CheckEmailPage() {
         setError(result.message ?? "エラーが発生しました");
         return;
       }
+      clearSignupHandoff();
       // Crossing to the admin origin, which this app does not carry in its own
       // env — the API resolves it from the same fixed map it has always used.
       // The session cookie is shared across the subdomains under COOKIE_DOMAIN.

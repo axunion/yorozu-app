@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 /**
  * Auth rate limiting (roadmap Phase 2 item 6, production-deploy gate):
- * per-member hourly cap on Magic Link issuance, and the supersede-not-delete
+ * per-member hourly cap on passcode issuance, and the supersede-not-delete
  * prerequisite that makes the cap countable.
  */
 import { env } from "cloudflare:workers";

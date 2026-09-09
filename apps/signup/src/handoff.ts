@@ -24,6 +24,19 @@ export function writeSignupHandoff(value: SignupHandoff): void {
   }
 }
 
+/**
+ * Drops the entry once the code has been redeemed, so returning to
+ * /check-email in the same tab does not offer a code screen for an account
+ * that is already active.
+ */
+export function clearSignupHandoff(): void {
+  try {
+    sessionStorage.removeItem(HANDOFF_KEY);
+  } catch {
+    // Same storage-unavailable case as the write.
+  }
+}
+
 export function readSignupHandoff(): SignupHandoff | undefined {
   try {
     const raw = sessionStorage.getItem(HANDOFF_KEY);

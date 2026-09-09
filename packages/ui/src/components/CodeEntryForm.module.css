@@ -14,3 +14,18 @@
   line-height: var(--leading-normal);
   margin: 0;
 }
+
+/* Mirrors :disabled while the button stays focusable — it is held inert by
+   aria-disabled and a guard, not by the disabled attribute, so that clicking
+   it does not drop focus to <body>. */
+.inert {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status {
+  color: var(--color-muted-foreground);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  margin: 0;
+}

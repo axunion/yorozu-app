@@ -14,9 +14,15 @@ interface LoginFormProps {
 }
 
 export default function LoginForm(props: LoginFormProps) {
+  // Read once, deliberately: `initialEmail` seeds the first render and must not
+  // reset the step the visitor is already on. Invites arrive as a fresh page
+  // load, so there is no in-app navigation that would need it to track.
   const [email, setEmail] = createSignal(props.initialEmail ?? "");
   const [error, setError] = createSignal("");
   const [sent, setSent] = createSignal(Boolean(props.initialEmail));
+  // Whether *this* screen sent the code. False when arriving from an invite,
+  // whose code came with the invitation — saying "sent to you" would be a lie.
+  const [sentHere, setSentHere] = createSignal(false);
   const [devCode, setDevCode] = createSignal<string | undefined>(undefined);
   const [submitting, setSubmitting] = createSignal(false);
 
@@ -30,6 +36,7 @@ export default function LoginForm(props: LoginFormProps) {
       return false;
     }
     setDevCode(result.data?.code);
+    setSentHere(true);
     return true;
   };
 
@@ -77,7 +84,7 @@ export default function LoginForm(props: LoginFormProps) {
         <>
           <CodeEntryForm
             id="login-code"
-            sentTo={email()}
+            sentTo={sentHere() ? email() : undefined}
             submitLabel="ログイン"
             error={error()}
             submitting={submitting()}

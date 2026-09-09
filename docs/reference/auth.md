@@ -230,9 +230,25 @@ brand-new member with no history for the per-member cap to see.
 
 **Verification (new with passcodes).** `OTP_MAX_ATTEMPTS` (5) failed attempts
 consume a member's live codes. A 122-bit link needed no such limit; six digits
-does. Both routes increment and consume in a single UPDATE — D1 has no
-transactions, so a read-then-write would let concurrent guesses share one
-pre-increment count.
+does.
+
+Both routes **claim the attempt before comparing anything**, and only compare
+the rows the claim returned:
+
+```sql
+UPDATE magic_link_tokens SET attempt_count = attempt_count + 1
+WHERE <live codes for this member> AND attempt_count < 5
+RETURNING id, token, ...
+```
+
+Reading the rows first and incrementing afterwards keeps the counter
+consistent but does nothing about the limit it exists to enforce: D1 has no
+transactions, so a burst of concurrent requests would all read the same live
+row and each spend a free guess. Against a 10⁶ space that is the difference
+between 25 tries an hour and as many as an attacker can open connections for.
+Putting the `attempt_count <` predicate inside the UPDATE makes D1 serialize
+them, so only the first `OTP_MAX_ATTEMPTS` requests get a row back to compare
+at all. Rows that reach the limit are then consumed with `used_at`.
 
 `POST /api/stores/me/email-change` keeps its own third cap
 (`EMAIL_CHANGE_HOURLY_CAP`, tracked on `members.email_change_attempt_count`)
@@ -254,9 +270,16 @@ Complementary per-IP WAF rate limiting is deploy config, not Worker code — see
   can brute-force a 10⁶ space. TTL is 10 minutes, codes are single-use, and
   attempts are capped, which is what bounds the exposure.
 - **Verification is a new surface keyed by email.** `POST /verify-code` takes
-  an arbitrary address, which the old flow never did. A missing member still
-  costs one dummy `hashOtpCode` so response time does not reveal registration
-  status, matching the care `POST /login` already takes with `waitUntil`.
+  an arbitrary address, which the old flow never did. A missing member spends
+  one dummy `hashOtpCode` so the branch is not trivially cheaper, but that
+  does **not** equalize the two: the registered path also makes a D1 write,
+  which dominates an HMAC by orders of magnitude, so response time still
+  distinguishes them. The defence that actually holds is the identical
+  response body and status.
+- **`OTP_PEPPER` strength is an operational property.** `hashOtpCode` only
+  refuses an empty pepper; nothing checks that it is long or random. The
+  at-rest argument above assumes the value follows the guidance in
+  [deploy.md](./deploy.md).
 
 ### Local dev: skipping email delivery
 
