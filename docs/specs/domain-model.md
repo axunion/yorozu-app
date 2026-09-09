@@ -127,12 +127,12 @@ stores 1 ──── * subscriptions          (which products this store has bo
 ### stores.status
 
 ```
-pending ──(magic link verified)──▶ active ──(owner: POST /me/suspend)──▶ suspended
+pending ──(passcode verified)──▶ active ──(owner: POST /me/suspend)──▶ suspended
                                        ▲                                     │
-                                       └──(owner: reactivate magic link)─────┘
+                                     └──(owner: reactivate passcode)──────┘
 ```
 
-- `pending` — registered, email unverified. Login resends the signup link.
+- `pending` — registered, email unverified. Login resends the signup code.
 - `active` — normal operation.
 - `suspended` — set by the store's own owner (`POST /api/stores/me/suspend`
   — owner self-service only, no billing/platform-admin trigger exists;
@@ -155,12 +155,12 @@ pending ──(magic link verified)──▶ active ──(owner: POST /me/suspe
 ### members.status
 
 ```
-pending ──(magic link verified: signup or invite)──▶ active
+pending ──(passcode verified: signup or invite)──▶ active
 ```
 
 - `pending` — created at store signup (owner) or by `POST /api/staff`
   (staff invite); email unverified. Login resends the `signup` (owner) or
-  `invite` (staff) Magic Link. No `suspended` state at member level —
+  `invite` (staff) passcode. No `suspended` state at member level —
   removing access is `DELETE /api/staff/:id` (deletes the row), not a
   status transition.
 - `active` — can log in. `requireStore` rejects (401) if either the

@@ -11,7 +11,7 @@ import {
  *
  * Boots the four processes the golden path needs (API Worker + the three Vite
  * dev servers) and runs the specs against them. Requires apps/api/.dev.vars
- * with ENVIRONMENT=development so the Magic Link verify_url is returned in the
+ * with ENVIRONMENT=development so the passcode is returned in the
  * API response instead of being emailed.
  *
  * No database reset is needed: every spec registers its own store with a

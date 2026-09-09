@@ -21,10 +21,10 @@ Playwright starts all four processes itself (API Worker + the three Vite dev
 servers) and waits on their ports. `reuseExistingServer` is on, so a `pnpm dev`
 you already have running is reused instead of conflicting.
 
-`ENVIRONMENT=development` is required: it makes the API return the Magic Link
-as `verify_url` in the registration response, which the signup screen renders
-as the `[DEV]` link the run clicks. Without it there is no way to verify the
-store without an inbox. See
+`ENVIRONMENT=development` is required: it makes the API echo the passcode as
+`code` in the registration response, which the signup screen renders as the
+`[DEV]` note the run reads and types in. Without it there is no way to verify
+the store without an inbox. See
 [auth.md](./auth.md#local-dev-skipping-email-delivery).
 
 Other entry points: `pnpm --filter @yorozu/e2e e2e:ui` for the Playwright UI,
@@ -46,9 +46,9 @@ One spec covering the full cycle — matching `business-cycle.test.ts`'s own
 scope choice — with `test.step` names doing the work of localizing a failure
 to a stage:
 
-1. Register a store, verify via the `[DEV]` Magic Link.
-2. Land in admin as the owner (proves the session cookie survived the
-   signup → API → admin origin hop).
+1. Register a store, verify by typing in the `[DEV]` passcode.
+2. Land in admin as the owner (proves the session cookie the API set on the
+   verify response is sent back on the admin origin).
 3. Menu setup: one category, one categorized item, one uncategorized item.
 4. Seat creation, QR render, and the order link it issues.
 5. Staff open the order board — asserted still empty.

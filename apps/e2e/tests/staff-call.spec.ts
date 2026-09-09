@@ -31,7 +31,10 @@ test("a customer can call staff and staff can clear the call", async ({
     await admin.getByLabel("店舗名").fill(storeName);
     await admin.getByLabel("メールアドレス").fill(email);
     await admin.getByRole("button", { name: "申し込む" }).click();
-    await admin.getByRole("link", { name: "このリンクで直接確認する" }).click();
+    // The [DEV] code stands in for the emailed one (ENVIRONMENT=development).
+    const note = await admin.getByText(/\[DEV\] 確認コード:/).textContent();
+    await admin.getByLabel("確認コード").fill(note?.match(/\d{6}/)?.[0] ?? "");
+    await admin.getByRole("button", { name: "登録を完了する" }).click();
     await admin.waitForURL(`${ADMIN_ORIGIN}/`);
 
     await admin.getByRole("link", { name: "座席管理・QR 発行" }).click();

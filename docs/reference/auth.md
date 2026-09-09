@@ -27,11 +27,16 @@ Two authentication mechanisms are used:
 
 ### Storage at rest
 
-Only a SHA-256 hash of the session token (`hashToken`, `@yorozu/core` `domain/auth.ts`) is
-written to `sessions.session_token`. The same applies to `magic_link_tokens.token`. The raw
-value lives solely in the client-facing cookie / email link and is hashed on every lookup
-before comparison; a D1 read (backup export, console access, etc.) never yields a value that
-could be replayed as a live session or Magic Link.
+Only a SHA-256 hash of the session token (`hashToken`, `@yorozu/core`
+`domain/auth.ts`) is written to `sessions.session_token`. The raw value lives
+solely in the client-facing cookie and is hashed on every lookup before
+comparison; a D1 read (backup export, console access, etc.) never yields a
+value that could be replayed as a live session. The token is a UUID, so there
+is nothing to brute-force the digest back to.
+
+Passcodes cannot rely on that — six digits *is* brute-forceable — so
+`magic_link_tokens.token` uses a keyed HMAC instead. See
+[Passcode storage at rest](#passcode-storage-at-rest).
 
 ### Attributes
 
@@ -114,142 +119,167 @@ fetch(url, { credentials: "include", ...init })
 
 ---
 
-## Magic Link flow
+## Passcode flow
 
-Used for both new store registration (signup) and returning admin login.
+Every purpose — signup, login, staff invite, email change and reactivation —
+is verified by a 6-digit code emailed to the address being proved. There is no
+`GET /api/auth/verify`; nothing in an email is a credential any more.
 
 ```
 [Signup SPA]  POST /api/stores { name, email }
-                  └─▶ API creates store + magic_link_token, sends email
+                  └─▶ API creates store + member + code, emails the code
 [Signup SPA]  navigate to /check-email (local SPA route)
-
-[Email link]  GET /api/auth/verify?token=<token>
-                  └─▶ API validates token, creates session, sets cookie
-                  └─▶ 302 redirect to ADMIN_ORIGIN (e.g. https://admin.example.com)
+[Signup SPA]  POST /api/auth/verify-code { email, code }
+                  └─▶ API activates, creates session, sets cookie
+                  └─▶ 200 { redirect_to: ADMIN_ORIGIN }
+[Signup SPA]  window.location.href = redirect_to
 
 [Admin SPA]   mounts, AdminGuard calls GET /api/auth/me
                   └─▶ API returns { id, name, email, role } — session valid
-                  └─▶ AdminGuard provides StoreContext to child routes
 ```
 
-The login flow is identical from the `POST /api/auth/login` step onward.
-Since Phase 5 (staff accounts), a store's login identity is a **member**
-row, not `stores.email` — `stores.email` is fixed at whatever address
-created the store, purely historical/display. `email` in the flow above,
-and everywhere else in this doc, means the calling **member's** email
-unless stated otherwise. A store's first member (created at signup) is
-always `role: 'owner'`; `POST /api/staff` (owner-only) invites additional
-members with an `invite`-purpose Magic Link, reusing this same flow.
+Login is the same from `POST /api/auth/login` onward. A store's login identity
+is a **member** row, not `stores.email` — that column is fixed at whatever
+address created the store and is historical/display only. A store's first
+member is always `role: 'owner'`; `POST /api/staff` (owner-only) invites more.
 
-**Third purpose — email change**: `POST /api/stores/me/email-change`
-(`requireStore`, any active member) issues a `magic_link_tokens` row with
-`purpose = 'email_change'` and `new_email` set, and emails it to the
-**new** address instead of the current one (proof of control before the
-change applies). `GET /api/auth/verify` handles this purpose by setting
-`members.email = new_email` (the calling member's own row) — right after
-marking the token consumed, before session creation — then continues
-through the same session-creation and redirect steps as signup/login. A
-UNIQUE-constraint race (the address claimed by another member between
-issuance and verify) falls back to the same generic `INVALID_TOKEN` 400
-as any other invalid token, never a 500 or a distinguishing message.
+### Why codes rather than links
 
-**Fourth purpose — invite**: `POST /api/staff` (`requireStore`,
-`requireOwner`) creates a `pending` member under the caller's store and
-issues a `magic_link_tokens` row with `purpose = 'invite'`, emailed to
-the invitee. `GET /api/auth/verify` handles this purpose by activating
-only the member (`status: 'active'`) — the inviting store is already
-active, unlike `signup` which activates both.
+1. **The device that reads the mail is not always the device signing in.** A
+   link puts the session wherever the mail was opened; an owner reading it on
+   a phone could not use it to sign in on the shop's PC.
+2. **Carrier mail filtering.** Japanese carrier domains routinely reject mail
+   containing URLs.
+3. **Link scanners.** Corporate mail security (Defender for Office 365 Safe
+   Links, Proofpoint URL Defense) follows links before the recipient does,
+   consuming a single-use credential.
 
-**Fifth purpose — reactivate**: `POST /api/stores/me/suspend`
-(`requireStore`, `requireOwner`) sets `stores.status = 'suspended'` and
-deletes every session for the store (all members) in the same
-`db.batch` — required so reactivating doesn't silently hand back
-pre-suspension sessions, and so the request's own sliding-expiry
-refresh (which runs before the handler) can't extend the session being
-shut down. There is no unsuspend endpoint; `POST /api/auth/login`
-carves out an exception to the normal "suspended → silent" rule: an
-owner-role member's login attempt on a suspended store issues a
-`magic_link_tokens` row with `purpose = 'reactivate'` instead. A
-staff-role member on a suspended store still gets silence — only an
-owner can reactivate. `GET /api/auth/verify` handles `reactivate` by
-setting `stores.status = 'active'` (the member is already active) and
-continuing through the normal session-creation steps. This is a
-deliberate exception to anti-enumeration (an owner login attempt now
-takes a visibly different code path than the previous always-silent
-one for a suspended store), accepted because it doesn't bypass any
-billing/compliance gate — there is none in this project — see
-[specs/features/authentication.md](../specs/features/authentication.md#account-lifecycle-appsadmin-settingspage-owner-only-danger-zone).
+It also closed a structural gap: `GET /verify` changed state (activating
+stores, applying email changes, minting sessions) over a method the CSRF guard
+in `apps/api/src/app.ts` does not cover. Verification is a `POST` now, so it
+sits behind that guard like every other mutation.
 
-Account deletion (`DELETE /api/stores/me`, same file) is unrelated to
-the Magic Link flow — it's a direct `requireStore`+`requireOwner`
-action with a `confirm_name` body check, not a token-based flow, since
-there's nothing to prove control of (the caller is already
-authenticated as the store's owner).
+### Passcode storage at rest
 
-**Key point**: The `verify` redirect must be an absolute URL (`c.env.ADMIN_ORIGIN`) because the
-verify endpoint is served from `api.example.com`, not `admin.example.com`.
+`magic_link_tokens.token` holds `hashOtpCode(rowId, code, OTP_PEPPER)` —
+HMAC-SHA-256, not the bare `hashToken` used for sessions. Two reasons:
 
-**Rate limiting**: `issueMagicLink` (`apps/api/src/auth.ts`) caps
-issuance at `MAGIC_LINK_HOURLY_CAP` (5) per **member** per rolling hour,
-combining signup-resend/login/email-change/invite/reactivate, and
-returns `null` instead of a token once hit — every call site skips
-sending but returns
-its normal success response (anti-enumeration). Scoped per member (not
-per store) because a store can have multiple members, and unrelated
-members issuing tokens concurrently must not invalidate each other's
-link. `POST /api/staff` (invite) additionally enforces its own
-**store**-scoped cap of `MAGIC_LINK_HOURLY_CAP` invites/hour — the
-per-member cap can't apply there since each invite is a brand-new member
-with no prior history, so without a separate check an owner session
-could mint unlimited invite emails. Superseding the previous unused
-token per member+purpose is a `used_at` `UPDATE`, not a `DELETE`, so the
-row survives for that count query. See
-[specs/features/authentication.md](../specs/features/authentication.md#magic-link-issuance-cap-rate-limiting)
-for the accepted concurrency/timing trade-offs. Complementary per-IP
-WAF rate limiting is deploy config, not Worker code — see
+- **Keyed.** Six digits is 10⁶ possibilities; an unkeyed digest of one falls
+  to brute force in well under a second, so a D1 backup export would hand an
+  attacker every live passcode. The pepper is a Worker secret and lives
+  outside the database, so reading D1 alone yields nothing to attack.
+- **Salted with the row's own id.** Two rows can therefore never produce the
+  same digest, which keeps the UNIQUE index on `token` intact. Salting on
+  `member_id` instead would leave a 1-in-10⁶ chance of a member drawing a code
+  they had used before, and that INSERT failure would surface as a login that
+  silently never arrives.
+
+Because the digest depends on the row id, a code **cannot be looked up
+directly**. Verification resolves the member first, then tests each of their
+live rows. That is also why the two verify routes are split by how the member
+is identified (below).
+
+### The two verify routes
+
+| Route | Auth | Purposes | Member found by |
+|---|---|---|---|
+| `POST /api/auth/verify-code` `{ email, code, app? }` | none | signup, login, invite, reactivate | the submitted `email` |
+| `POST /api/stores/me/email-change/verify` `{ code }` | `requireStore` | email_change | the caller's session |
+
+`email_change` cannot use the first route: its code goes to the **new**
+address, which is not yet in `members.email`, so there is nothing to resolve
+the member by. Requiring a live session *and* the code is strictly stronger
+than the link it replaces, which proved only the latter. Being authenticated,
+it can also return specific errors, and it issues no new session — the change
+lands on the settings screen instead of bouncing the caller through a redirect.
+
+`email_change` rows are excluded from the unauthenticated route's lookup *and*
+its attempt counter, so a pending email change cannot be burned by failed
+login guesses.
+
+### Where the browser goes next
+
+`POST /verify-code` returns `redirect_to` rather than issuing a 302. The value
+comes from `landingOrigin` — the same fixed env-backed map the old redirect
+used, so it can never become an open redirect. It is returned rather than
+followed because the signup SPA has to cross to the admin origin and does not
+carry that URL in its own env; `app` (`"admin" | "shift"`) selects it, and
+moved from `LoginInput` to `VerifyCodeInput` when the mail stopped carrying a
+URL to aim.
+
+### Invite is the one email with a link
+
+`POST /api/staff` emails a code **and** a plain
+`ADMIN_ORIGIN/login?email=<invitee>` URL. The invitee is the only recipient
+with no screen already waiting for a code, so they need to be told where to
+type it. That URL carries no credential: a scanner that follows it loads a
+login form and consumes nothing. The admin login page reads `?email=` and
+opens on the code step.
+
+### Rate limiting — two independent axes
+
+**Issuance.** `issueVerificationCode` (`apps/api/src/auth.ts`) caps issuance at
+`MAGIC_LINK_HOURLY_CAP` (5) per **member** per rolling hour across all
+purposes, returning `null` instead of a code once hit. Every call site then
+skips sending but returns its normal success response (anti-enumeration).
+Scoped per member because a store has several, and unrelated members must not
+invalidate each other's code. Superseding an unused code is a `used_at`
+UPDATE, not a DELETE, so the row survives for that count. `POST /api/staff`
+additionally enforces a **store**-scoped cap, since each invite creates a
+brand-new member with no history for the per-member cap to see.
+
+**Verification (new with passcodes).** `OTP_MAX_ATTEMPTS` (5) failed attempts
+consume a member's live codes. A 122-bit link needed no such limit; six digits
+does. Both routes increment and consume in a single UPDATE — D1 has no
+transactions, so a read-then-write would let concurrent guesses share one
+pre-increment count.
+
+`POST /api/stores/me/email-change` keeps its own third cap
+(`EMAIL_CHANGE_HOURLY_CAP`, tracked on `members.email_change_attempt_count`)
+bounding attempts regardless of outcome: its "address already in use" check
+never reaches issuance, so neither cap above bounds it.
+
+Complementary per-IP WAF rate limiting is deploy config, not Worker code — see
 [deploy.md](./deploy.md).
 
-`POST /api/stores/me/email-change` has a third, independent cap
-(`EMAIL_CHANGE_HOURLY_CAP`, tracked on `members.email_change_attempt_count`
-/ `email_change_window_started_at`) bounding attempts regardless of
-outcome — its "address already in use" conflict check never touches
-`magic_link_tokens`, so the two caps above don't bound it. See
-[specs/features/authentication.md](../specs/features/authentication.md#store-settings--rename--email-change-appsadmin-settingspage).
+### Accepted trade-offs
+
+- **Availability is lower than with links.** Anyone who knows a victim's
+  address can burn their live code with 5 wrong guesses, and repeating that
+  against re-sends reaches the hourly issuance cap — roughly an hour of denied
+  login. A link had no such surface, since its token could not be guessed at.
+  Targeted harassment only, and self-healing, but real.
+- **A passcode is recoverable from a live database plus the pepper.** The
+  pepper is what keeps a database read alone insufficient; anyone holding both
+  can brute-force a 10⁶ space. TTL is 10 minutes, codes are single-use, and
+  attempts are capped, which is what bounds the exposure.
+- **Verification is a new surface keyed by email.** `POST /verify-code` takes
+  an arbitrary address, which the old flow never did. A missing member still
+  costs one dummy `hashOtpCode` so response time does not reveal registration
+  status, matching the care `POST /login` already takes with `waitUntil`.
 
 ### Local dev: skipping email delivery
 
-Resend delivery is implemented (`packages/core/src/domain/email.ts` calls the Resend REST
-API when `RESEND_API_KEY` is set), but clicking a real email is unnecessary friction
-during local development. Two fallbacks exist, gated by the `ENVIRONMENT` env var
-(`"production"` in deployed environments; set to `"development"` in `apps/api/.dev.vars`
-for local dev):
+Resend delivery is implemented (`packages/core/src/domain/email.ts` calls the
+Resend REST API when `RESEND_API_KEY` is set), but reading a real inbox is
+unnecessary friction locally. Two fallbacks exist, gated on `ENVIRONMENT`
+(`"production"` in deployed environments; set to `"development"` in
+`apps/api/.dev.vars`):
 
-1. **Console fallback (always on, any environment)** — `sendMagicLinkEmail`
-   (`packages/core/src/domain/email.ts`) logs the Magic Link URL to the Worker console
-   instead of calling the Resend API whenever `RESEND_API_KEY` is unset.
-2. **`verify_url` in the signup, login, email-change, and invite responses
-   (`ENVIRONMENT === "development"` only)** — `POST /api/stores`,
-   `POST /api/stores/me/email-change` (both `apps/api/src/routes/stores.ts`),
-   `POST /api/auth/login` (`apps/api/src/routes/auth.ts`), and
-   `POST /api/staff` (`apps/api/src/routes/staff.ts`) include the same Magic
-   Link URL as `verify_url` in their JSON response whenever a token was
-   actually issued. The signup SPA (`RegisterForm.tsx`) forwards it to
-   `/check-email?verify_url=...`, and `CheckEmailPage.tsx` renders a `[DEV]`
-   link that goes straight to `GET /api/auth/verify`. The admin `LoginForm.tsx`
-   and `StoreSettings.tsx` render the same kind of `[DEV]` link inline after
-   submitting — no console log copy/paste required either way. The check is
-   an explicit opt-in (`=== "development"`, not `!== "production"`) so an
-   unset or misconfigured `ENVIRONMENT` in some future deploy target never
-   accidentally leaks the Magic Link.
+1. **Console fallback (any environment)** — `sendVerificationCodeEmail` logs
+   the code to the Worker console whenever `RESEND_API_KEY` is unset.
+2. **`code` in the response (`ENVIRONMENT === "development"` only)** —
+   `POST /api/stores`, `POST /api/auth/login`, `POST /api/stores/me/email-change`
+   and `POST /api/staff` include the passcode they just issued. Each SPA
+   renders it as a `[DEV]` note beside the code input. The check is an explicit
+   opt-in (`=== "development"`, not `!== "production"`) so an unset or
+   misconfigured `ENVIRONMENT` in some future deploy target never leaks a code.
 
-`POST /api/auth/login`'s "always return 200 with an identical body regardless of whether the
-email is registered" anti-enumeration contract (asserted in `apps/api/src/routes/auth.test.ts`)
-is preserved **in production**, since `verify_url` is only ever added when
-`ENVIRONMENT === "development"` — the response body is always identical in production
-regardless of the email's existence. In dev, the field naturally reveals whether an account
-exists (present only when a token was issued), which is an acceptable trade-off since dev-mode
-is never exposed publicly.
-
+`POST /api/auth/login`'s "always return 200 with an identical body regardless
+of whether the email is registered" contract (asserted in
+`apps/api/src/routes/auth.test.ts`) holds **in production**, since `code` is
+only ever added in development. In dev the field naturally reveals whether an
+account exists, which is acceptable because dev mode is never public.
 ---
 
 ## SPA route guard (admin)
@@ -260,7 +290,7 @@ It calls `GET /api/auth/me` on every protected route mount:
 - **401** → navigate to `/login` (replace history entry so Back does not loop)
 - **200** → render children with `StoreContext.Provider` providing
   `{ id, name, email, role }` — `email` is the calling member's own login
-  email (see Magic Link flow above), `role` is `'owner' | 'staff'`
+  email (see Passcode flow above), `role` is `'owner' | 'staff'`
 
 `GET /api/auth/me` is a lightweight session check endpoint added for this purpose.
 
@@ -325,9 +355,10 @@ for `/api/order/*` routes — they use `requireSeat` not `requireStore`.
 | `SIGNUP_ORIGIN` | `https://signup.example.com` | CORS allowlist |
 | `SHIFT_ORIGIN` | `https://shift.example.com` | `verify`/`logout` redirect target when the login carried `app: "shift"`; CORS allowlist |
 | `COOKIE_DOMAIN` | `.example.com` | Cookie `Domain` attribute |
-| `RESEND_API_KEY` | `re_...` | Magic Link email delivery (secret) |
-| `MAIL_FROM` | `noreply@example.com` | Magic Link `From` address |
-| `ENVIRONMENT` | `production` / `development` | Gates the `verify_url` dev convenience — see [Local dev: skipping email delivery](#local-dev-skipping-email-delivery) |
+| `RESEND_API_KEY` | `re_...` | Passcode email delivery (secret) |
+| `MAIL_FROM` | `noreply@example.com` | Passcode email `From` address |
+| `ENVIRONMENT` | `production` / `development` | Gates the dev passcode echo — see [Local dev: skipping email delivery](#local-dev-skipping-email-delivery) |
+| `OTP_PEPPER` | long random string | HMAC key for passcodes (secret). **Required** — issuance throws without it. Rotating it invalidates every outstanding code, which is harmless given the 10-minute TTL |
 
 ### Frontend SPAs (`.env` / wrangler.jsonc `[vars]`)
 

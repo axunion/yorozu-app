@@ -65,22 +65,26 @@ test("a store can be registered and taken through order to payment", async ({
 
   const admin = await context.newPage();
 
-  await test.step("1. register a store and verify the Magic Link", async () => {
+  await test.step("1. register a store and enter the passcode", async () => {
     await admin.goto(SIGNUP_ORIGIN);
     await admin.getByLabel("店舗名").fill(storeName);
     await admin.getByLabel("メールアドレス").fill(email);
     await admin.getByRole("button", { name: "申し込む" }).click();
 
     await expect(
-      admin.getByRole("heading", { name: "メールをご確認ください" }),
+      admin.getByRole("heading", { name: "確認コードを入力してください" }),
     ).toBeVisible();
-    // The [DEV] link stands in for the emailed one (ENVIRONMENT=development).
-    await admin.getByRole("link", { name: "このリンクで直接確認する" }).click();
+    // The [DEV] code stands in for the emailed one (ENVIRONMENT=development).
+    const note = await admin.getByText(/\[DEV\] 確認コード:/).textContent();
+    const code = note?.match(/\d{6}/)?.[0] ?? "";
+    expect(code).toMatch(/^\d{6}$/);
+    await admin.getByLabel("確認コード").fill(code);
+    await admin.getByRole("button", { name: "登録を完了する" }).click();
   });
 
   await test.step("2. land in admin as the verified owner", async () => {
-    // Verification hops signup → API → admin across three origins; arriving
-    // logged in is what proves the session cookie survived that.
+    // Verification crosses signup → API → admin; arriving logged in is what
+    // proves the session cookie the API set is sent back on the admin origin.
     await admin.waitForURL(`${ADMIN_ORIGIN}/`);
     await expect(admin.getByRole("heading", { name: storeName })).toBeVisible();
   });
