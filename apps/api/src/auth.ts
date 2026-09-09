@@ -24,7 +24,7 @@ const HOUR_MS = 60 * 60 * 1000;
  * so it covers 127.0.0.1, devcontainer/LAN addresses, etc., not just
  * "localhost" literally.
  *
- * Deliberately fails toward `true` (unlike the `verify_url` dev-bypass gate,
+ * Deliberately fails toward `true` (unlike the dev passcode-echo gate,
  * which fails toward `false`): an unexpected ENVIRONMENT value here only
  * risks a harmless extra Secure attribute, never a leak.
  */
@@ -127,9 +127,9 @@ export async function issueVerificationCode(
  *
  * Callers are responsible for enforcing stores.status === "active" and
  * member_status === "active". No code path today can mint a session for a
- * non-active member (GET /verify only creates one right after activating
- * it), but member_status is returned so requireStore can assert it
- * explicitly rather than relying on that invariant implicitly.
+ * non-active member (the verify-code routes only create one right after
+ * activating it), but member_status is returned so requireStore can assert
+ * it explicitly rather than relying on that invariant implicitly.
  * Expired sessions are NOT deleted here; callers should call deleteSession.
  */
 export async function getStoreBySession(

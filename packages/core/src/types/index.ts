@@ -22,7 +22,7 @@ const priceDeltaValue = z.number().int().min(-1_000_000).max(1_000_000);
 export const CreateStoreInput = z.object({
   /** Store display name. Trimmed; must be 1–100 characters after trimming. */
   name: displayName,
-  /** Owner email — Magic Link is sent here. */
+  /** Owner email — the signup passcode is sent here. */
   email: z.email(),
 });
 export type CreateStoreInput = z.infer<typeof CreateStoreInput>;
@@ -31,8 +31,6 @@ export interface StoreCreatedResponse {
   id: string;
   name: string;
   slug: string;
-  /** Magic Link URL. Only present when ENVIRONMENT !== "production". */
-  verify_url?: string;
   /** Passcode. Only present when ENVIRONMENT !== "production". */
   code?: string;
 }
@@ -68,8 +66,6 @@ export type DeleteStoreInput = z.infer<typeof DeleteStoreInput>;
 
 export interface EmailChangeResponse {
   sent: true;
-  /** Magic Link URL. Only present when ENVIRONMENT !== "production". */
-  verify_url?: string;
   /** Passcode. Only present when ENVIRONMENT !== "production". */
   code?: string;
 }
@@ -85,8 +81,6 @@ export type LoginInput = z.infer<typeof LoginInput>;
 
 export interface LoginResponse {
   sent: true;
-  /** Magic Link URL. Only present when ENVIRONMENT !== "production" and a token was issued. */
-  verify_url?: string;
   /** Passcode. Only present when ENVIRONMENT !== "production" and a code was issued. */
   code?: string;
 }
@@ -150,8 +144,6 @@ export interface StaffMemberResponse {
   status: "pending" | "active";
   created_at: number;
   activated_at: number | null;
-  /** Magic Link URL. Only present when ENVIRONMENT !== "production" (POST only). */
-  verify_url?: string;
   /** Passcode. Only present when ENVIRONMENT !== "production" (POST only). */
   code?: string;
   /**

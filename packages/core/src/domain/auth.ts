@@ -1,8 +1,11 @@
 /**
- * Hashes a session or Magic Link token for storage at rest (SHA-256, hex).
+ * Hashes a session token for storage at rest (SHA-256, hex).
  * Only the hash is ever persisted to D1; the raw token lives only in the
- * client-facing cookie / email link, so a DB read (backup export, console
- * access, etc.) never yields a value usable to impersonate a session.
+ * client-facing cookie, so a DB read (backup export, console access, etc.)
+ * never yields a value usable to impersonate a session.
+ *
+ * Passcodes use `hashOtpCode` instead — a plain digest of six digits is
+ * reversible, so those need a key this function deliberately does not take.
  */
 export async function hashToken(raw: string): Promise<string> {
   const bytes = new TextEncoder().encode(raw);
@@ -115,8 +118,9 @@ export async function hashOtpCode(
 }
 
 /**
- * Max Magic Link tokens issued per member per rolling hour (login,
- * signup-resend, email-change, and invite combined). Protects the Resend
+ * Max passcodes issued per member per rolling hour (login, signup-resend,
+ * email-change, and invite combined). Named for the Magic Link flow it was
+ * written for; the table it counts kept that name too. Protects the Resend
  * quota and a victim's inbox from abuse. Issuance beyond the cap is
  * silently skipped — the anti-enumeration response contract must not
  * change.
@@ -134,9 +138,6 @@ export const EMAIL_CHANGE_HOURLY_CAP = 5;
 
 /** Rolling window size for EMAIL_CHANGE_HOURLY_CAP, in milliseconds. */
 export const EMAIL_CHANGE_WINDOW_MS = 60 * 60 * 1000;
-
-/** API path (no origin) that verifies a Magic Link token. */
-export const MAGIC_LINK_VERIFY_PATH = "/api/auth/verify";
 
 /**
  * Minimum store + member fields needed for authentication.

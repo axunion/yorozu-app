@@ -1,6 +1,16 @@
-import type { EmailChangeResponse, StoreResponse } from "@yorozu/core";
+import type {
+  EmailChangeResponse,
+  EmailChangeVerifyResponse,
+  StoreResponse,
+} from "@yorozu/core";
 import { apiFetch, jsonFetch } from "@yorozu/core/client";
-import { Button, ConfirmDialog, ErrorAlert, Field } from "@yorozu/ui";
+import {
+  Button,
+  CodeEntryForm,
+  ConfirmDialog,
+  ErrorAlert,
+  Field,
+} from "@yorozu/ui";
 import { createSignal, Show } from "solid-js";
 import { useStoreInfo } from "../layouts/AdminGuard";
 import { downloadJson } from "../lib/download";
@@ -109,7 +119,8 @@ export default function StoreSettings() {
   const [emailError, setEmailError] = createSignal("");
   const [emailSubmitting, setEmailSubmitting] = createSignal(false);
   const [emailSent, setEmailSent] = createSignal(false);
-  const [verifyUrl, setVerifyUrl] = createSignal<string | undefined>(undefined);
+  const [emailChanged, setEmailChanged] = createSignal("");
+  const [devCode, setDevCode] = createSignal<string | undefined>(undefined);
 
   const handleEmailSubmit = async (e: SubmitEvent) => {
     e.preventDefault();
@@ -125,8 +136,38 @@ export default function StoreSettings() {
         setEmailError(result.message ?? "変更のリクエストに失敗しました。");
         return;
       }
-      setVerifyUrl(result.data?.verify_url);
+      setDevCode(result.data?.code);
       setEmailSent(true);
+    } finally {
+      setEmailSubmitting(false);
+    }
+  };
+
+  const handleEmailResend = () => {
+    setEmailError("");
+    void jsonFetch<EmailChangeResponse>("/api/stores/me/email-change", "POST", {
+      new_email: newEmail(),
+    }).then((result) => {
+      if (result.ok) setDevCode(result.data?.code);
+    });
+  };
+
+  const handleEmailVerify = async (code: string) => {
+    setEmailError("");
+    setEmailSubmitting(true);
+    try {
+      const result = await jsonFetch<EmailChangeVerifyResponse>(
+        "/api/stores/me/email-change/verify",
+        "POST",
+        { code },
+      );
+      if (!result.ok || !result.data) {
+        setEmailError(result.message ?? "変更の確定に失敗しました。");
+        return;
+      }
+      // No redirect: the caller is already signed in, so the change lands here
+      // rather than bouncing them through a fresh session.
+      setEmailChanged(result.data.email);
     } finally {
       setEmailSubmitting(false);
     }
@@ -168,21 +209,29 @@ export default function StoreSettings() {
         <Show
           when={!emailSent()}
           fallback={
-            <>
-              <p class={styles.sent}>
-                新しいメールアドレス宛に確認メールを送信しました。メール内のリンクをクリックして変更を確定してください。
-              </p>
-              <Show when={verifyUrl()}>
-                {(url) => (
-                  <p class={styles.devNote}>
-                    [DEV] メール送信をスキップ:{" "}
-                    <a href={url()} class={styles.devLink}>
-                      このリンクで直接確定する
-                    </a>
-                  </p>
+            <Show
+              when={!emailChanged()}
+              fallback={
+                <p
+                  class={styles.sent}
+                >{`メールアドレスを ${emailChanged()} に変更しました。`}</p>
+              }
+            >
+              <CodeEntryForm
+                id="settings-email-code"
+                sentTo={newEmail()}
+                submitLabel="変更を確定する"
+                error={emailError()}
+                submitting={emailSubmitting()}
+                onSubmit={handleEmailVerify}
+                onResend={handleEmailResend}
+              />
+              <Show when={devCode()}>
+                {(code) => (
+                  <p class={styles.devNote}>[DEV] 確認コード: {code()}</p>
                 )}
               </Show>
-            </>
+            </Show>
           }
         >
           <form onSubmit={handleEmailSubmit} class={styles.form}>

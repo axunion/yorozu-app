@@ -1,0 +1,16 @@
+/**
+ * CodeEntryForm — passcode input, confirm button and resend affordance.
+ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.sent {
+  color: var(--color-muted-foreground);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  margin: 0;
+}

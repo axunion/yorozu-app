@@ -877,6 +877,11 @@ only** — it is not a shared component library.
 - Design tokens (CSS custom properties in `packages/ui/src/styles/tokens.css`)
 - Truly generic primitives that every app can reuse unchanged: `Button`,
   `Card`, `Field`, `Select`, `ConfirmDialog`, `ErrorAlert`
+- `CodeEntryForm` — the passcode step. Admin, shift and signup each need the
+  same input, resend affordance and cooldown, which clears the "3+ apps need
+  identical logic" bar; it holds no `fetch` of its own (submitting and
+  resending are the caller's callbacks), so it stays a primitive rather than a
+  piece of the auth flow
 
 **What does not belong in `@yorozu/ui`:**
 - Components that embed app-specific layout or domain logic (e.g. `OrderBoard`,

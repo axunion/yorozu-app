@@ -254,7 +254,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
    * used to probe arbitrary emails against the global members.email
    * namespace.
    *
-   * Response: 200 { data: { sent: true, verify_url? } }
+   * Response: 200 { data: { sent: true, code? } }
    */
   .post(
     "/me/email-change",

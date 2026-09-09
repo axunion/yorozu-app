@@ -1,6 +1,6 @@
-import type { LoginResponse } from "@yorozu/core";
+import type { LoginResponse, VerifyCodeResponse } from "@yorozu/core";
 import { jsonFetch } from "@yorozu/core/client";
-import { Button, Field } from "@yorozu/ui";
+import { Button, CodeEntryForm, Field } from "@yorozu/ui";
 import { createSignal, Show } from "solid-js";
 import styles from "./LoginForm.module.css";
 
@@ -8,27 +8,57 @@ export default function LoginForm() {
   const [email, setEmail] = createSignal("");
   const [error, setError] = createSignal("");
   const [sent, setSent] = createSignal(false);
-  const [verifyUrl, setVerifyUrl] = createSignal<string | undefined>(undefined);
+  const [devCode, setDevCode] = createSignal<string | undefined>(undefined);
   const [submitting, setSubmitting] = createSignal(false);
 
-  const handleSubmit = async (e: SubmitEvent) => {
+  /** Returns whether a code was requested without an error. */
+  const requestCode = async (): Promise<boolean> => {
+    const result = await jsonFetch<LoginResponse>("/api/auth/login", "POST", {
+      email: email(),
+    });
+    if (!result.ok) {
+      setError(result.message ?? "エラーが発生しました");
+      return false;
+    }
+    setDevCode(result.data?.code);
+    return true;
+  };
+
+  const handleRequest = async (e: SubmitEvent) => {
     e.preventDefault();
     setError("");
-    setVerifyUrl(undefined);
     setSubmitting(true);
     try {
-      // `app` is an enum the API maps to an origin from its own env, so the
-      // Magic Link lands back here instead of in admin.
-      const result = await jsonFetch<LoginResponse>("/api/auth/login", "POST", {
-        email: email(),
-        app: "shift",
-      });
-      if (!result.ok) {
+      if (await requestCode()) setSent(true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResend = () => {
+    setError("");
+    void requestCode();
+  };
+
+  const handleVerify = async (code: string) => {
+    setError("");
+    setSubmitting(true);
+    try {
+      // app: "shift" is what sends the verified session back here instead of
+      // to the admin SPA. Nothing else in this app would notice if it were
+      // missing — the login would simply succeed and land somewhere else.
+      const result = await jsonFetch<VerifyCodeResponse>(
+        "/api/auth/verify-code",
+        "POST",
+        { email: email(), code, app: "shift" },
+      );
+      if (!result.ok || !result.data) {
         setError(result.message ?? "エラーが発生しました");
         return;
       }
-      setVerifyUrl(result.data?.verify_url);
-      setSent(true);
+      // A full navigation rather than a router push: the session cookie was
+      // just set, and the guard resolves it on a fresh load.
+      window.location.href = result.data.redirect_to;
     } finally {
       setSubmitting(false);
     }
@@ -39,23 +69,22 @@ export default function LoginForm() {
       when={!sent()}
       fallback={
         <>
-          <p class={styles.sent}>
-            メールを送信しました。受信箱のリンクをクリックしてログインしてください。
-          </p>
-          <Show when={verifyUrl()}>
-            {(url) => (
-              <p class={styles.devNote}>
-                [DEV] メール送信をスキップ:{" "}
-                <a href={url()} class={styles.devLink}>
-                  このリンクで直接ログインする
-                </a>
-              </p>
-            )}
+          <CodeEntryForm
+            id="login-code"
+            sentTo={email()}
+            submitLabel="ログイン"
+            error={error()}
+            submitting={submitting()}
+            onSubmit={handleVerify}
+            onResend={handleResend}
+          />
+          <Show when={devCode()}>
+            {(code) => <p class={styles.devNote}>[DEV] 確認コード: {code()}</p>}
           </Show>
         </>
       }
     >
-      <form onSubmit={handleSubmit} class={styles.form}>
+      <form onSubmit={handleRequest} class={styles.form}>
         <Field
           id="login-email"
           label="メールアドレス"
@@ -68,7 +97,7 @@ export default function LoginForm() {
           error={error()}
         />
         <Button type="submit" fullWidth disabled={submitting()}>
-          {submitting() ? "送信中..." : "ログインリンクを送信"}
+          {submitting() ? "送信中..." : "確認コードを送信"}
         </Button>
       </form>
     </Show>
