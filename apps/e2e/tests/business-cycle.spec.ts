@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { readDevCode } from "../dev-code";
 import { ADMIN_ORIGIN, ORDER_ORIGIN, SIGNUP_ORIGIN } from "../origins";
 
 /**
@@ -74,11 +75,7 @@ test("a store can be registered and taken through order to payment", async ({
     await expect(
       admin.getByRole("heading", { name: "確認コードを入力してください" }),
     ).toBeVisible();
-    // The [DEV] code stands in for the emailed one (ENVIRONMENT=development).
-    const note = await admin.getByText(/\[DEV\] 確認コード:/).textContent();
-    const code = note?.match(/\d{6}/)?.[0] ?? "";
-    expect(code).toMatch(/^\d{6}$/);
-    await admin.getByLabel("確認コード").fill(code);
+    await admin.getByLabel("確認コード").fill(await readDevCode(admin));
     await admin.getByRole("button", { name: "登録を完了する" }).click();
   });
 

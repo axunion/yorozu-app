@@ -6,11 +6,13 @@ import {
   MAGIC_LINK_HOURLY_CAP,
   newId,
   now,
+  OTP_MAX_ATTEMPTS,
   OTP_TTL_MS,
 } from "@yorozu/core";
 import type { Database } from "@yorozu/db";
 import { schema } from "@yorozu/db";
-import { and, eq, gt, isNull, ne } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -116,6 +118,67 @@ export async function issueVerificationCode(
     );
 
   return code;
+}
+
+/**
+ * Claims one verification attempt against the candidate rows matching
+ * `where`, and returns the one whose digest is `code` — or undefined when
+ * none matches, none is left, or the attempt budget is spent.
+ *
+ * The attempt is claimed *before* anything is compared, and only rows this
+ * statement returned are compared. Selecting first and incrementing after
+ * would keep the counter consistent while doing nothing about the limit it
+ * exists to enforce: a burst of concurrent requests would all read the same
+ * live row and each get a free guess, which against a 10^6 space is the
+ * difference between OTP_MAX_ATTEMPTS an hour and as many as the attacker can
+ * open connections for. Putting `attempt_count < OTP_MAX_ATTEMPTS` inside the
+ * UPDATE makes D1 serialize them, so only the first OTP_MAX_ATTEMPTS get a
+ * row back at all.
+ *
+ * On a miss, rows that just reached the limit are consumed, so they cannot be
+ * retried once the `attempt_count <` predicate stops matching them.
+ *
+ * Shared by the two verify routes rather than written in each: they differ in
+ * how they scope candidates and what they do with a match, but this sequence
+ * is the attempt limit itself, and a fix to it has to reach both.
+ */
+export async function claimCodeAttempt(
+  db: Database,
+  where: SQL | undefined,
+  code: string,
+  pepper: string,
+  ts: number,
+) {
+  const candidates = await db
+    .update(schema.magicLinkTokens)
+    .set({ attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1` })
+    .where(
+      and(where, lt(schema.magicLinkTokens.attempt_count, OTP_MAX_ATTEMPTS)),
+    )
+    .returning({
+      id: schema.magicLinkTokens.id,
+      token: schema.magicLinkTokens.token,
+      purpose: schema.magicLinkTokens.purpose,
+      store_id: schema.magicLinkTokens.store_id,
+      new_email: schema.magicLinkTokens.new_email,
+      attempt_count: schema.magicLinkTokens.attempt_count,
+    });
+
+  for (const row of candidates) {
+    if ((await hashOtpCode(row.id, code, pepper)) === row.token) return row;
+  }
+
+  const exhausted = candidates
+    .filter((row) => row.attempt_count >= OTP_MAX_ATTEMPTS)
+    .map((row) => row.id);
+  if (exhausted.length > 0) {
+    await db
+      .update(schema.magicLinkTokens)
+      .set({ used_at: ts })
+      .where(inArray(schema.magicLinkTokens.id, exhausted));
+  }
+
+  return undefined;
 }
 
 /**

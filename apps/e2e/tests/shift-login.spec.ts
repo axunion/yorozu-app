@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readDevCode } from "../dev-code";
 import { ADMIN_ORIGIN, SHIFT_ORIGIN, SIGNUP_ORIGIN } from "../origins";
 
 /**
@@ -36,9 +37,7 @@ test("an owner can sign in to the shift app with an emailed passcode", async ({
     await admin.getByLabel("店舗名").fill(storeName);
     await admin.getByLabel("メールアドレス").fill(email);
     await admin.getByRole("button", { name: "申し込む" }).click();
-    // The [DEV] code stands in for the emailed one (ENVIRONMENT=development).
-    const note = await admin.getByText(/\[DEV\] 確認コード:/).textContent();
-    await admin.getByLabel("確認コード").fill(note?.match(/\d{6}/)?.[0] ?? "");
+    await admin.getByLabel("確認コード").fill(await readDevCode(admin));
     await admin.getByRole("button", { name: "登録を完了する" }).click();
     await admin.waitForURL(`${ADMIN_ORIGIN}/`);
   });
@@ -52,9 +51,7 @@ test("an owner can sign in to the shift app with an emailed passcode", async ({
     await shift.getByLabel("メールアドレス").fill(email);
     await shift.getByRole("button", { name: "確認コードを送信" }).click();
 
-    const note = await shift.getByText(/\[DEV\] 確認コード:/).textContent();
-    code = note?.match(/\d{6}/)?.[0] ?? "";
-    expect(code).toMatch(/^\d{6}$/);
+    code = await readDevCode(shift);
   });
 
   await test.step("3. enter it and land back on the shift origin", async () => {

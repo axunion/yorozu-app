@@ -8,7 +8,10 @@
   gap: var(--space-5);
 }
 
-.sent {
+/* The "sent to <address>" line above the input and the resend confirmation
+   below it are the same kind of note, so they share one ruleset. */
+.sent,
+.status {
   color: var(--color-muted-foreground);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
@@ -21,11 +24,4 @@
 .inert {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.status {
-  color: var(--color-muted-foreground);
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-  margin: 0;
 }

@@ -7,17 +7,15 @@ import {
   EmailChangeInput,
   EmailChangeVerifyInput,
   errorResponse,
-  hashOtpCode,
   newId,
   now,
-  OTP_MAX_ATTEMPTS,
   sendVerificationCodeEmail,
   UpdateStoreNameInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
-import { issueVerificationCode } from "../auth";
+import { claimCodeAttempt, issueVerificationCode } from "../auth";
 import { requireOwner, requireStore } from "../middleware";
 import { bodyValidator } from "../validator";
 
@@ -417,45 +415,15 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
         gt(schema.magicLinkTokens.expires_at, ts),
       );
 
-      // Claim the attempt before comparing, exactly as POST /api/auth/verify-code
-      // does and for the same reason: comparing first would let concurrent
-      // requests share one pre-increment count and each spend a free guess.
-      const candidates = await db
-        .update(schema.magicLinkTokens)
-        .set({
-          attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1`,
-        })
-        .where(
-          and(
-            liveCodes,
-            lt(schema.magicLinkTokens.attempt_count, OTP_MAX_ATTEMPTS),
-          ),
-        )
-        .returning({
-          id: schema.magicLinkTokens.id,
-          token: schema.magicLinkTokens.token,
-          new_email: schema.magicLinkTokens.new_email,
-          attempt_count: schema.magicLinkTokens.attempt_count,
-        });
-
-      let matched: (typeof candidates)[number] | undefined;
-      for (const row of candidates) {
-        if ((await hashOtpCode(row.id, code, c.env.OTP_PEPPER)) === row.token) {
-          matched = row;
-          break;
-        }
-      }
+      const matched = await claimCodeAttempt(
+        db,
+        liveCodes,
+        code,
+        c.env.OTP_PEPPER,
+        ts,
+      );
 
       if (!matched?.new_email) {
-        const exhausted = candidates
-          .filter((row) => row.attempt_count >= OTP_MAX_ATTEMPTS)
-          .map((row) => row.id);
-        if (exhausted.length > 0) {
-          await db
-            .update(schema.magicLinkTokens)
-            .set({ used_at: ts })
-            .where(inArray(schema.magicLinkTokens.id, exhausted));
-        }
         return errorResponse(
           "INVALID_CODE",
           "コードが正しくないか、有効期限が切れています。",

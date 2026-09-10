@@ -7,17 +7,21 @@ import {
   LoginInput,
   newId,
   now,
-  OTP_MAX_ATTEMPTS,
   SESSION_TOKEN_COOKIE,
   SESSION_TTL_MS,
   sendVerificationCodeEmail,
   VerifyCodeInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, eq, gt, inArray, isNull, lt, ne, sql } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
-import { deleteSession, isSecureRequest, issueVerificationCode } from "../auth";
+import {
+  claimCodeAttempt,
+  deleteSession,
+  isSecureRequest,
+  issueVerificationCode,
+} from "../auth";
 import { requireStore } from "../middleware";
 import { bodyValidator } from "../validator";
 
@@ -105,59 +109,18 @@ export const authRouter = new Hono<{ Bindings: Env }>()
       // for every tenant-scoped query and it pins the store this session will
       // be issued against to the member's own.
       eq(schema.magicLinkTokens.store_id, member.store_id),
-      ne(schema.magicLinkTokens.purpose, "email_change"),
+      // Only codes that went to this member's own address: a non-null
+      // new_email means the code was mailed somewhere else, and redeeming it
+      // here would mint a session for an address the caller never proved.
+      // Stated as the property rather than as `purpose != 'email_change'`, so
+      // a later purpose that mails elsewhere is excluded without an edit here.
+      isNull(schema.magicLinkTokens.new_email),
       isNull(schema.magicLinkTokens.used_at),
       gt(schema.magicLinkTokens.expires_at, ts),
     );
 
-    // Claim an attempt *before* comparing anything, and only compare rows this
-    // statement actually claimed. Selecting first and incrementing after would
-    // keep the counter consistent while doing nothing about the limit it
-    // exists to enforce: a burst of concurrent requests would all read the
-    // same live row and each get a free guess, which against a 10^6 space is
-    // the difference between 25 tries an hour and as many as the attacker can
-    // open connections for. Putting `attempt_count < OTP_MAX_ATTEMPTS` inside
-    // the UPDATE makes D1 serialize them, so only the first OTP_MAX_ATTEMPTS
-    // get a row back at all.
-    const candidates = await db
-      .update(schema.magicLinkTokens)
-      .set({ attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1` })
-      .where(
-        and(
-          liveCodes,
-          lt(schema.magicLinkTokens.attempt_count, OTP_MAX_ATTEMPTS),
-        ),
-      )
-      .returning({
-        id: schema.magicLinkTokens.id,
-        token: schema.magicLinkTokens.token,
-        purpose: schema.magicLinkTokens.purpose,
-        store_id: schema.magicLinkTokens.store_id,
-        attempt_count: schema.magicLinkTokens.attempt_count,
-      });
-
-    let matched: (typeof candidates)[number] | undefined;
-    for (const row of candidates) {
-      if ((await hashOtpCode(row.id, code, pepper)) === row.token) {
-        matched = row;
-        break;
-      }
-    }
-
-    if (!matched) {
-      // Consume whatever just reached the limit, so it cannot be retried once
-      // the `attempt_count <` predicate stops matching it.
-      const exhausted = candidates
-        .filter((row) => row.attempt_count >= OTP_MAX_ATTEMPTS)
-        .map((row) => row.id);
-      if (exhausted.length > 0) {
-        await db
-          .update(schema.magicLinkTokens)
-          .set({ used_at: ts })
-          .where(inArray(schema.magicLinkTokens.id, exhausted));
-      }
-      return invalidCode();
-    }
+    const matched = await claimCodeAttempt(db, liveCodes, code, pepper, ts);
+    if (!matched) return invalidCode();
 
     await db
       .update(schema.magicLinkTokens)

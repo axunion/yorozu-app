@@ -11,7 +11,7 @@ import {
   ErrorAlert,
   Field,
 } from "@yorozu/ui";
-import { createSignal, Show } from "solid-js";
+import { createSignal, Match, Show, Switch } from "solid-js";
 import { useStoreInfo } from "../layouts/AdminGuard";
 import { downloadJson } from "../lib/download";
 import styles from "./StoreSettings.module.css";
@@ -214,51 +214,52 @@ export default function StoreSettings() {
           現在のログイン用メールアドレス: <strong>{store.email}</strong>
         </p>
 
-        <Show
-          when={!emailSent()}
+        {/* Three states in the order they occur: request the change, enter
+            the code, done. The fallback is the first of them. */}
+        <Switch
           fallback={
-            <Show
-              when={!emailChanged()}
-              fallback={
-                <p
-                  class={styles.sent}
-                >{`メールアドレスを ${emailChanged()} に変更しました。`}</p>
-              }
-            >
-              <CodeEntryForm
-                id="settings-email-code"
-                sentTo={newEmail()}
-                submitLabel="変更を確定する"
+            <form onSubmit={handleEmailSubmit} class={styles.form}>
+              <Field
+                id="settings-new-email"
+                label="新しいメールアドレス"
+                type="email"
+                value={newEmail()}
+                onInput={(e) => setNewEmail(e.currentTarget.value)}
+                placeholder="例：new-owner@example.com"
+                required
+                disabled={emailSubmitting()}
                 error={emailError()}
-                submitting={emailSubmitting()}
-                onSubmit={handleEmailVerify}
-                onResend={handleEmailResend}
               />
-              <Show when={devCode()}>
-                {(code) => (
-                  <p class={styles.devNote}>[DEV] 確認コード: {code()}</p>
-                )}
-              </Show>
-            </Show>
+              <Button type="submit" disabled={emailSubmitting()}>
+                {emailSubmitting() ? "送信中..." : "変更をリクエスト"}
+              </Button>
+            </form>
           }
         >
-          <form onSubmit={handleEmailSubmit} class={styles.form}>
-            <Field
-              id="settings-new-email"
-              label="新しいメールアドレス"
-              type="email"
-              value={newEmail()}
-              onInput={(e) => setNewEmail(e.currentTarget.value)}
-              placeholder="例：new-owner@example.com"
-              required
-              disabled={emailSubmitting()}
+          <Match when={emailChanged()}>
+            {(changed) => (
+              <p
+                class={styles.sent}
+              >{`メールアドレスを ${changed()} に変更しました。`}</p>
+            )}
+          </Match>
+          <Match when={emailSent()}>
+            <CodeEntryForm
+              id="settings-email-code"
+              sentTo={newEmail()}
+              submitLabel="変更を確定する"
               error={emailError()}
+              submitting={emailSubmitting()}
+              onSubmit={handleEmailVerify}
+              onResend={handleEmailResend}
             />
-            <Button type="submit" disabled={emailSubmitting()}>
-              {emailSubmitting() ? "送信中..." : "変更をリクエスト"}
-            </Button>
-          </form>
-        </Show>
+            <Show when={devCode()}>
+              {(code) => (
+                <p class={styles.devNote}>[DEV] 確認コード: {code()}</p>
+              )}
+            </Show>
+          </Match>
+        </Switch>
       </section>
 
       <section class={styles.section}>

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readDevCode } from "../dev-code";
 import { ADMIN_ORIGIN, ORDER_ORIGIN, SIGNUP_ORIGIN } from "../origins";
 
 /**
@@ -31,9 +32,7 @@ test("a customer can call staff and staff can clear the call", async ({
     await admin.getByLabel("店舗名").fill(storeName);
     await admin.getByLabel("メールアドレス").fill(email);
     await admin.getByRole("button", { name: "申し込む" }).click();
-    // The [DEV] code stands in for the emailed one (ENVIRONMENT=development).
-    const note = await admin.getByText(/\[DEV\] 確認コード:/).textContent();
-    await admin.getByLabel("確認コード").fill(note?.match(/\d{6}/)?.[0] ?? "");
+    await admin.getByLabel("確認コード").fill(await readDevCode(admin));
     await admin.getByRole("button", { name: "登録を完了する" }).click();
     await admin.waitForURL(`${ADMIN_ORIGIN}/`);
 

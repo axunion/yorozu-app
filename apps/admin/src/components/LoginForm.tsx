@@ -19,25 +19,24 @@ export default function LoginForm(props: LoginFormProps) {
   // load, so there is no in-app navigation that would need it to track.
   const [email, setEmail] = createSignal(props.initialEmail ?? "");
   const [error, setError] = createSignal("");
-  const [sent, setSent] = createSignal(Boolean(props.initialEmail));
   // Whether *this* screen sent the code. False when arriving from an invite,
   // whose code came with the invitation — saying "sent to you" would be a lie.
   const [sentHere, setSentHere] = createSignal(false);
+  /** On the code step either because this screen sent one, or via an invite. */
+  const sent = () => Boolean(props.initialEmail) || sentHere();
   const [devCode, setDevCode] = createSignal<string | undefined>(undefined);
   const [submitting, setSubmitting] = createSignal(false);
 
-  /** Returns whether a code was requested without an error. */
-  const requestCode = async (): Promise<boolean> => {
+  const requestCode = async (): Promise<void> => {
     const result = await jsonFetch<LoginResponse>("/api/auth/login", "POST", {
       email: email(),
     });
     if (!result.ok) {
       setError(result.message ?? "エラーが発生しました");
-      return false;
+      return;
     }
     setDevCode(result.data?.code);
     setSentHere(true);
-    return true;
   };
 
   const handleRequest = async (e: SubmitEvent) => {
@@ -45,7 +44,7 @@ export default function LoginForm(props: LoginFormProps) {
     setError("");
     setSubmitting(true);
     try {
-      if (await requestCode()) setSent(true);
+      await requestCode();
     } finally {
       setSubmitting(false);
     }
