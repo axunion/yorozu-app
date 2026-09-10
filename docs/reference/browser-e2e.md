@@ -1,8 +1,8 @@
 # Browser E2E (Playwright)
 
 Automates the golden path from
-[manual-smoke-test.md](./manual-smoke-test.md) through the three SPAs in a
-real browser. Lives in `apps/e2e`.
+[manual-smoke-test.md](./manual-smoke-test.md) through the SPAs in a real
+browser. Lives in `apps/e2e`.
 
 `apps/api/src/routes/business-cycle.test.ts` already covers the same cycle at
 the API level, so this suite exists for what sits between those endpoints and
@@ -17,7 +17,7 @@ pnpm exec playwright install chromium              # once
 pnpm e2e
 ```
 
-Playwright starts all four processes itself (API Worker + the three Vite dev
+Playwright starts all five processes itself (API Worker + the four Vite dev
 servers) and waits on their ports. `reuseExistingServer` is on, so a `pnpm dev`
 you already have running is reused instead of conflicting.
 
@@ -69,9 +69,28 @@ channel that the order/payment cycle never touches: customer presses
 customer's screen stops showing 「呼んでいます」. Needs only a store and a
 seat — a call is raised against the seat, not against an order.
 
+### `tests/shift-login.spec.ts`
+
+Passcode login on the shift origin, which neither cycle spec reaches: they
+only ever see the code screen through signup, so `apps/shift`'s own login had
+no browser coverage and its unit tests mock `fetch`.
+
+The login runs in a **fresh browser context**, because cookies ignore ports —
+the session the registration step sets on `localhost` would otherwise be sent
+to :5176 too, and the spec would pass with the passcode doing nothing.
+
+It ends on 「シフト管理は未契約です」, which is the success condition rather than
+a failure: registration subscribes a new store to `order` only, so `ShiftGuard`
+takes a 403 from `/api/shift/periods`. That screen renders inside
+`<Show when={store()}>`, reached only once `/api/auth/me` has returned a store,
+so it appears if and only if the passcode established a session on this origin.
+The entitled shift screens behind it are out of scope here, as they are for the
+suite generally — see *Not in scope*.
+
 ### Why the ordering matters
 
-Both specs keep two pages open on one browser context and open each screen
+The two cycle specs keep two pages open on one browser context and open each
+screen
 *before* the other side writes the state it should pick up. That ordering is
 load-bearing: navigating to a screen after the write would satisfy the same
 assertion from the component's own `onMount` load and prove nothing about
@@ -90,11 +109,15 @@ verified by mutation (breaking the interval makes exactly one step fail):
 | `OrderScreen.pollCall` | 5s | staff-call step 6 |
 
 Waits use auto-retrying assertions rather than fixed sleeps. A passing run
-takes roughly 40 seconds for both specs.
+takes roughly a minute for all three specs.
 
 ## Not in scope
 
 - Cross-browser matrix — Chromium only.
+- The shift product's own screens (period list, builder grid, availability
+  form): reaching them needs a `shift` subscription, which no API grants —
+  only a direct database write does, and the suite deliberately holds no
+  database machinery.
 - Visual regression / screenshot diffing (that's the `inspector` agent's
   per-change job, and it is deliberately not automated here).
 - Load/performance testing.
@@ -102,7 +125,7 @@ takes roughly 40 seconds for both specs.
 ## Not in CI yet
 
 `pnpm e2e` is deliberately not part of `pnpm test`, so neither the lefthook
-pre-commit hook nor `.github/workflows/ci.yml` runs it — booting four servers
+pre-commit hook nor `.github/workflows/ci.yml` runs it — booting five servers
 and a browser on every commit is not worth the wall-clock cost until the suite
 has a track record. `pnpm check` does typecheck the workspace. Add it to CI as
 its own job once it has proven stable.
