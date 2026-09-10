@@ -73,25 +73,17 @@ seat — a call is raised against the seat, not against an order.
 
 Passcode login on the shift origin, which neither cycle spec reaches: they
 only ever see the code screen through signup, so `apps/shift`'s own login had
-no browser coverage and its unit tests mock `fetch`.
-
-The login runs in a **fresh browser context**, because cookies ignore ports —
-the session the registration step sets on `localhost` would otherwise be sent
-to :5176 too, and the spec would pass with the passcode doing nothing.
-
-It ends on 「シフト管理は未契約です」, which is the success condition rather than
-a failure: registration subscribes a new store to `order` only, so `ShiftGuard`
-takes a 403 from `/api/shift/periods`. That screen renders inside
-`<Show when={store()}>`, reached only once `/api/auth/me` has returned a store,
-so it appears if and only if the passcode established a session on this origin.
-The entitled shift screens behind it are out of scope here, as they are for the
-suite generally — see *Not in scope*.
+no browser coverage and its unit tests mock `fetch`. It ends on
+「シフト管理は未契約です」, which is the success condition rather than a failure —
+the spec's own header explains why, and why the login runs on a cleared cookie
+jar. The entitled shift screens behind that screen are out of scope, as they
+are for the suite generally — see *Not in scope*.
 
 ### Why the ordering matters
 
 The two cycle specs keep two pages open on one browser context and open each
-screen
-*before* the other side writes the state it should pick up. That ordering is
+screen *before* the other side writes the state it should pick up. That
+ordering is
 load-bearing: navigating to a screen after the write would satisfy the same
 assertion from the component's own `onMount` load and prove nothing about
 polling. The "still empty" assertions before each hand-off are what keep it
