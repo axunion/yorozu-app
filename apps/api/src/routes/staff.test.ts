@@ -446,7 +446,7 @@ describe("DELETE /api/staff/:id", () => {
     const staffMemberId = inviteBody.data.id;
 
     // Give the staff member a session directly (invite endpoint doesn't
-    // activate them — that happens at GET /api/auth/verify).
+    // activate them — that happens at POST /api/auth/verify-code).
     const db = createDb(env.DB);
     const staffRows = await db
       .select({ store_id: schema.members.store_id })

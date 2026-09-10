@@ -138,9 +138,9 @@ pending ──(passcode verified)──▶ active ──(owner: POST /me/suspend
   — owner self-service only, no billing/platform-admin trigger exists;
   see [features/authentication.md](./features/authentication.md#account-lifecycle-appsadmin-settingspage-owner-only-danger-zone)).
   All sessions for the store are deleted in the same batch. An
-  owner-role member's next login attempt issues a `reactivate` Magic
-  Link instead of the usual silent no-op for a suspended store; verifying
-  it sets the store back to `active`. A store row can also be deleted
+  owner-role member's next login attempt issues a `reactivate` passcode
+  instead of the usual silent no-op for a suspended store; verifying it
+  sets the store back to `active`. A store row can also be deleted
   entirely (`DELETE /api/stores/me`, hard delete, no retention) — not
   a `stores.status` transition, the row stops existing.
 - **`stores.status` and `subscriptions.status` are different switches.**
