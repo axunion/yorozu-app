@@ -240,10 +240,11 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
    * POST /api/stores/me/email-change
    * Requests a change of the calling member's own login email: issues a
    * passcode (purpose 'email_change') sent to the NEW address, proving
-   * control before the change takes effect at GET /api/auth/verify. Any
-   * active member (owner or staff) can change their own email; not
-   * owner-gated. stores.email is untouched — it stays fixed at whatever
-   * address created the store (display-only from here on).
+   * control before the change takes effect at
+   * POST /api/stores/me/email-change/verify. Any active member (owner or
+   * staff) can change their own email; not owner-gated. stores.email is
+   * untouched — it stays fixed at whatever address created the store
+   * (display-only from here on).
    *
    * Rejects 400 if new_email equals the current email or is already
    * registered to another member — the caller is authenticated here, so

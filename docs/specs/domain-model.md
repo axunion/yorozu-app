@@ -128,8 +128,8 @@ stores 1 ──── * subscriptions          (which products this store has bo
 
 ```
 pending ──(passcode verified)──▶ active ──(owner: POST /me/suspend)──▶ suspended
-                                       ▲                                     │
-                                     └──(owner: reactivate passcode)──────┘
+                                     ▲                                     │
+                                     └──(owner: reactivate passcode)───────┘
 ```
 
 - `pending` — registered, email unverified. Login resends the signup code.
