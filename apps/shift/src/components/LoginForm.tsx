@@ -37,7 +37,7 @@ export default function LoginForm() {
 
   const handleResend = () => {
     setError("");
-    void requestCode();
+    return requestCode();
   };
 
   const handleVerify = async (code: string) => {

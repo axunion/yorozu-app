@@ -27,16 +27,18 @@ export default function LoginForm(props: LoginFormProps) {
   const [devCode, setDevCode] = createSignal<string | undefined>(undefined);
   const [submitting, setSubmitting] = createSignal(false);
 
-  const requestCode = async (): Promise<void> => {
+  /** Returns whether a code was requested without an error. */
+  const requestCode = async (): Promise<boolean> => {
     const result = await jsonFetch<LoginResponse>("/api/auth/login", "POST", {
       email: email(),
     });
     if (!result.ok) {
       setError(result.message ?? "エラーが発生しました");
-      return;
+      return false;
     }
     setDevCode(result.data?.code);
     setSentHere(true);
+    return true;
   };
 
   const handleRequest = async (e: SubmitEvent) => {
@@ -52,7 +54,7 @@ export default function LoginForm(props: LoginFormProps) {
 
   const handleResend = () => {
     setError("");
-    void requestCode();
+    return requestCode();
   };
 
   const handleVerify = async (code: string) => {

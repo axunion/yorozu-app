@@ -29,7 +29,13 @@ interface CodeEntryFormProps {
   submitting?: boolean;
   /** Receives the code as typed; normalization and validation are the API's. */
   onSubmit: (code: string) => void;
-  onResend: () => void;
+  /**
+   * Resolves to whether a code actually went out. Returning false leaves the
+   * cooldown and the "resent" announcement alone, so a caller whose endpoint
+   * answers with real failures — the email change is rate-limited, unlike the
+   * always-200 login — is not contradicted by this component claiming success.
+   */
+  onResend: () => Promise<boolean>;
 }
 
 /**
@@ -46,6 +52,7 @@ export default function CodeEntryForm(props: CodeEntryFormProps) {
   const [code, setCode] = createSignal("");
   const [cooldown, setCooldown] = createSignal(0);
   const [resent, setResent] = createSignal(false);
+  const [resending, setResending] = createSignal(false);
   let timer: ReturnType<typeof setInterval> | undefined;
   let input: HTMLInputElement | undefined;
 
@@ -56,7 +63,8 @@ export default function CodeEntryForm(props: CodeEntryFormProps) {
   onCleanup(() => clearInterval(timer));
 
   const coolingDown = () => cooldown() > 0;
-  const resendBlocked = () => coolingDown() || Boolean(props.submitting);
+  const resendBlocked = () =>
+    coolingDown() || resending() || Boolean(props.submitting);
 
   const tick = () => {
     const next = Math.max(0, cooldown() - 1);
@@ -64,11 +72,21 @@ export default function CodeEntryForm(props: CodeEntryFormProps) {
     if (next === 0) clearInterval(timer);
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     // Guarded rather than `disabled`: a button that disables itself under the
-    // pointer takes the focus with it.
+    // pointer takes the focus with it. `resending` is part of that guard so a
+    // second tap cannot land while the first request is still open.
     if (resendBlocked()) return;
-    props.onResend();
+    setResending(true);
+    let sent: boolean;
+    try {
+      sent = await props.onResend();
+    } finally {
+      setResending(false);
+    }
+    // The caller reports the failure itself; saying "resent" and starting a
+    // cooldown on top of it would deny a retry for mail that never went out.
+    if (!sent) return;
     setResent(true);
     setCooldown(RESEND_COOLDOWN_SECONDS);
     clearInterval(timer);
@@ -126,7 +144,7 @@ export default function CodeEntryForm(props: CodeEntryFormProps) {
         fullWidth
         class={resendBlocked() ? styles.inert : undefined}
         aria-disabled={resendBlocked()}
-        onClick={handleResend}
+        onClick={() => void handleResend()}
       >
         <Show when={coolingDown()} fallback="コードを再送する">
           {`あと${cooldown()}秒で再送できます`}

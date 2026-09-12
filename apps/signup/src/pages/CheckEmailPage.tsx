@@ -35,16 +35,20 @@ export default function CheckEmailPage() {
     }
   };
 
-  const handleResend = () => {
-    if (!handoff) return;
+  const handleResend = async (): Promise<boolean> => {
+    if (!handoff) return false;
     setError("");
     // The owner is still pending here, so a login request reissues the signup
     // code rather than a login one.
-    void jsonFetch<LoginResponse>("/api/auth/login", "POST", {
+    const result = await jsonFetch<LoginResponse>("/api/auth/login", "POST", {
       email: handoff.email,
-    }).then((result) => {
-      if (result.ok) setDevCode(result.data?.code);
     });
+    if (!result.ok) {
+      setError(result.message ?? "再送に失敗しました。");
+      return false;
+    }
+    setDevCode(result.data?.code);
+    return true;
   };
 
   return (

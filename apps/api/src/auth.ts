@@ -122,8 +122,8 @@ export async function issueVerificationCode(
 
 /**
  * Claims one verification attempt against the candidate rows matching
- * `where`, and returns the one whose digest is `code` — or undefined when
- * none matches, none is left, or the attempt budget is spent.
+ * `where`, and consumes and returns the row whose digest is `code` — or
+ * undefined when none matches, none is left, or the attempt budget is spent.
  *
  * The attempt is claimed *before* anything is compared, and only rows this
  * statement returned are compared. Selecting first and incrementing after
@@ -138,11 +138,18 @@ export async function issueVerificationCode(
  * On a miss, rows that just reached the limit are consumed, so they cannot be
  * retried once the `attempt_count <` predicate stops matching them.
  *
+ * Consuming the match belongs here rather than to the caller, for the same
+ * reason the claim does: `used_at IS NULL` sits inside the consuming UPDATE
+ * and its row count decides the redemption, so two requests carrying the same
+ * correct code cannot both be told they redeemed it. A caller setting
+ * `used_at` by id afterwards would be re-testing a condition it had already
+ * passed, and both would mint a session.
+ *
  * Shared by the two verify routes rather than written in each: they differ in
  * how they scope candidates and what they do with a match, but this sequence
  * is the attempt limit itself, and a fix to it has to reach both.
  */
-export async function claimCodeAttempt(
+export async function redeemCode(
   db: Database,
   where: SQL | undefined,
   code: string,
@@ -165,7 +172,21 @@ export async function claimCodeAttempt(
     });
 
   for (const row of candidates) {
-    if ((await hashOtpCode(row.id, code, pepper)) === row.token) return row;
+    if ((await hashOtpCode(row.id, code, pepper)) !== row.token) continue;
+    const consumed = await db
+      .update(schema.magicLinkTokens)
+      .set({ used_at: ts })
+      .where(
+        and(
+          eq(schema.magicLinkTokens.id, row.id),
+          isNull(schema.magicLinkTokens.used_at),
+        ),
+      )
+      .returning({ id: schema.magicLinkTokens.id });
+    // Empty means another request holding the same code consumed the row
+    // between this one claiming its attempt and reaching here. It was a valid
+    // code, but it is spent now, so the loser is told the same as any miss.
+    return consumed.length > 0 ? row : undefined;
   }
 
   const exhausted = candidates

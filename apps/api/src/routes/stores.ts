@@ -15,7 +15,7 @@ import {
 import { createDb, schema } from "@yorozu/db";
 import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
-import { claimCodeAttempt, issueVerificationCode } from "../auth";
+import { issueVerificationCode, redeemCode } from "../auth";
 import { requireOwner, requireStore } from "../middleware";
 import { bodyValidator } from "../validator";
 
@@ -415,7 +415,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
         gt(schema.magicLinkTokens.expires_at, ts),
       );
 
-      const matched = await claimCodeAttempt(
+      const matched = await redeemCode(
         db,
         liveCodes,
         code,
@@ -430,11 +430,6 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
           400,
         );
       }
-
-      await db
-        .update(schema.magicLinkTokens)
-        .set({ used_at: ts })
-        .where(eq(schema.magicLinkTokens.id, matched.id));
 
       const newEmail = matched.new_email;
       try {

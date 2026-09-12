@@ -8,6 +8,8 @@ afterEach(() => {
 });
 
 const noop = () => {};
+/** Stands in for a caller whose request went through. */
+const resendOk = async () => true;
 
 describe("CodeEntryForm", () => {
   it("hands the typed code to onSubmit", async () => {
@@ -18,7 +20,7 @@ describe("CodeEntryForm", () => {
         id="login-code"
         submitLabel="ログイン"
         onSubmit={onSubmit}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
@@ -35,7 +37,7 @@ describe("CodeEntryForm", () => {
         id="code-hints"
         submitLabel="確認"
         onSubmit={noop}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
@@ -55,7 +57,7 @@ describe("CodeEntryForm", () => {
         id="sep-code"
         submitLabel="送信"
         onSubmit={onSubmit}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
@@ -73,7 +75,7 @@ describe("CodeEntryForm", () => {
         id="zero-code"
         submitLabel="送信"
         onSubmit={onSubmit}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
@@ -90,7 +92,7 @@ describe("CodeEntryForm", () => {
         sentTo="owner@example.com"
         submitLabel="ログイン"
         onSubmit={noop}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
@@ -104,7 +106,7 @@ describe("CodeEntryForm", () => {
         submitLabel="ログイン"
         error="コードが正しくありません。"
         onSubmit={noop}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
@@ -120,7 +122,7 @@ describe("CodeEntryForm", () => {
         submitLabel="ログイン"
         submitting
         onSubmit={noop}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
@@ -147,7 +149,7 @@ describe("CodeEntryForm", () => {
         id="focus-code"
         submitLabel="ログイン"
         onSubmit={noop}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
@@ -157,7 +159,7 @@ describe("CodeEntryForm", () => {
   it("calls onResend and then holds the button on a cooldown", async () => {
     vi.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const onResend = vi.fn();
+    const onResend = vi.fn(async () => true);
     const { getByRole } = render(() => (
       <CodeEntryForm
         id="resend-code"
@@ -195,12 +197,66 @@ describe("CodeEntryForm", () => {
         id="announce-code"
         submitLabel="ログイン"
         onSubmit={noop}
-        onResend={noop}
+        onResend={resendOk}
       />
     ));
 
     await user.click(getByRole("button", { name: "コードを再送する" }));
 
     expect(getByRole("status").textContent).toContain("再送しました");
+  });
+  it("neither announces a resend nor starts a cooldown when none went out", async () => {
+    vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    // The email-change endpoint answers with real failures — past its hourly
+    // cap no mail is sent. Announcing a resend and locking the button for a
+    // minute on top of the caller's own error message would deny a retry for
+    // mail that never went.
+    const onResend = vi.fn(async () => false);
+    const { getByRole, queryByRole } = render(() => (
+      <CodeEntryForm
+        id="failed-resend-code"
+        submitLabel="変更を確定する"
+        onSubmit={noop}
+        onResend={onResend}
+      />
+    ));
+
+    await user.click(getByRole("button", { name: "コードを再送する" }));
+
+    expect(onResend).toHaveBeenCalledTimes(1);
+    expect(queryByRole("status")).toBeNull();
+    const button = getByRole("button", { name: "コードを再送する" });
+    expect(button.getAttribute("aria-disabled")).toBe("false");
+
+    // And the visitor can try again immediately.
+    await user.click(button);
+    expect(onResend).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a second tap while the first resend is still open", async () => {
+    const user = userEvent.setup();
+    let release: (() => void) | undefined;
+    const onResend = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          release = () => resolve(true);
+        }),
+    );
+    const { getByRole } = render(() => (
+      <CodeEntryForm
+        id="double-resend-code"
+        submitLabel="ログイン"
+        onSubmit={noop}
+        onResend={onResend}
+      />
+    ));
+
+    const button = getByRole("button", { name: "コードを再送する" });
+    await user.click(button);
+    await user.click(button);
+
+    expect(onResend).toHaveBeenCalledTimes(1);
+    release?.();
   });
 });

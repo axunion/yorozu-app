@@ -309,6 +309,24 @@ describe("POST /api/auth/verify-code — rejection", () => {
     expect((await verify({ email, code })).status).toBe(400);
   });
 
+  it("mints one session when a burst carries the same correct code", async () => {
+    const store = await seedStore(`同時正解店 ${crypto.randomUUID()}`);
+    const email = await memberEmail(store.member_id);
+    const code = await issueCode(store.id, store.member_id, "login");
+
+    // Five simultaneous redemptions of one valid code. Consuming it with a
+    // bare `WHERE id = ?` after the match would let every one of these pass —
+    // each claims its own attempt, each matches the same still-unused row —
+    // and hand out five sessions for a single-use code. The `used_at IS NULL`
+    // predicate inside the consuming UPDATE is what makes exactly one win.
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => verify({ email, code })),
+    );
+
+    expect(results.filter((res) => res.status === 200)).toHaveLength(1);
+    expect(results.filter((res) => res.status === 400)).toHaveLength(4);
+  });
+
   it("rejects a code that has already been used once", async () => {
     const store = await seedStore(`再利用店 ${crypto.randomUUID()}`);
     const email = await memberEmail(store.member_id);

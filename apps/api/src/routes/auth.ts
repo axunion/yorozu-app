@@ -17,10 +17,10 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import {
-  claimCodeAttempt,
   deleteSession,
   isSecureRequest,
   issueVerificationCode,
+  redeemCode,
 } from "../auth";
 import { requireStore } from "../middleware";
 import { bodyValidator } from "../validator";
@@ -119,13 +119,8 @@ export const authRouter = new Hono<{ Bindings: Env }>()
       gt(schema.magicLinkTokens.expires_at, ts),
     );
 
-    const matched = await claimCodeAttempt(db, liveCodes, code, pepper, ts);
+    const matched = await redeemCode(db, liveCodes, code, pepper, ts);
     if (!matched) return invalidCode();
-
-    await db
-      .update(schema.magicLinkTokens)
-      .set({ used_at: ts })
-      .where(eq(schema.magicLinkTokens.id, matched.id));
 
     if (matched.purpose === "signup") {
       await db

@@ -143,21 +143,23 @@ export default function StoreSettings() {
     }
   };
 
-  const handleEmailResend = () => {
+  const handleEmailResend = async (): Promise<boolean> => {
     setEmailError("");
-    void jsonFetch<EmailChangeResponse>("/api/stores/me/email-change", "POST", {
-      new_email: newEmail(),
-    }).then((result) => {
-      // Unlike /api/auth/login, this endpoint answers with real failures —
-      // RATE_LIMITED past EMAIL_CHANGE_HOURLY_CAP, or VALIDATION_ERROR if the
-      // address was claimed meanwhile. Swallowing them would leave the owner
-      // waiting out a cooldown for mail that was never sent.
-      if (!result.ok) {
-        setEmailError(result.message ?? "再送に失敗しました。");
-        return;
-      }
-      setDevCode(result.data?.code);
-    });
+    const result = await jsonFetch<EmailChangeResponse>(
+      "/api/stores/me/email-change",
+      "POST",
+      { new_email: newEmail() },
+    );
+    // Unlike /api/auth/login, this endpoint answers with real failures —
+    // RATE_LIMITED past EMAIL_CHANGE_HOURLY_CAP, or VALIDATION_ERROR if the
+    // address was claimed meanwhile. Reporting false keeps the form from
+    // announcing a resend and starting a cooldown for mail that never went.
+    if (!result.ok) {
+      setEmailError(result.message ?? "再送に失敗しました。");
+      return false;
+    }
+    setDevCode(result.data?.code);
+    return true;
   };
 
   const handleEmailVerify = async (code: string) => {
