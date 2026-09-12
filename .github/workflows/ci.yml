@@ -15,9 +15,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      # No version input: pnpm/action-setup reads the pinned version from
-      # package.json's packageManager field, so CI and local agree.
+      # The major is named here because pnpm/action-setup reads only the
+      # top-level packageManager field, which this repo does not set — it pins
+      # pnpm under devEngines instead, and the action does not look there.
+      # Keep this in step with devEngines.packageManager in package.json.
       - uses: pnpm/action-setup@v4
+        with:
+          version: 11
       - uses: actions/setup-node@v4
         with:
           node-version: 24

@@ -122,7 +122,7 @@ describe("StoreSettings — store name", () => {
 });
 
 describe("StoreSettings — email change", () => {
-  it("requests an email change and shows the confirmation notice", async () => {
+  it("requests an email change and moves on to the code step", async () => {
     const user = userEvent.setup();
     const fetchMock = mockFetch([
       {
@@ -146,14 +146,59 @@ describe("StoreSettings — email change", () => {
         body: expect.stringContaining('"new_email":"new-owner@example.com"'),
       }),
     );
-    await screen.findByText(/確認メールを送信しました/);
+    await screen.findByLabelText("確認コード");
     expect(screen.queryByLabelText("新しいメールアドレス")).toBeNull();
-    // The current email is unchanged until the link is clicked, so it
-    // stays visible (not hidden) alongside the "check your inbox" notice.
+    // The current email is unchanged until the code is confirmed, so it stays
+    // visible alongside the code prompt.
     expect(screen.queryByText("owner@test.internal")).not.toBeNull();
   });
 
-  it("shows a dev-only verify link when verify_url is present", async () => {
+  it("confirms the change in place, without issuing a new session", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      // The verify route is listed first because this file's mockFetch matches
+      // on url.includes(): "/api/stores/me/email-change" would otherwise
+      // swallow the request to its own /verify sub-path.
+      mockFetch([
+        {
+          url: "/api/stores/me/email-change/verify",
+          method: "POST",
+          json: { data: { email: "new-owner@example.com" } },
+        },
+        {
+          url: "/api/stores/me/email-change",
+          method: "POST",
+          json: { data: { sent: true } },
+        },
+      ]),
+    );
+
+    renderWithStore();
+    await user.type(
+      await screen.findByLabelText("新しいメールアドレス"),
+      "new-owner@example.com",
+    );
+    await user.click(screen.getByRole("button", { name: "変更をリクエスト" }));
+
+    await user.type(await screen.findByLabelText("確認コード"), "123456");
+    await user.click(screen.getByRole("button", { name: "変更を確定する" }));
+
+    // The caller was already signed in, so the change lands on this screen
+    // rather than bouncing them through a fresh session.
+    expect(
+      await screen.findByText(/new-owner@example\.com に変更しました/),
+    ).toBeTruthy();
+    // And the line above it follows. The store context is resolved once on
+    // load, so reading it straight through would label the old address
+    // "現在の" directly above the message saying it changed.
+    expect(
+      screen.getByText(/現在のログイン用メールアドレス/).textContent,
+    ).toContain("new-owner@example.com");
+    expect(screen.queryByText("owner@test.internal")).toBeNull();
+  });
+
+  it("shows a dev-only code when the API echoes one", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",
@@ -161,25 +206,19 @@ describe("StoreSettings — email change", () => {
         {
           url: "/api/stores/me/email-change",
           method: "POST",
-          json: {
-            data: {
-              sent: true,
-              verify_url: "https://api.example.com/api/auth/verify?token=abc",
-            },
-          },
+          json: { data: { sent: true, code: "123456" } },
         },
       ]),
     );
 
     renderWithStore();
-    const input = await screen.findByLabelText("新しいメールアドレス");
-    await user.type(input, "new-owner@example.com");
+    await user.type(
+      await screen.findByLabelText("新しいメールアドレス"),
+      "new-owner@example.com",
+    );
     await user.click(screen.getByRole("button", { name: "変更をリクエスト" }));
 
-    const link = (await screen.findByRole("link", {
-      name: "このリンクで直接確定する",
-    })) as HTMLAnchorElement;
-    expect(link.href).toBe("https://api.example.com/api/auth/verify?token=abc");
+    expect(await screen.findByText(/\[DEV\] 確認コード: 123456/)).toBeTruthy();
   });
 
   it("shows an error when the email-change request fails (e.g. duplicate)", async () => {

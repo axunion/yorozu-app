@@ -8,7 +8,7 @@ export default function LoginPage() {
       <Card class={styles.card}>
         <h1 class={styles.title}>シフト管理</h1>
         <p class={styles.subtitle}>
-          登録済みのメールアドレスを入力してください。ログインリンクをお送りします。
+          登録済みのメールアドレスを入力してください。確認コードをお送りします。
         </p>
         <LoginForm />
       </Card>

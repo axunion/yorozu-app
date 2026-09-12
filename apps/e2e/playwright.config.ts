@@ -3,15 +3,16 @@ import {
   ADMIN_ORIGIN,
   API_ORIGIN,
   ORDER_ORIGIN,
+  SHIFT_ORIGIN,
   SIGNUP_ORIGIN,
 } from "./origins";
 
 /**
  * Browser E2E config — see docs/reference/browser-e2e.md.
  *
- * Boots the four processes the golden path needs (API Worker + the three Vite
- * dev servers) and runs the specs against them. Requires apps/api/.dev.vars
- * with ENVIRONMENT=development so the Magic Link verify_url is returned in the
+ * Boots the five processes the specs need (API Worker + the four Vite dev
+ * servers) and runs the specs against them. Requires apps/api/.dev.vars
+ * with ENVIRONMENT=development so the passcode is returned in the
  * API response instead of being emailed.
  *
  * No database reset is needed: every spec registers its own store with a
@@ -60,6 +61,12 @@ export default defineConfig({
     {
       command: "pnpm --filter @yorozu/signup dev",
       url: SIGNUP_ORIGIN,
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+    {
+      command: "pnpm --filter @yorozu/shift dev",
+      url: SHIFT_ORIGIN,
       reuseExistingServer: true,
       timeout: 120_000,
     },

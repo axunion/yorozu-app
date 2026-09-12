@@ -1,0 +1,1 @@
+ALTER TABLE `magic_link_tokens` ADD `attempt_count` integer DEFAULT 0 NOT NULL;

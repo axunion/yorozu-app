@@ -30,10 +30,10 @@
     // Set to ".example.com" in production for cross-subdomain cookie sharing.
     // Leave empty in local dev so the cookie is scoped to localhost only.
     "COOKIE_DOMAIN": "",
-    // Set to "development" in .dev.vars for local dev to expose the Magic
-    // Link URL in API responses, bypassing the need for email delivery.
+    // Set to "development" in .dev.vars for local dev to expose the passcode
+    // in API responses, bypassing the need for email delivery.
     "ENVIRONMENT": "production"
-    // RESEND_API_KEY and MAIL_FROM are secrets — set via `wrangler secret put`
-    // or in .dev.vars for local development.
+    // RESEND_API_KEY, MAIL_FROM and OTP_PEPPER are secrets — set via
+    // `wrangler secret put` or in .dev.vars for local development.
   }
 }

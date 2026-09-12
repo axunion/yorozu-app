@@ -1,14 +1,18 @@
 import type { SeatSession, StoreSession } from "@yorozu/core";
 import {
+  generateOtpCode,
+  hashOtpCode,
   hashToken,
   MAGIC_LINK_HOURLY_CAP,
-  MAGIC_LINK_TTL_MS,
   newId,
   now,
+  OTP_MAX_ATTEMPTS,
+  OTP_TTL_MS,
 } from "@yorozu/core";
 import type { Database } from "@yorozu/db";
 import { schema } from "@yorozu/db";
-import { and, eq, gt, isNull, ne } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -22,7 +26,7 @@ const HOUR_MS = 60 * 60 * 1000;
  * so it covers 127.0.0.1, devcontainer/LAN addresses, etc., not just
  * "localhost" literally.
  *
- * Deliberately fails toward `true` (unlike the `verify_url` dev-bypass gate,
+ * Deliberately fails toward `true` (unlike the dev passcode-echo gate,
  * which fails toward `false`): an unexpected ENVIRONMENT value here only
  * risks a harmless extra Secure attribute, never a leak.
  */
@@ -36,42 +40,39 @@ export function isSecureRequest(
 }
 
 /**
- * Issues a Magic Link token for the given member and purpose, or returns
- * null if the member has hit MAGIC_LINK_HOURLY_CAP issuances in the last
- * rolling hour (login, signup-resend, email-change, and invite combined) —
- * callers must treat null as "silently skip sending" and keep their
- * response identical to the success case (anti-enumeration; a visible 429
- * would leak that the email/member exists).
+ * Issues an emailed passcode for the given member and purpose, or returns
+ * null when the member has hit MAGIC_LINK_HOURLY_CAP issuances in the last
+ * rolling hour. Callers must treat null as "skip sending" and keep their
+ * response identical to the success case — a visible 429 would leak that the
+ * address belongs to someone.
  *
- * Scoped per member_id (not store_id): a store can have multiple members
- * now, and two members of the same store issuing unrelated tokens (e.g.
- * concurrent logins, or two simultaneous staff invites) must not
- * invalidate each other's link.
+ * Rows live in `magic_link_tokens`, which kept its name through the move off
+ * Magic Links: renaming it would touch every query and migration for no
+ * behavioural gain. The stored value is `hashOtpCode(rowId, code, pepper)`
+ * rather than the `hashToken(uuid)` that table used to hold:
  *
- * Supersedes (not deletes) any previous unused token for the same
- * member+purpose so only one link is valid at a time: consumed tokens are
- * already kept for audit, and `verify` already rejects any token with
- * `used_at` set, so marking a superseded token used is equally safe —
- * but unlike DELETE, the row (and its created_at) survives for the cap
- * count above to see.
+ *  - keyed on the pepper, because a 6-digit code has 10^6 possibilities and
+ *    an unkeyed digest of one falls to brute force from a database read;
+ *  - salted with the row's own id, so two rows can never produce the same
+ *    digest and the UNIQUE index on `token` still holds. Salting on
+ *    `member_id` instead would leave a 1-in-10^6 chance of one member drawing
+ *    a code they have used before, and that INSERT failure would surface as a
+ *    login that silently never arrives.
  *
- * `newEmail` is required for purpose 'email_change' — it is the pending
- * target address, applied to members.email only once the token is verified.
+ * Because the digest depends on the row id, verification cannot look a code
+ * up directly — it resolves the member first, then tests the candidate rows.
+ * See `POST /api/auth/verify-code`.
  *
- * Insert-first ordering: the new token is written before old ones are
- * superseded so an UPDATE failure leaves two temporarily valid tokens
- * (harmless — the old one expires naturally) while an INSERT failure
- * leaves the old token intact.
- *
- * Only a SHA-256 hash of the token is persisted (`hashToken`) — the raw
- * value returned here is the one that goes into the email link and must
- * never be written to D1.
+ * Insert-first ordering: the new row is written before the old ones are
+ * superseded, so an UPDATE failure leaves two briefly valid codes (harmless —
+ * both expire), while an INSERT failure leaves the previous one intact.
  */
-export async function issueMagicLink(
+export async function issueVerificationCode(
   db: Database,
   storeId: string,
   memberId: string,
   purpose: "signup" | "login" | "email_change" | "invite" | "reactivate",
+  pepper: string,
   newEmail?: string,
 ): Promise<string | null> {
   const ts = now();
@@ -81,28 +82,28 @@ export async function issueMagicLink(
     .from(schema.magicLinkTokens)
     .where(
       and(
+        eq(schema.magicLinkTokens.store_id, storeId),
         eq(schema.magicLinkTokens.member_id, memberId),
         gt(schema.magicLinkTokens.created_at, ts - HOUR_MS),
       ),
     )
     .limit(MAGIC_LINK_HOURLY_CAP);
   if (recent.length >= MAGIC_LINK_HOURLY_CAP) {
-    console.log(`[auth] rate-limited magic link for member ${memberId}`);
+    console.log(`[auth] rate-limited passcode for member ${memberId}`);
     return null;
   }
 
-  const token = newId();
-  const tokenHash = await hashToken(token);
-  const expires_at = ts + MAGIC_LINK_TTL_MS;
+  const rowId = newId();
+  const code = generateOtpCode();
 
   await db.insert(schema.magicLinkTokens).values({
-    id: newId(),
+    id: rowId,
     store_id: storeId,
     member_id: memberId,
-    token: tokenHash,
+    token: await hashOtpCode(rowId, code, pepper),
     purpose,
     new_email: newEmail ?? null,
-    expires_at,
+    expires_at: ts + OTP_TTL_MS,
   });
 
   await db
@@ -110,14 +111,120 @@ export async function issueMagicLink(
     .set({ used_at: ts })
     .where(
       and(
+        eq(schema.magicLinkTokens.store_id, storeId),
         eq(schema.magicLinkTokens.member_id, memberId),
         eq(schema.magicLinkTokens.purpose, purpose),
         isNull(schema.magicLinkTokens.used_at),
-        ne(schema.magicLinkTokens.token, tokenHash),
+        ne(schema.magicLinkTokens.id, rowId),
       ),
     );
 
-  return token;
+  return code;
+}
+
+/**
+ * Claims one verification attempt against the live rows matching `scope`, and
+ * consumes and returns the row whose digest is `code` — or undefined when none
+ * matches, none is left, or the attempt budget is spent.
+ *
+ * `scope` is the caller's alone: which member, store and purpose the code has
+ * to belong to. Everything that makes a row *redeemable* — unused, unexpired,
+ * still inside the attempt budget — is this function's, so a third caller
+ * cannot weaken the contract by forgetting a predicate.
+ *
+ * The attempt is claimed *before* anything is compared, and only rows this
+ * statement returned are compared. Selecting first and incrementing after
+ * would keep the counter consistent while doing nothing about the limit it
+ * exists to enforce: a burst of concurrent requests would all read the same
+ * live row and each get a free guess, which against a 10^6 space is the
+ * difference between OTP_MAX_ATTEMPTS an hour and as many as the attacker can
+ * open connections for. Putting `attempt_count < OTP_MAX_ATTEMPTS` inside the
+ * UPDATE makes D1 serialize them, so only the first OTP_MAX_ATTEMPTS get a
+ * row back at all.
+ *
+ * On a miss, rows that just reached the limit are consumed, so they cannot be
+ * retried once the `attempt_count <` predicate stops matching them.
+ *
+ * Consuming the match belongs here rather than to the caller, for the same
+ * reason the claim does: `used_at IS NULL` sits inside the consuming UPDATE
+ * and its row count decides the redemption, so two requests carrying the same
+ * correct code cannot both be told they redeemed it. A caller setting
+ * `used_at` by id afterwards would be re-testing a condition it had already
+ * passed, and both would mint a session.
+ *
+ * Every write here re-states `scope` rather than addressing rows by the id it
+ * just read. The ids are already tenant-verified, so this changes no outcome
+ * today; it keeps the tenant predicate a property of each statement instead of
+ * an invariant a later edit could quietly break.
+ *
+ * Shared by the two verify routes rather than written in each: they differ in
+ * how they scope candidates and what they do with a match, but this sequence
+ * is the attempt limit itself, and a fix to it has to reach both.
+ */
+export async function redeemCode(
+  db: Database,
+  scope: SQL | undefined,
+  code: string,
+  pepper: string,
+  ts: number,
+) {
+  // `and()` is typed `SQL | undefined`, so a caller assembling its predicates
+  // conditionally can land on undefined — which would drop the WHERE clause
+  // entirely and burn an attempt against every live passcode in every store.
+  // Refused rather than defaulted, on the same reasoning as hashOtpCode's
+  // missing pepper: a silent loss of scoping here is invisible in production.
+  if (!scope) {
+    throw new Error("redeemCode called without a scope");
+  }
+
+  const redeemable = and(
+    scope,
+    isNull(schema.magicLinkTokens.used_at),
+    gt(schema.magicLinkTokens.expires_at, ts),
+  );
+
+  const candidates = await db
+    .update(schema.magicLinkTokens)
+    .set({ attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1` })
+    .where(
+      and(
+        redeemable,
+        lt(schema.magicLinkTokens.attempt_count, OTP_MAX_ATTEMPTS),
+      ),
+    )
+    .returning({
+      id: schema.magicLinkTokens.id,
+      token: schema.magicLinkTokens.token,
+      purpose: schema.magicLinkTokens.purpose,
+      store_id: schema.magicLinkTokens.store_id,
+      new_email: schema.magicLinkTokens.new_email,
+      attempt_count: schema.magicLinkTokens.attempt_count,
+    });
+
+  for (const row of candidates) {
+    if ((await hashOtpCode(row.id, code, pepper)) !== row.token) continue;
+    const consumed = await db
+      .update(schema.magicLinkTokens)
+      .set({ used_at: ts })
+      .where(and(redeemable, eq(schema.magicLinkTokens.id, row.id)))
+      .returning({ id: schema.magicLinkTokens.id });
+    // Empty means another request holding the same code consumed the row
+    // between this one claiming its attempt and reaching here. It was a valid
+    // code, but it is spent now, so the loser is told the same as any miss.
+    return consumed.length > 0 ? row : undefined;
+  }
+
+  const exhausted = candidates
+    .filter((row) => row.attempt_count >= OTP_MAX_ATTEMPTS)
+    .map((row) => row.id);
+  if (exhausted.length > 0) {
+    await db
+      .update(schema.magicLinkTokens)
+      .set({ used_at: ts })
+      .where(and(redeemable, inArray(schema.magicLinkTokens.id, exhausted)));
+  }
+
+  return undefined;
 }
 
 /**
@@ -129,9 +236,9 @@ export async function issueMagicLink(
  *
  * Callers are responsible for enforcing stores.status === "active" and
  * member_status === "active". No code path today can mint a session for a
- * non-active member (GET /verify only creates one right after activating
- * it), but member_status is returned so requireStore can assert it
- * explicitly rather than relying on that invariant implicitly.
+ * non-active member (the verify-code routes only create one right after
+ * activating it), but member_status is returned so requireStore can assert
+ * it explicitly rather than relying on that invariant implicitly.
  * Expired sessions are NOT deleted here; callers should call deleteSession.
  */
 export async function getStoreBySession(

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildEmailContent, sendMagicLinkEmail } from "./email";
+import { buildEmailContent, sendVerificationCodeEmail } from "./email";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -7,96 +7,134 @@ afterEach(() => {
 });
 
 describe("buildEmailContent", () => {
-  it("returns signup subject/body with the magic link embedded", () => {
-    const { subject, html } = buildEmailContent(
-      "signup",
-      "https://api.example.com/verify?token=abc",
-    );
+  it("embeds the code in the signup email", () => {
+    const { subject, html } = buildEmailContent("signup", "123456");
     expect(subject).toContain("確認");
-    expect(html).toContain("https://api.example.com/verify?token=abc");
+    expect(html).toContain("123456");
   });
 
-  it("returns login subject/body with the magic link embedded", () => {
-    const { subject, html } = buildEmailContent(
-      "login",
-      "https://api.example.com/verify?token=def",
-    );
+  it("embeds the code in the login email", () => {
+    const { subject, html } = buildEmailContent("login", "234567");
     expect(subject).toContain("ログイン");
-    expect(html).toContain("https://api.example.com/verify?token=def");
+    expect(html).toContain("234567");
   });
 
-  it("returns email_change subject/body with the magic link embedded", () => {
-    const { subject, html } = buildEmailContent(
-      "email_change",
-      "https://api.example.com/verify?token=ghi",
-    );
+  it("embeds the code in the email_change email", () => {
+    const { subject, html } = buildEmailContent("email_change", "345678");
     expect(subject).toContain("メールアドレス変更");
-    expect(html).toContain("https://api.example.com/verify?token=ghi");
+    expect(html).toContain("345678");
   });
 
-  it("returns invite subject/body with the magic link embedded", () => {
-    const { subject, html } = buildEmailContent(
-      "invite",
-      "https://api.example.com/verify?token=jkl",
-    );
+  it("embeds the code in the invite email", () => {
+    const { subject, html } = buildEmailContent("invite", "456789");
     expect(subject).toContain("招待");
-    expect(html).toContain("https://api.example.com/verify?token=jkl");
+    expect(html).toContain("456789");
   });
 
-  it("returns reactivate subject/body with the magic link embedded", () => {
-    const { subject, html } = buildEmailContent(
-      "reactivate",
-      "https://api.example.com/verify?token=mno",
-    );
+  it("embeds the code in the reactivate email", () => {
+    const { subject, html } = buildEmailContent("reactivate", "567890");
     expect(subject).toContain("再開");
-    expect(html).toContain("https://api.example.com/verify?token=mno");
+    expect(html).toContain("567890");
   });
 
   it("produces distinct content per purpose", () => {
-    const url = "https://api.example.com/verify?token=x";
-    const signup = buildEmailContent("signup", url);
-    const login = buildEmailContent("login", url);
-    const emailChange = buildEmailContent("email_change", url);
-    const invite = buildEmailContent("invite", url);
-    const reactivate = buildEmailContent("reactivate", url);
-    const subjects = [signup, login, emailChange, invite, reactivate].map(
-      (c) => c.subject,
-    );
+    const subjects = (
+      ["signup", "login", "email_change", "invite", "reactivate"] as const
+    ).map((purpose) => buildEmailContent(purpose, "123456").subject);
     expect(new Set(subjects).size).toBe(subjects.length);
+  });
+
+  it("keeps a leading zero in the rendered code", () => {
+    const { html } = buildEmailContent("login", "012345");
+    expect(html).toContain("012345");
+  });
+
+  it("renders the landing URL when one is supplied", () => {
+    const { html } = buildEmailContent(
+      "invite",
+      "123456",
+      "https://admin.example.com/login?email=staff%40example.com",
+    );
+    expect(html).toContain(
+      "https://admin.example.com/login?email=staff%40example.com",
+    );
+  });
+
+  it("carries no link at all when no landing URL is supplied", () => {
+    // The whole point of moving off Magic Links: a mail-security scanner that
+    // follows links ahead of the recipient must have nothing to follow.
+    for (const purpose of [
+      "signup",
+      "login",
+      "email_change",
+      "reactivate",
+    ] as const) {
+      const { html } = buildEmailContent(purpose, "123456");
+      expect(html).not.toContain("<a href");
+    }
   });
 });
 
-describe("sendMagicLinkEmail", () => {
-  it("logs to console instead of calling fetch when resendApiKey is absent", async () => {
+describe("sendVerificationCodeEmail", () => {
+  it("logs the code to the console instead of calling fetch in development", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-    await sendMagicLinkEmail(
-      {
-        to: "owner@example.com",
-        magicLinkUrl: "https://api.example.com/verify?token=abc",
-        purpose: "email_change",
-      },
-      {},
+    await sendVerificationCodeEmail(
+      { to: "owner@example.com", code: "123456", purpose: "login" },
+      { environment: "development" },
     );
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining("owner@example.com"),
     );
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("123456"));
   });
 
-  it("calls the Resend API with the email_change subject/body when resendApiKey is set", async () => {
+  it("prints neither the code nor the address when the key is missing outside development", async () => {
+    // Reachable in production by accident — a rotated-out Resend key must not
+    // turn the log into a feed of live credentials.
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await sendVerificationCodeEmail(
+      { to: "owner@example.com", code: "123456", purpose: "login" },
+      { environment: "production" },
+    );
+
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.not.stringContaining("123456"),
+    );
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.not.stringContaining("owner@example.com"),
+    );
+  });
+
+  it("stays quiet about the code when no environment is given at all", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await sendVerificationCodeEmail(
+      { to: "owner@example.com", code: "123456", purpose: "login" },
+      {},
+    );
+
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it("calls the Resend API with the purpose's subject and the code", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue({ ok: true, text: async () => "" });
     vi.stubGlobal("fetch", fetchMock);
 
-    await sendMagicLinkEmail(
+    await sendVerificationCodeEmail(
       {
         to: "newowner@example.com",
-        magicLinkUrl: "https://api.example.com/verify?token=xyz",
+        code: "654321",
         purpose: "email_change",
       },
       { resendApiKey: "test-key" },
@@ -108,7 +146,7 @@ describe("sendMagicLinkEmail", () => {
     const body = JSON.parse(init.body as string);
     expect(body.to).toBe("newowner@example.com");
     expect(body.subject).toContain("メールアドレス変更");
-    expect(body.html).toContain("https://api.example.com/verify?token=xyz");
+    expect(body.html).toContain("654321");
   });
 
   it("throws when the Resend API responds with an error", async () => {
@@ -122,12 +160,8 @@ describe("sendMagicLinkEmail", () => {
     );
 
     await expect(
-      sendMagicLinkEmail(
-        {
-          to: "owner@example.com",
-          magicLinkUrl: "https://api.example.com/verify?token=abc",
-          purpose: "login",
-        },
+      sendVerificationCodeEmail(
+        { to: "owner@example.com", code: "123456", purpose: "login" },
         { resendApiKey: "test-key" },
       ),
     ).rejects.toThrow(/Resend API error/);

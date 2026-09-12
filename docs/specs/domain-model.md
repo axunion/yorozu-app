@@ -85,7 +85,7 @@ stores 1 ──── * subscriptions          (which products this store has bo
   `store_id` (avoids a join on every `requireStore`-guarded request).
   `magic_link_tokens.purpose` is `'signup' | 'login' | 'email_change' |
   'invite'`; the nullable `new_email` column holds the pending target
-  address for `email_change` tokens only. `issueMagicLink`'s supersede
+  address for `email_change` tokens only. `issueVerificationCode`'s supersede
   (only one valid link per purpose) and hourly rate cap are scoped by
   `member_id`, not `store_id` — a store can have multiple members now,
   and unrelated members issuing tokens concurrently must not invalidate
@@ -127,20 +127,20 @@ stores 1 ──── * subscriptions          (which products this store has bo
 ### stores.status
 
 ```
-pending ──(magic link verified)──▶ active ──(owner: POST /me/suspend)──▶ suspended
-                                       ▲                                     │
-                                       └──(owner: reactivate magic link)─────┘
+pending ──(passcode verified)──▶ active ──(owner: POST /me/suspend)──▶ suspended
+                                     ▲                                     │
+                                     └──(owner: reactivate passcode)───────┘
 ```
 
-- `pending` — registered, email unverified. Login resends the signup link.
+- `pending` — registered, email unverified. Login resends the signup code.
 - `active` — normal operation.
 - `suspended` — set by the store's own owner (`POST /api/stores/me/suspend`
   — owner self-service only, no billing/platform-admin trigger exists;
   see [features/authentication.md](./features/authentication.md#account-lifecycle-appsadmin-settingspage-owner-only-danger-zone)).
   All sessions for the store are deleted in the same batch. An
-  owner-role member's next login attempt issues a `reactivate` Magic
-  Link instead of the usual silent no-op for a suspended store; verifying
-  it sets the store back to `active`. A store row can also be deleted
+  owner-role member's next login attempt issues a `reactivate` passcode
+  instead of the usual silent no-op for a suspended store; verifying it
+  sets the store back to `active`. A store row can also be deleted
   entirely (`DELETE /api/stores/me`, hard delete, no retention) — not
   a `stores.status` transition, the row stops existing.
 - **`stores.status` and `subscriptions.status` are different switches.**
@@ -155,12 +155,12 @@ pending ──(magic link verified)──▶ active ──(owner: POST /me/suspe
 ### members.status
 
 ```
-pending ──(magic link verified: signup or invite)──▶ active
+pending ──(passcode verified: signup or invite)──▶ active
 ```
 
 - `pending` — created at store signup (owner) or by `POST /api/staff`
   (staff invite); email unverified. Login resends the `signup` (owner) or
-  `invite` (staff) Magic Link. No `suspended` state at member level —
+  `invite` (staff) passcode. No `suspended` state at member level —
   removing access is `DELETE /api/staff/:id` (deletes the row), not a
   status transition.
 - `active` — can log in. `requireStore` rejects (401) if either the

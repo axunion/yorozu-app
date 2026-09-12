@@ -1,14 +1,18 @@
 # Copy to apps/api/.dev.vars (gitignored) for local development.
-# Full variable reference: docs/auth.md § Required environment variables.
+# Full variable reference: docs/reference/auth.md § Required environment variables.
 #
 # ADMIN_ORIGIN / ORDER_ORIGIN / SIGNUP_ORIGIN / SHIFT_ORIGIN / COOKIE_DOMAIN
 # already have
 # local values in wrangler.jsonc vars — override here only if needed.
 # In production, RESEND_API_KEY and MAIL_FROM are set via `wrangler secret put`.
 
-# Gates dev-only conveniences (verify_url in signup/login responses).
+# Gates dev-only conveniences (the passcode echoed in signup/login responses).
 ENVIRONMENT=development
 
-# Leave unset to log Magic Link URLs to the Worker console instead of sending email.
+# Leave unset to log passcodes to the Worker console instead of sending email.
 # RESEND_API_KEY=re_...
 # MAIL_FROM=noreply@example.com
+
+# HMAC key for emailed passcodes. Required — passcode issuance fails without it.
+# Any non-empty string works locally; production uses `wrangler secret put`.
+OTP_PEPPER=local-dev-pepper

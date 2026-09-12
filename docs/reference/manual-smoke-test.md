@@ -8,9 +8,10 @@ through the actual UIs instead of raw API calls.
 ## Setup
 
 1. Copy `apps/api/.dev.vars.example` to `apps/api/.dev.vars` (gitignored).
-   `ENVIRONMENT=development` enables the `[DEV]` Magic Link shortcuts below
-   — without it you'd need to read the link from the Worker console log
-   instead.
+   `ENVIRONMENT=development` echoes the passcode in the API response, which
+   is what the `[DEV]` notes below display — without it you'd need to read
+   the code from the Worker console log instead. `OTP_PEPPER` must be set to
+   any non-empty value or passcode issuance fails outright.
 2. `pnpm db:reset` — start from a clean local D1.
 3. Start the dev servers (separate terminals, or `pnpm dev` to run them
    in parallel):
@@ -24,11 +25,11 @@ through the actual UIs instead of raw API calls.
 ## Walkthrough
 
 1. **Sign up** (`localhost:5175`) — register a store with a name and
-   email. On the "check your email" screen, click the `[DEV]` link to
-   verify instead of checking an inbox.
+   email. On the passcode screen, type the code from the `[DEV]` note
+   instead of checking an inbox.
 2. **Log in to admin** (`localhost:5173`) — you should already be
-   redirected in as the new owner after verification; if not, use the
-   login form (again via its `[DEV]` link).
+   redirected in as the new owner after verifying; if not, use the login
+   form, which shows its own `[DEV]` code once you request one.
 3. **Menu setup** (admin → Menu) — add at least one category-free menu
    item with a price. Optionally add a description/photo and an option
    group to touch Phase 3 behavior.

@@ -76,7 +76,7 @@ describe("POST /api/staff", () => {
     expect(tokens).toHaveLength(1);
   });
 
-  it("includes verify_url when ENVIRONMENT=development, omits it otherwise", async () => {
+  it("includes the code and landing URL when ENVIRONMENT=development, omits them otherwise", async () => {
     const { session_token: token } = await seedStore(
       `Staff Invite Dev Test ${crypto.randomUUID()}`,
     );
@@ -92,9 +92,10 @@ describe("POST /api/staff", () => {
       { ...env, ENVIRONMENT: "production" },
     );
     const prodBody = (await prodRes.json()) as {
-      data: { verify_url?: string };
+      data: { code?: string; invite_url?: string };
     };
-    expect(prodBody.data.verify_url).toBeUndefined();
+    expect(prodBody.data.code).toBeUndefined();
+    expect(prodBody.data.invite_url).toBeUndefined();
 
     const devRes = await app.request(
       "/api/staff",
@@ -106,8 +107,14 @@ describe("POST /api/staff", () => {
       ),
       { ...env, ENVIRONMENT: "development" },
     );
-    const devBody = (await devRes.json()) as { data: { verify_url?: string } };
-    expect(devBody.data.verify_url).toMatch(/\/api\/auth\/verify\?token=.+/);
+    const devBody = (await devRes.json()) as {
+      data: { code?: string; invite_url?: string };
+    };
+    expect(devBody.data.code).toMatch(/^\d{6}$/);
+    // A plain login page, carrying no credential of its own.
+    expect(devBody.data.invite_url).toMatch(
+      /^http:\/\/admin\.localhost\/login\?email=/,
+    );
   });
 
   it("defaults role to staff when omitted, and accepts an explicit owner invite", async () => {
@@ -204,7 +211,7 @@ describe("POST /api/staff", () => {
 
     // Seed MAGIC_LINK_HOURLY_CAP (5) recent invite tokens for this store,
     // each tied to a distinct member (so the per-member cap in
-    // issueMagicLink can't itself explain the rejection).
+    // issueVerificationCode can't itself explain the rejection).
     for (let i = 0; i < 5; i++) {
       const seededMemberId = crypto.randomUUID();
       await db.insert(schema.members).values({
@@ -279,7 +286,7 @@ describe("POST /api/staff", () => {
   });
 });
 
-describe("invite → GET /api/auth/verify", () => {
+describe("invite → POST /api/auth/verify-code", () => {
   it("activates the invited member and creates a session with the right role, without touching the store", async () => {
     const { id: storeId, session_token: ownerToken } = await seedStore(
       `Staff Invite Verify Test ${crypto.randomUUID()}`,
@@ -298,20 +305,18 @@ describe("invite → GET /api/auth/verify", () => {
       { ...env, ENVIRONMENT: "development" },
     );
     const inviteBody = (await inviteRes.json()) as {
-      data: { id: string; verify_url?: string };
+      data: { id: string; code?: string };
     };
     const staffMemberId = inviteBody.data.id;
-    const inviteToken = inviteBody.data.verify_url
-      ? new URL(inviteBody.data.verify_url).searchParams.get("token")
-      : null;
-    if (!inviteToken) throw new Error("invite verify_url/token missing");
+    const inviteCode = inviteBody.data.code;
+    if (!inviteCode) throw new Error("invite code missing");
 
     const verifyRes = await app.request(
-      `/api/auth/verify?token=${inviteToken}`,
-      {},
+      "/api/auth/verify-code",
+      jsonInit("POST", { email: staffEmail, code: inviteCode }),
       env,
     );
-    expect(verifyRes.status).toBe(302);
+    expect(verifyRes.status).toBe(200);
 
     const memberAfter = await db
       .select({
@@ -441,7 +446,7 @@ describe("DELETE /api/staff/:id", () => {
     const staffMemberId = inviteBody.data.id;
 
     // Give the staff member a session directly (invite endpoint doesn't
-    // activate them — that happens at GET /api/auth/verify).
+    // activate them — that happens at POST /api/auth/verify-code).
     const db = createDb(env.DB);
     const staffRows = await db
       .select({ store_id: schema.members.store_id })

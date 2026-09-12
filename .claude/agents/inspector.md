@@ -37,9 +37,9 @@ multi-hundred-MB download, so only run it if launching chromium fails with a
    ```bash
    for i in $(seq 1 30); do curl -sf http://localhost:<port> >/dev/null && break; sleep 1; done
    ```
-   If the flow you're checking needs backend state (a seat/QR link, a magic-link
+   If the flow you're checking needs backend state (a seat/QR link, a passcode
    sign-in), read `docs/reference/manual-smoke-test.md` for how to reach it — the
-   `[DEV]` magic-link shortcut (`ENVIRONMENT=development` in `apps/api/.dev.vars`)
+   `[DEV]` passcode shortcut (`ENVIRONMENT=development` in `apps/api/.dev.vars`)
    avoids needing a real email step.
 
 2. **Write the throwaway script at the repo root** (e.g. `inspector-scratch.mjs`), but
