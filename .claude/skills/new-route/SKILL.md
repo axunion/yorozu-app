@@ -11,8 +11,9 @@ description: Scaffold a new Hono API route with Zod validation and a correspondi
 - Access validated body via `c.req.valid("json")`
 - Access D1 via `createDb(c.env.DB)` from `@yorozu/db`
 - Return errors with `errorResponse(code, message, status)` from `@yorozu/core` —
-  use the established codes: `VALIDATION_ERROR` (400), `UNAUTHORIZED` (401),
-  `INVALID_TOKEN` (401), `NOT_FOUND` (404), `CONFLICT` (409); don't invent new ones
+  use the established codes: `VALIDATION_ERROR` (400), `INVALID_CODE` (400),
+  `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `CONFLICT` (409),
+  `RATE_LIMITED` (429); don't invent new ones
 - Return success as `c.json({ data: ... })` — pass `201` as the second argument for creates
 - Mount the router in `apps/api/src/app.ts`
 

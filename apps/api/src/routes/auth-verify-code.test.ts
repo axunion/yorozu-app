@@ -5,7 +5,7 @@ import { createDb, schema } from "@yorozu/db";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";
-import { issueVerificationCode } from "../auth";
+import { issueVerificationCode, redeemCode } from "../auth";
 import { jsonInit, seedMember, seedStore } from "../test-helpers";
 
 type Purpose = "signup" | "login" | "email_change" | "invite" | "reactivate";
@@ -334,6 +334,49 @@ describe("POST /api/auth/verify-code — rejection", () => {
 
     expect((await verify({ email, code })).status).toBe(200);
     expect((await verify({ email, code })).status).toBe(400);
+  });
+
+  it("refuses to redeem without a scope rather than sweeping every store", async () => {
+    // `and()` is typed `SQL | undefined`, so a caller assembling predicates
+    // conditionally can reach here with nothing. An unscoped UPDATE would burn
+    // an attempt against every live passcode there is, and hand back whichever
+    // tenant's row happened to match.
+    const store = await seedStore(`無スコープ店 ${crypto.randomUUID()}`);
+    const code = await issueCode(store.id, store.member_id, "login");
+    const tokenId = await liveTokenIdFor(store.member_id);
+
+    await expect(
+      redeemCode(createDb(env.DB), undefined, code, env.OTP_PEPPER, Date.now()),
+    ).rejects.toThrow();
+
+    const row = await tokenRow(tokenId);
+    expect(row?.attempt_count).toBe(0);
+    expect(row?.used_at).toBeNull();
+  });
+
+  it("will not redeem an expired code even if the caller forgets to exclude one", async () => {
+    // Expiry is redeemCode's to enforce, not the caller's: the routes state it
+    // too, but a third caller omitting it must not get a live redemption.
+    const store = await seedStore(
+      `期限バックストップ店 ${crypto.randomUUID()}`,
+    );
+    const code = await issueCode(store.id, store.member_id, "login");
+    const tokenId = await liveTokenIdFor(store.member_id);
+    await createDb(env.DB)
+      .update(schema.magicLinkTokens)
+      .set({ expires_at: Date.now() - 1000 })
+      .where(eq(schema.magicLinkTokens.id, tokenId));
+
+    const matched = await redeemCode(
+      createDb(env.DB),
+      eq(schema.magicLinkTokens.member_id, store.member_id),
+      code,
+      env.OTP_PEPPER,
+      Date.now(),
+    );
+
+    expect(matched).toBeUndefined();
+    expect((await tokenRow(tokenId))?.used_at).toBeNull();
   });
 
   it("does not accept one member's code submitted under another's email", async () => {

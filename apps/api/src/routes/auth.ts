@@ -13,7 +13,7 @@ import {
   VerifyCodeInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import {
@@ -103,7 +103,9 @@ export const authRouter = new Hono<{ Bindings: Env }>()
       return invalidCode();
     }
 
-    const liveCodes = and(
+    // Whose codes these are. Unused, unexpired and inside the attempt budget
+    // are redeemCode's to enforce, not repeated here.
+    const scope = and(
       eq(schema.magicLinkTokens.member_id, member.id),
       // Redundant while member_id is globally unique, but it is the house rule
       // for every tenant-scoped query and it pins the store this session will
@@ -115,11 +117,9 @@ export const authRouter = new Hono<{ Bindings: Env }>()
       // Stated as the property rather than as `purpose != 'email_change'`, so
       // a later purpose that mails elsewhere is excluded without an edit here.
       isNull(schema.magicLinkTokens.new_email),
-      isNull(schema.magicLinkTokens.used_at),
-      gt(schema.magicLinkTokens.expires_at, ts),
     );
 
-    const matched = await redeemCode(db, liveCodes, code, pepper, ts);
+    const matched = await redeemCode(db, scope, code, pepper, ts);
     if (!matched) return invalidCode();
 
     if (matched.purpose === "signup") {

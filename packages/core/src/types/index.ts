@@ -31,7 +31,7 @@ export interface StoreCreatedResponse {
   id: string;
   name: string;
   slug: string;
-  /** Passcode. Only present when ENVIRONMENT !== "production". */
+  /** Passcode. Only present when ENVIRONMENT === "development". */
   code?: string;
 }
 
@@ -66,7 +66,7 @@ export type DeleteStoreInput = z.infer<typeof DeleteStoreInput>;
 
 export interface EmailChangeResponse {
   sent: true;
-  /** Passcode. Only present when ENVIRONMENT !== "production". */
+  /** Passcode. Only present when ENVIRONMENT === "development". */
   code?: string;
 }
 
@@ -81,7 +81,7 @@ export type LoginInput = z.infer<typeof LoginInput>;
 
 export interface LoginResponse {
   sent: true;
-  /** Passcode. Only present when ENVIRONMENT !== "production" and a code was issued. */
+  /** Passcode. Only present when ENVIRONMENT === "development" and a code was issued. */
   code?: string;
 }
 
@@ -93,6 +93,11 @@ export interface LoginResponse {
  */
 const otpCodeValue = z
   .string()
+  // Capped before the transform, not after: normalizing and rewriting an
+  // unbounded string on an unauthenticated endpoint is work an attacker
+  // chooses the size of. Loose enough that no separator a person might paste
+  // with six digits gets rejected for length.
+  .max(64)
   .transform((s) => s.normalize("NFKC").replace(/[\s-]/g, ""))
   .pipe(z.string().regex(/^\d{6}$/));
 
@@ -144,7 +149,7 @@ export interface StaffMemberResponse {
   status: "pending" | "active";
   created_at: number;
   activated_at: number | null;
-  /** Passcode. Only present when ENVIRONMENT !== "production" (POST only). */
+  /** Passcode. Only present when ENVIRONMENT === "development" (POST only). */
   code?: string;
   /**
    * Where the invitee enters their code. Carries no credential, so unlike the

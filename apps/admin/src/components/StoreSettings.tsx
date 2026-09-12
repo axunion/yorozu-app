@@ -213,7 +213,11 @@ export default function StoreSettings() {
       <section class={styles.section}>
         <h2 class={styles.heading}>自分のメールアドレス</h2>
         <p class={styles.currentEmail}>
-          現在のログイン用メールアドレス: <strong>{store.email}</strong>
+          {/* The store context is resolved once on load and never refetched,
+              so after a confirmed change it still holds the old address —
+              which is exactly what this line calls "現在の". */}
+          現在のログイン用メールアドレス:{" "}
+          <strong>{emailChanged() || store.email}</strong>
         </p>
 
         {/* Three states in the order they occur: request the change, enter

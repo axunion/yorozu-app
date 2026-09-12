@@ -205,13 +205,10 @@ describe("CodeEntryForm", () => {
 
     expect(getByRole("status").textContent).toContain("再送しました");
   });
+
   it("neither announces a resend nor starts a cooldown when none went out", async () => {
     vi.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    // The email-change endpoint answers with real failures — past its hourly
-    // cap no mail is sent. Announcing a resend and locking the button for a
-    // minute on top of the caller's own error message would deny a retry for
-    // mail that never went.
     const onResend = vi.fn(async () => false);
     const { getByRole, queryByRole } = render(() => (
       <CodeEntryForm
@@ -257,6 +254,12 @@ describe("CodeEntryForm", () => {
     await user.click(button);
 
     expect(onResend).toHaveBeenCalledTimes(1);
+    // Held inert while the request is open, and saying so: the cooldown label
+    // has not started yet, so without this the button would read as available
+    // while greyed out and aria-disabled.
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.textContent).toContain("送信中");
+
     release?.();
   });
 });

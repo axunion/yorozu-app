@@ -13,7 +13,7 @@ import {
   UpdateStoreNameInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, eq, gt, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { issueVerificationCode, redeemCode } from "../auth";
 import { requireOwner, requireStore } from "../middleware";
@@ -407,23 +407,17 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
       const db = createDb(c.env.DB);
       const ts = now();
 
-      const liveCodes = and(
+      // Whose codes these are. Unused, unexpired and inside the attempt
+      // budget are redeemCode's to enforce, not repeated here.
+      const scope = and(
         eq(schema.magicLinkTokens.member_id, memberId),
         eq(schema.magicLinkTokens.store_id, storeId),
         eq(schema.magicLinkTokens.purpose, "email_change"),
-        isNull(schema.magicLinkTokens.used_at),
-        gt(schema.magicLinkTokens.expires_at, ts),
       );
 
-      const matched = await redeemCode(
-        db,
-        liveCodes,
-        code,
-        c.env.OTP_PEPPER,
-        ts,
-      );
+      const matched = await redeemCode(db, scope, code, c.env.OTP_PEPPER, ts);
 
-      if (!matched?.new_email) {
+      if (!matched) {
         return errorResponse(
           "INVALID_CODE",
           "コードが正しくないか、有効期限が切れています。",
@@ -431,7 +425,16 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
         );
       }
 
+      // `scope` matches only `email_change` rows, and issueVerificationCode
+      // always writes new_email for that purpose, so this holds. Asserted
+      // rather than folded into the check above: the code has been consumed by
+      // now, and telling the owner a correct code was invalid would spend it
+      // while hiding the broken invariant behind a message they cannot act on.
       const newEmail = matched.new_email;
+      if (!newEmail) {
+        throw new Error(`email_change token ${matched.id} has no new_email`);
+      }
+
       try {
         await db
           .update(schema.members)

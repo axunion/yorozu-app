@@ -78,14 +78,12 @@ export default function CodeEntryForm(props: CodeEntryFormProps) {
     // second tap cannot land while the first request is still open.
     if (resendBlocked()) return;
     setResending(true);
-    let sent: boolean;
-    try {
-      sent = await props.onResend();
-    } finally {
-      setResending(false);
-    }
-    // The caller reports the failure itself; saying "resent" and starting a
-    // cooldown on top of it would deny a retry for mail that never went out.
+    // A rejection counts as "nothing went out". The callers all go through
+    // jsonFetch, which resolves on failure rather than throwing, so this is
+    // reachable only if one of them ever stops doing that — and then leaving
+    // `resending` stuck true would kill the button for good.
+    const sent = await props.onResend().catch(() => false);
+    setResending(false);
     if (!sent) return;
     setResent(true);
     setCooldown(RESEND_COOLDOWN_SECONDS);
@@ -146,8 +144,10 @@ export default function CodeEntryForm(props: CodeEntryFormProps) {
         aria-disabled={resendBlocked()}
         onClick={() => void handleResend()}
       >
-        <Show when={coolingDown()} fallback="コードを再送する">
-          {`あと${cooldown()}秒で再送できます`}
+        <Show when={!resending()} fallback="送信中...">
+          <Show when={coolingDown()} fallback="コードを再送する">
+            {`あと${cooldown()}秒で再送できます`}
+          </Show>
         </Show>
       </Button>
     </form>

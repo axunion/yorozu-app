@@ -189,6 +189,13 @@ describe("StoreSettings — email change", () => {
     expect(
       await screen.findByText(/new-owner@example\.com に変更しました/),
     ).toBeTruthy();
+    // And the line above it follows. The store context is resolved once on
+    // load, so reading it straight through would label the old address
+    // "現在の" directly above the message saying it changed.
+    expect(
+      screen.getByText(/現在のログイン用メールアドレス/).textContent,
+    ).toContain("new-owner@example.com");
+    expect(screen.queryByText("owner@test.internal")).toBeNull();
   });
 
   it("shows a dev-only code when the API echoes one", async () => {

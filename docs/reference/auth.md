@@ -373,7 +373,7 @@ for `/api/order/*` routes — they use `requireSeat` not `requireStore`.
 
 | Variable | Example | Purpose |
 |---|---|---|
-| `ADMIN_ORIGIN` | `https://admin.example.com` | Default `redirect_to` landing origin and `logout` redirect target; the invite mail's login URL; CORS allowlist |
+| `ADMIN_ORIGIN` | `https://admin.example.com` | Default `redirect_to` landing origin and `logout` redirect target; CORS allowlist |
 | `ORDER_ORIGIN` | `https://order.example.com` | CORS allowlist |
 | `SIGNUP_ORIGIN` | `https://signup.example.com` | CORS allowlist |
 | `SHIFT_ORIGIN` | `https://shift.example.com` | `redirect_to` landing origin and `logout` redirect target when the request carried `app: "shift"`; CORS allowlist |

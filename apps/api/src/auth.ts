@@ -82,6 +82,7 @@ export async function issueVerificationCode(
     .from(schema.magicLinkTokens)
     .where(
       and(
+        eq(schema.magicLinkTokens.store_id, storeId),
         eq(schema.magicLinkTokens.member_id, memberId),
         gt(schema.magicLinkTokens.created_at, ts - HOUR_MS),
       ),
@@ -110,6 +111,7 @@ export async function issueVerificationCode(
     .set({ used_at: ts })
     .where(
       and(
+        eq(schema.magicLinkTokens.store_id, storeId),
         eq(schema.magicLinkTokens.member_id, memberId),
         eq(schema.magicLinkTokens.purpose, purpose),
         isNull(schema.magicLinkTokens.used_at),
@@ -121,9 +123,14 @@ export async function issueVerificationCode(
 }
 
 /**
- * Claims one verification attempt against the candidate rows matching
- * `where`, and consumes and returns the row whose digest is `code` — or
- * undefined when none matches, none is left, or the attempt budget is spent.
+ * Claims one verification attempt against the live rows matching `scope`, and
+ * consumes and returns the row whose digest is `code` — or undefined when none
+ * matches, none is left, or the attempt budget is spent.
+ *
+ * `scope` is the caller's alone: which member, store and purpose the code has
+ * to belong to. Everything that makes a row *redeemable* — unused, unexpired,
+ * still inside the attempt budget — is this function's, so a third caller
+ * cannot weaken the contract by forgetting a predicate.
  *
  * The attempt is claimed *before* anything is compared, and only rows this
  * statement returned are compared. Selecting first and incrementing after
@@ -145,22 +152,45 @@ export async function issueVerificationCode(
  * `used_at` by id afterwards would be re-testing a condition it had already
  * passed, and both would mint a session.
  *
+ * Every write here re-states `scope` rather than addressing rows by the id it
+ * just read. The ids are already tenant-verified, so this changes no outcome
+ * today; it keeps the tenant predicate a property of each statement instead of
+ * an invariant a later edit could quietly break.
+ *
  * Shared by the two verify routes rather than written in each: they differ in
  * how they scope candidates and what they do with a match, but this sequence
  * is the attempt limit itself, and a fix to it has to reach both.
  */
 export async function redeemCode(
   db: Database,
-  where: SQL | undefined,
+  scope: SQL | undefined,
   code: string,
   pepper: string,
   ts: number,
 ) {
+  // `and()` is typed `SQL | undefined`, so a caller assembling its predicates
+  // conditionally can land on undefined — which would drop the WHERE clause
+  // entirely and burn an attempt against every live passcode in every store.
+  // Refused rather than defaulted, on the same reasoning as hashOtpCode's
+  // missing pepper: a silent loss of scoping here is invisible in production.
+  if (!scope) {
+    throw new Error("redeemCode called without a scope");
+  }
+
+  const redeemable = and(
+    scope,
+    isNull(schema.magicLinkTokens.used_at),
+    gt(schema.magicLinkTokens.expires_at, ts),
+  );
+
   const candidates = await db
     .update(schema.magicLinkTokens)
     .set({ attempt_count: sql`${schema.magicLinkTokens.attempt_count} + 1` })
     .where(
-      and(where, lt(schema.magicLinkTokens.attempt_count, OTP_MAX_ATTEMPTS)),
+      and(
+        redeemable,
+        lt(schema.magicLinkTokens.attempt_count, OTP_MAX_ATTEMPTS),
+      ),
     )
     .returning({
       id: schema.magicLinkTokens.id,
@@ -176,12 +206,7 @@ export async function redeemCode(
     const consumed = await db
       .update(schema.magicLinkTokens)
       .set({ used_at: ts })
-      .where(
-        and(
-          eq(schema.magicLinkTokens.id, row.id),
-          isNull(schema.magicLinkTokens.used_at),
-        ),
-      )
+      .where(and(redeemable, eq(schema.magicLinkTokens.id, row.id)))
       .returning({ id: schema.magicLinkTokens.id });
     // Empty means another request holding the same code consumed the row
     // between this one claiming its attempt and reaching here. It was a valid
@@ -196,7 +221,7 @@ export async function redeemCode(
     await db
       .update(schema.magicLinkTokens)
       .set({ used_at: ts })
-      .where(inArray(schema.magicLinkTokens.id, exhausted));
+      .where(and(redeemable, inArray(schema.magicLinkTokens.id, exhausted)));
   }
 
   return undefined;
