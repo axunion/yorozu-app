@@ -70,7 +70,12 @@ pnpm --filter @yorozu/api exec wrangler deploy
 VITE_API_BASE=https://api.example.com VITE_ORDER_BASE=https://order.example.com \
   pnpm --filter @yorozu/admin build
 pnpm --filter @yorozu/admin exec wrangler deploy
-# repeat for @yorozu/order, @yorozu/signup and @yorozu/shift (VITE_API_BASE only)
+#    @yorozu/signup needs VITE_ADMIN_BASE — where it sends a visitor whose
+#    code screen lost its handoff, since only admin hosts the login form.
+VITE_API_BASE=https://api.example.com VITE_ADMIN_BASE=https://admin.example.com \
+  pnpm --filter @yorozu/signup build
+pnpm --filter @yorozu/signup exec wrangler deploy
+# repeat for @yorozu/order and @yorozu/shift (VITE_API_BASE only)
 ```
 
 Apply migrations before deploying API code that depends on them.

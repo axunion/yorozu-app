@@ -142,10 +142,15 @@ describe("CheckEmailPage", () => {
     expect(readSignupHandoff()).toBeUndefined();
   });
 
-  it("tells a direct visitor to start again when there is nothing handed over", () => {
+  it("sends a direct visitor to the login form, which can reissue the code", () => {
+    // Not back to this app's own root: re-registering the same address is a
+    // 400, so the code already in their inbox would have nowhere to be used.
+    // The origin in front of /login is VITE_ADMIN_BASE, substituted at build
+    // time and so empty here — same as VITE_ORDER_BASE in the admin suite.
     render(() => <CheckEmailPage />);
 
     expect(screen.queryByLabelText("確認コード")).toBeNull();
-    expect(screen.getByText(/最初からやり直してください/)).toBeTruthy();
+    const link = screen.getByRole("link", { name: "ログイン画面" });
+    expect(link.getAttribute("href")).toMatch(/\/login$/);
   });
 });

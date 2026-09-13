@@ -7,6 +7,14 @@ import styles from "./CheckEmailPage.module.css";
 
 export default function CheckEmailPage() {
   const handoff = readSignupHandoff();
+  // Where a visitor with no handoff is sent. The admin SPA hosts the login
+  // form, and a pending owner asking it for a code gets their signup code
+  // reissued — so it is the way back in, and this app does not otherwise know
+  // its URL. Unset collapses to a relative /login, which this app does not
+  // serve; that is a misconfigured build, not a state a visitor can reach.
+  const loginUrl = `${
+    (import.meta as { env?: Record<string, string> }).env?.VITE_ADMIN_BASE ?? ""
+  }/login`;
   const [error, setError] = createSignal("");
   const [devCode, setDevCode] = createSignal(handoff?.code);
   const [submitting, setSubmitting] = createSignal(false);
@@ -61,7 +69,9 @@ export default function CheckEmailPage() {
             <p class={styles.body}>
               お申し込みの情報が見つかりませんでした。
               <br />
-              お手数ですが<a href="/">最初からやり直してください</a>。
+              お手数ですが
+              <a href={loginUrl}>ログイン画面</a>
+              でメールアドレスを入力してください。確認コードを送り直します。
             </p>
           }
         >

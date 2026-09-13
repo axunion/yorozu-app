@@ -389,6 +389,7 @@ for `/api/order/*` routes — they use `requireSeat` not `requireStore`.
 |---|---|---|
 | `VITE_API_BASE` | all SPAs | API base URL (e.g. `https://api.example.com`) |
 | `VITE_ORDER_BASE` | admin SPA only | Order SPA base URL for QR code generation |
+| `VITE_ADMIN_BASE` | signup SPA only | Admin SPA base URL, for the login link shown when the code screen has no handoff |
 
 When `VITE_API_BASE` is unset, `apiFetch` sends relative requests (`/api/...`), which works
 for local dev when a proxy forwards `/api/*` to the Wrangler dev server.
