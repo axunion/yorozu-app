@@ -2,7 +2,7 @@
 import { env } from "cloudflare:workers";
 import { OTP_MAX_ATTEMPTS } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { app } from "../app";
 import { issueVerificationCode, redeemCode } from "../auth";
@@ -377,6 +377,47 @@ describe("POST /api/auth/verify-code — rejection", () => {
 
     expect(matched).toBeUndefined();
     expect((await tokenRow(tokenId))?.used_at).toBeNull();
+  });
+
+  it("consumes a sibling candidate that exhausts its attempts in the same batch as a match", async () => {
+    // redeemCode's scope has no purpose filter, so a member can hold two live
+    // rows at once. Put one attempt away from OTP_MAX_ATTEMPTS on a second row
+    // that shares the real code's batch: the schema's "reaching
+    // OTP_MAX_ATTEMPTS consumes the row via used_at" invariant must hold for
+    // it too, not just for whichever row matched.
+    const store = await seedStore(`枯渇同居店 ${crypto.randomUUID()}`);
+    const code = await issueCode(store.id, store.member_id, "login");
+    const matchedId = await liveTokenIdFor(store.member_id);
+
+    const db = createDb(env.DB);
+    const siblingId = crypto.randomUUID();
+    await db.insert(schema.magicLinkTokens).values({
+      id: siblingId,
+      store_id: store.id,
+      member_id: store.member_id,
+      token: crypto.randomUUID(),
+      purpose: "invite",
+      expires_at: Date.now() + 60_000,
+      attempt_count: OTP_MAX_ATTEMPTS - 1,
+    });
+
+    const scope = and(
+      eq(schema.magicLinkTokens.member_id, store.member_id),
+      eq(schema.magicLinkTokens.store_id, store.id),
+      isNull(schema.magicLinkTokens.new_email),
+    );
+    const matched = await redeemCode(
+      db,
+      scope,
+      code,
+      env.OTP_PEPPER,
+      Date.now(),
+    );
+
+    expect(matched?.id).toBe(matchedId);
+    const sibling = await tokenRow(siblingId);
+    expect(sibling?.attempt_count).toBe(OTP_MAX_ATTEMPTS);
+    expect(sibling?.used_at).not.toBeNull();
   });
 
   it("does not accept one member's code submitted under another's email", async () => {

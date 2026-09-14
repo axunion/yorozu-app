@@ -231,6 +231,31 @@ describe("CodeEntryForm", () => {
     expect(onResend).toHaveBeenCalledTimes(2);
   });
 
+  it("clears a stale resent banner when a later resend fails", async () => {
+    vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onResend = vi.fn(async () => true);
+    const { getByRole, queryByRole } = render(() => (
+      <CodeEntryForm
+        id="stale-banner-code"
+        submitLabel="ログイン"
+        onSubmit={noop}
+        onResend={onResend}
+      />
+    ));
+
+    await user.click(getByRole("button", { name: "コードを再送する" }));
+    expect(getByRole("status").textContent).toContain("再送しました");
+
+    vi.advanceTimersByTime(60_000);
+    onResend.mockImplementationOnce(async () => false);
+    await user.click(getByRole("button", { name: "コードを再送する" }));
+
+    // Without clearing it, the earlier success banner would still show
+    // alongside whatever error the caller now renders for this failure.
+    expect(queryByRole("status")).toBeNull();
+  });
+
   it("ignores a second tap while the first resend is still open", async () => {
     const user = userEvent.setup();
     let release: (() => void) | undefined;

@@ -77,6 +77,7 @@ export default function CodeEntryForm(props: CodeEntryFormProps) {
     // pointer takes the focus with it. `resending` is part of that guard so a
     // second tap cannot land while the first request is still open.
     if (resendBlocked()) return;
+    setResent(false);
     setResending(true);
     // A rejection counts as "nothing went out". The callers all go through
     // jsonFetch, which resolves on failure rather than throwing, so this is

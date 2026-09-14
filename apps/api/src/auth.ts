@@ -201,6 +201,7 @@ export async function redeemCode(
       attempt_count: schema.magicLinkTokens.attempt_count,
     });
 
+  let matched: (typeof candidates)[number] | undefined;
   for (const row of candidates) {
     if ((await hashOtpCode(row.id, code, pepper)) !== row.token) continue;
     const consumed = await db
@@ -211,9 +212,16 @@ export async function redeemCode(
     // Empty means another request holding the same code consumed the row
     // between this one claiming its attempt and reaching here. It was a valid
     // code, but it is spent now, so the loser is told the same as any miss.
-    return consumed.length > 0 ? row : undefined;
+    matched = consumed.length > 0 ? row : undefined;
+    break;
   }
 
+  // Runs regardless of whether a row matched: a sibling candidate in this
+  // same batch can independently hit OTP_MAX_ATTEMPTS, and the schema's
+  // "reaching OTP_MAX_ATTEMPTS consumes the row via used_at" invariant
+  // applies to it either way. No need to exclude the matched row here: by
+  // now its used_at is already non-null (set above, or by whoever else won
+  // it), so `redeemable`'s `isNull(used_at)` already keeps it out.
   const exhausted = candidates
     .filter((row) => row.attempt_count >= OTP_MAX_ATTEMPTS)
     .map((row) => row.id);
@@ -224,7 +232,7 @@ export async function redeemCode(
       .where(and(redeemable, inArray(schema.magicLinkTokens.id, exhausted)));
   }
 
-  return undefined;
+  return matched;
 }
 
 /**
