@@ -2,6 +2,7 @@ import type { StoreCreatedResponse } from "@yorozu/core";
 import { jsonFetch } from "@yorozu/core/client";
 import { Button, ErrorAlert, Field } from "@yorozu/ui";
 import { createSignal, Show } from "solid-js";
+import { writeSignupHandoff } from "../handoff";
 import styles from "./RegisterForm.module.css";
 
 export default function RegisterForm() {
@@ -27,10 +28,8 @@ export default function RegisterForm() {
         setError(result.message ?? "登録に失敗しました");
         return;
       }
-      const verifyUrl = result.data?.verify_url;
-      window.location.href = verifyUrl
-        ? `/check-email?verify_url=${encodeURIComponent(verifyUrl)}`
-        : "/check-email";
+      writeSignupHandoff({ email: email(), code: result.data?.code });
+      window.location.href = "/check-email";
     } finally {
       setSubmitting(false);
     }

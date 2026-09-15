@@ -37,10 +37,15 @@ All five apps deploy to Cloudflare Workers with `wrangler deploy`. Deployment is
    ```sh
    wrangler secret put RESEND_API_KEY   # run inside apps/api
    wrangler secret put MAIL_FROM
+   wrangler secret put OTP_PEPPER
    ```
+
+   `OTP_PEPPER` keys the HMAC over emailed passcodes. Use a long random
+   value; rotating it invalidates every passcode issued so far, which is
+   harmless in practice given their short lifetime.
 6. **Deploy-blocking — configure per-IP WAF rate limiting** on the API's
    Cloudflare zone before exposing it publicly (see
-   [auth.md](./auth.md#magic-link-flow) for the per-store per-hour cap,
+   [auth.md](./auth.md#rate-limiting--two-independent-axes) for the per-store per-hour cap,
    which is enforced in the Worker; this is the complementary per-IP
    layer that only the platform can do well):
    - `POST /api/auth/login` and `POST /api/stores`: e.g. 10 requests /
@@ -65,7 +70,12 @@ pnpm --filter @yorozu/api exec wrangler deploy
 VITE_API_BASE=https://api.example.com VITE_ORDER_BASE=https://order.example.com \
   pnpm --filter @yorozu/admin build
 pnpm --filter @yorozu/admin exec wrangler deploy
-# repeat for @yorozu/order, @yorozu/signup and @yorozu/shift (VITE_API_BASE only)
+#    @yorozu/signup needs VITE_ADMIN_BASE — where it sends a visitor whose
+#    code screen lost its handoff, since only admin hosts the login form.
+VITE_API_BASE=https://api.example.com VITE_ADMIN_BASE=https://admin.example.com \
+  pnpm --filter @yorozu/signup build
+pnpm --filter @yorozu/signup exec wrangler deploy
+# repeat for @yorozu/order and @yorozu/shift (VITE_API_BASE only)
 ```
 
 Apply migrations before deploying API code that depends on them.

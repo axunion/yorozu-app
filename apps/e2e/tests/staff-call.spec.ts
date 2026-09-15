@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readDevCode } from "../dev-code";
 import { ADMIN_ORIGIN, ORDER_ORIGIN, SIGNUP_ORIGIN } from "../origins";
 
 /**
@@ -31,7 +32,8 @@ test("a customer can call staff and staff can clear the call", async ({
     await admin.getByLabel("店舗名").fill(storeName);
     await admin.getByLabel("メールアドレス").fill(email);
     await admin.getByRole("button", { name: "申し込む" }).click();
-    await admin.getByRole("link", { name: "このリンクで直接確認する" }).click();
+    await admin.getByLabel("確認コード").fill(await readDevCode(admin));
+    await admin.getByRole("button", { name: "登録を完了する" }).click();
     await admin.waitForURL(`${ADMIN_ORIGIN}/`);
 
     await admin.getByRole("link", { name: "座席管理・QR 発行" }).click();

@@ -30,7 +30,7 @@ store = one tenant = one owner email.
 The full business cycle works end to end, verified by
 `apps/api/src/routes/business-cycle.test.ts`:
 
-Store registration → Magic Link email verification → menu setup →
+Store registration → emailed passcode verification → menu setup →
 seat/QR issuance → customer orders → admin order board (5s polling) →
 serve items → customer requests payment → cash checkout → paid.
 

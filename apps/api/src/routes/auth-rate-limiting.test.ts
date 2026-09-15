@@ -1,11 +1,10 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 /**
  * Auth rate limiting (roadmap Phase 2 item 6, production-deploy gate):
- * per-member hourly cap on Magic Link issuance, and the supersede-not-delete
+ * per-member hourly cap on passcode issuance, and the supersede-not-delete
  * prerequisite that makes the cap countable.
  */
 import { env } from "cloudflare:workers";
-import { hashToken } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
@@ -49,8 +48,8 @@ async function memberEmail(memberId: string): Promise<string> {
   return email;
 }
 
-describe("issueMagicLink dedup is member-scoped, not store-scoped", () => {
-  it("two members of the same store requesting login tokens don't invalidate each other", async () => {
+describe("issueVerificationCode dedup is member-scoped, not store-scoped", () => {
+  it("two members of the same store requesting codes don't invalidate each other", async () => {
     const { id: storeId, member_id: ownerMemberId } = await seedStore(
       `Multi Member Store ${crypto.randomUUID()}`,
     );
@@ -75,42 +74,38 @@ describe("issueMagicLink dedup is member-scoped, not store-scoped", () => {
       jsonInit("POST", { email: ownerEmail }),
       devEnv,
     );
-    const ownerBody = (await ownerRes.json()) as {
-      data: { verify_url?: string };
-    };
-    const ownerToken = new URL(
-      ownerBody.data.verify_url ?? "",
-    ).searchParams.get("token");
-    if (!ownerToken) throw new Error("owner verify_url missing a token");
+    const ownerBody = (await ownerRes.json()) as { data: { code?: string } };
+    const ownerCode = ownerBody.data.code;
+    if (!ownerCode) throw new Error("owner code missing");
 
     // The staff member's login request must NOT supersede the owner's
-    // still-unused token — under the old store-scoped dedup (store_id +
-    // purpose), this second request would have marked the owner's token
+    // still-unused code — under the old store-scoped dedup (store_id +
+    // purpose), this second request would have marked the owner's row
     // used_at, breaking it. member-scoped dedup must leave it untouched.
     const staffRes = await app.request(
       "/api/auth/login",
       jsonInit("POST", { email: staffEmail }),
       devEnv,
     );
-    const staffBody = (await staffRes.json()) as {
-      data: { verify_url?: string };
-    };
-    expect(staffBody.data.verify_url).toBeTruthy();
+    const staffBody = (await staffRes.json()) as { data: { code?: string } };
+    expect(staffBody.data.code).toBeTruthy();
 
+    // The digest is salted with the row id, so the owner's row is found by
+    // member rather than by hashing the code they were handed.
     const ownerTokenRow = await db
       .select({ used_at: schema.magicLinkTokens.used_at })
       .from(schema.magicLinkTokens)
-      .where(eq(schema.magicLinkTokens.token, await hashToken(ownerToken)))
+      .where(eq(schema.magicLinkTokens.member_id, ownerMemberId))
       .then((rows) => rows[0]);
     expect(ownerTokenRow?.used_at).toBeNull();
 
-    // The owner's token is still verifiable — the definitive proof.
+    // The owner's code still verifies — the definitive proof.
     const ownerVerifyRes = await app.request(
-      `/api/auth/verify?token=${ownerToken}`,
-      {},
+      "/api/auth/verify-code",
+      jsonInit("POST", { email: ownerEmail, code: ownerCode }),
       env,
     );
-    expect(ownerVerifyRes.status).toBe(302);
+    expect(ownerVerifyRes.status).toBe(200);
   });
 
   it("caps one member of a store without affecting another member of the same store", async () => {
@@ -139,25 +134,21 @@ describe("issueMagicLink dedup is member-scoped, not store-scoped", () => {
       jsonInit("POST", { email: ownerEmail }),
       devEnv,
     );
-    const ownerBody = (await ownerRes.json()) as {
-      data: { verify_url?: string };
-    };
-    expect(ownerBody.data.verify_url).toBeUndefined();
+    const ownerBody = (await ownerRes.json()) as { data: { code?: string } };
+    expect(ownerBody.data.code).toBeUndefined();
 
     const staffRes = await app.request(
       "/api/auth/login",
       jsonInit("POST", { email: staffEmail }),
       devEnv,
     );
-    const staffBody = (await staffRes.json()) as {
-      data: { verify_url?: string };
-    };
-    expect(staffBody.data.verify_url).toBeTruthy();
+    const staffBody = (await staffRes.json()) as { data: { code?: string } };
+    expect(staffBody.data.code).toBeTruthy();
   });
 });
 
-describe("issueMagicLink token supersession (UPDATE, not DELETE)", () => {
-  it("fails a superseded login token at verify exactly like a consumed one", async () => {
+describe("issueVerificationCode supersession (UPDATE, not DELETE)", () => {
+  it("fails a superseded login code at verify exactly like a consumed one", async () => {
     const { member_id: memberId } = await seedStore(
       `Supersede Login Test ${crypto.randomUUID()}`,
     );
@@ -169,31 +160,29 @@ describe("issueMagicLink token supersession (UPDATE, not DELETE)", () => {
       jsonInit("POST", { email }),
       devEnv,
     );
-    const firstBody = (await firstRes.json()) as {
-      data: { verify_url?: string };
-    };
-    const firstToken = new URL(
-      firstBody.data.verify_url ?? "",
-    ).searchParams.get("token");
-    if (!firstToken) throw new Error("verify_url missing a token");
+    const firstBody = (await firstRes.json()) as { data: { code?: string } };
+    const firstCode = firstBody.data.code;
+    if (!firstCode) throw new Error("first code missing");
 
-    // Re-request supersedes the first token.
+    // Re-request supersedes the first code.
     await app.request("/api/auth/login", jsonInit("POST", { email }), devEnv);
 
     const firstVerifyRes = await app.request(
-      `/api/auth/verify?token=${firstToken}`,
-      {},
+      "/api/auth/verify-code",
+      jsonInit("POST", { email, code: firstCode }),
       env,
     );
     expect(firstVerifyRes.status).toBe(400);
 
-    // The row still exists (UPDATE, not DELETE) and is marked used.
+    // Both rows still exist (UPDATE, not DELETE) and exactly one is live —
+    // the count is what the hourly cap reads, so a DELETE here would let a
+    // caller mint codes past it.
     const rows = await db
       .select({ used_at: schema.magicLinkTokens.used_at })
       .from(schema.magicLinkTokens)
-      .where(eq(schema.magicLinkTokens.token, await hashToken(firstToken)));
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.used_at).not.toBeNull();
+      .where(eq(schema.magicLinkTokens.member_id, memberId));
+    expect(rows).toHaveLength(2);
+    expect(rows.filter((r) => r.used_at === null)).toHaveLength(1);
   });
 });
 
@@ -214,10 +203,10 @@ describe("POST /api/auth/login rate limiting", () => {
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { sent: true; verify_url?: string };
+      data: { sent: true; code?: string };
     };
     expect(body.data.sent).toBe(true);
-    expect(body.data.verify_url).toBeUndefined();
+    expect(body.data.code).toBeUndefined();
 
     // No 6th row was inserted.
     const rows = await db
@@ -243,9 +232,9 @@ describe("POST /api/auth/login rate limiting", () => {
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { sent: true; verify_url?: string };
+      data: { sent: true; code?: string };
     };
-    expect(body.data.verify_url).toBeTruthy();
+    expect(body.data.code).toBeTruthy();
 
     const rows = await db
       .select({ id: schema.magicLinkTokens.id })
@@ -270,9 +259,9 @@ describe("POST /api/auth/login rate limiting", () => {
       devEnv,
     );
     const cappedBody = (await cappedRes.json()) as {
-      data: { verify_url?: string };
+      data: { code?: string };
     };
-    expect(cappedBody.data.verify_url).toBeUndefined();
+    expect(cappedBody.data.code).toBeUndefined();
 
     const otherRes = await app.request(
       "/api/auth/login",
@@ -280,9 +269,9 @@ describe("POST /api/auth/login rate limiting", () => {
       devEnv,
     );
     const otherBody = (await otherRes.json()) as {
-      data: { verify_url?: string };
+      data: { code?: string };
     };
-    expect(otherBody.data.verify_url).toBeTruthy();
+    expect(otherBody.data.code).toBeTruthy();
   });
 
   it("resets outside the rolling hour window", async () => {
@@ -302,9 +291,9 @@ describe("POST /api/auth/login rate limiting", () => {
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { sent: true; verify_url?: string };
+      data: { sent: true; code?: string };
     };
-    expect(body.data.verify_url).toBeTruthy();
+    expect(body.data.code).toBeTruthy();
 
     const rows = await db
       .select({ id: schema.magicLinkTokens.id })
@@ -315,7 +304,7 @@ describe("POST /api/auth/login rate limiting", () => {
 
   it("does not leak registration status via the response shape when rate-limited", async () => {
     // Anti-enumeration: a rate-limited existing member and an unregistered
-    // email must be indistinguishable in production mode (no verify_url
+    // email must be indistinguishable in production mode (no code
     // either way, identical status/body shape).
     const { id: storeId, member_id: memberId } = await seedStore(
       `Anti Enum Test ${crypto.randomUUID()}`,
@@ -364,10 +353,10 @@ describe("POST /api/stores/me/email-change rate limiting", () => {
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { sent: true; verify_url?: string };
+      data: { sent: true; code?: string };
     };
     expect(body.data.sent).toBe(true);
-    expect(body.data.verify_url).toBeUndefined();
+    expect(body.data.code).toBeUndefined();
 
     // The member's email is unchanged — no token was ever issued to verify.
     const db = createDb(env.DB);

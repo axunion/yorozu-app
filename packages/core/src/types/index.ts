@@ -22,7 +22,7 @@ const priceDeltaValue = z.number().int().min(-1_000_000).max(1_000_000);
 export const CreateStoreInput = z.object({
   /** Store display name. Trimmed; must be 1–100 characters after trimming. */
   name: displayName,
-  /** Owner email — Magic Link is sent here. */
+  /** Owner email — the signup passcode is sent here. */
   email: z.email(),
 });
 export type CreateStoreInput = z.infer<typeof CreateStoreInput>;
@@ -31,8 +31,8 @@ export interface StoreCreatedResponse {
   id: string;
   name: string;
   slug: string;
-  /** Magic Link URL. Only present when ENVIRONMENT !== "production". */
-  verify_url?: string;
+  /** Passcode. Only present when ENVIRONMENT === "development". */
+  code?: string;
 }
 
 export const UpdateStoreNameInput = z.object({
@@ -66,8 +66,8 @@ export type DeleteStoreInput = z.infer<typeof DeleteStoreInput>;
 
 export interface EmailChangeResponse {
   sent: true;
-  /** Magic Link URL. Only present when ENVIRONMENT !== "production". */
-  verify_url?: string;
+  /** Passcode. Only present when ENVIRONMENT === "development". */
+  code?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,19 +76,60 @@ export interface EmailChangeResponse {
 
 export const LoginInput = z.object({
   email: z.email(),
-  /**
-   * Which SPA the Magic Link should land in. An enum, not a URL: the API maps
-   * it to an origin from its own env, so a caller can never redirect the link
-   * somewhere of its choosing.
-   */
-  app: z.enum(["admin", "shift"]).default("admin"),
 });
 export type LoginInput = z.infer<typeof LoginInput>;
 
 export interface LoginResponse {
   sent: true;
-  /** Magic Link URL. Only present when ENVIRONMENT !== "production" and a token was issued. */
-  verify_url?: string;
+  /** Passcode. Only present when ENVIRONMENT === "development" and a code was issued. */
+  code?: string;
+}
+
+/**
+ * A passcode as the user typed it. Japanese IMEs happily produce full-width
+ * digits, and people paste codes with the spacing they were displayed with,
+ * so normalize before validating rather than rejecting input that is correct
+ * to the person who entered it.
+ */
+const otpCodeValue = z
+  .string()
+  // Capped before the transform, not after: normalizing and rewriting an
+  // unbounded string on an unauthenticated endpoint is work an attacker
+  // chooses the size of. Loose enough that no separator a person might paste
+  // with six digits gets rejected for length.
+  .max(64)
+  .transform((s) => s.normalize("NFKC").replace(/[\s-]/g, ""))
+  .pipe(z.string().regex(/^\d{6}$/));
+
+export const VerifyCodeInput = z.object({
+  email: z.email(),
+  code: otpCodeValue,
+  /**
+   * Which SPA to land in after verifying. An enum, not a URL: the API maps it
+   * to an origin from its own env, so a caller can never redirect somewhere of
+   * its choosing.
+   */
+  app: z.enum(["admin", "shift"]).default("admin"),
+});
+export type VerifyCodeInput = z.infer<typeof VerifyCodeInput>;
+
+export interface VerifyCodeResponse {
+  /**
+   * Absolute origin to send the browser to. Resolved server-side from `app`
+   * because the signup SPA has to cross to the admin origin and does not carry
+   * that URL in its own env.
+   */
+  redirect_to: string;
+}
+
+export const EmailChangeVerifyInput = z.object({
+  code: otpCodeValue,
+});
+export type EmailChangeVerifyInput = z.infer<typeof EmailChangeVerifyInput>;
+
+export interface EmailChangeVerifyResponse {
+  /** The address now on the member, so the caller can update what it shows. */
+  email: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,8 +149,14 @@ export interface StaffMemberResponse {
   status: "pending" | "active";
   created_at: number;
   activated_at: number | null;
-  /** Magic Link URL. Only present when ENVIRONMENT !== "production" (POST only). */
-  verify_url?: string;
+  /** Passcode. Only present when ENVIRONMENT === "development" (POST only). */
+  code?: string;
+  /**
+   * Where the invitee enters their code. Carries no credential, so unlike the
+   * passcode it would be safe to send in any environment; it is dev-gated only
+   * because it is useless without the code beside it.
+   */
+  invite_url?: string;
 }
 
 // ---------------------------------------------------------------------------

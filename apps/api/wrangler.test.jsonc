@@ -26,6 +26,8 @@
     "COOKIE_DOMAIN": "",
     "RESEND_API_KEY": "",
     "MAIL_FROM": "",
-    "ENVIRONMENT": "production"
+    "ENVIRONMENT": "production",
+    // Any non-empty value works; hashOtpCode only refuses an empty pepper.
+    "OTP_PEPPER": "test-pepper"
   }
 }

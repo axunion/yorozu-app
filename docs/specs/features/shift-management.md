@@ -157,9 +157,9 @@ assigned" are different states and read differently.
 
 ## Login
 
-The shift SPA's login posts `app: "shift"`, which the API maps to
-`SHIFT_ORIGIN` from its own env, so the Magic Link lands back in this SPA
-rather than in admin. See [authentication](./authentication.md).
+The shift SPA sends `app: "shift"` when verifying its passcode, which the
+API maps to `SHIFT_ORIGIN` from its own env and returns as `redirect_to`, so
+a verified login lands back in this SPA rather than in admin. See [authentication](./authentication.md).
 
 ## Not in v1
 
@@ -167,7 +167,7 @@ rather than in admin. See [authentication](./authentication.md).
   manager approval, and the open-shift board. These need two more state
   machines and a notification channel.
 - **Submission reminders.** The non-submitter list is what v1 offers
-  instead; sending mail would mean a second outbound path beyond Magic Link.
+  instead; sending mail would mean a second outbound path beyond passcodes.
 - **Standing per-member availability rules.** "Copy the previous period"
   carries the same information without a table.
 - **Per-date requirement overrides** (holidays).

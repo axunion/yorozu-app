@@ -20,16 +20,23 @@ interface Env {
    * Leave empty in local dev so the cookie is scoped to localhost only.
    */
   COOKIE_DOMAIN: string;
-  /** Resend API key for Magic Link email delivery. Omit in local dev → console fallback. */
+  /** Resend API key for passcode email delivery. Omit in local dev → console fallback. */
   RESEND_API_KEY: string;
   /** Sender address used in outgoing emails. */
   MAIL_FROM: string;
   /**
    * "production" in deployed environments; set to "development" in local
-   * `.dev.vars` to expose the Magic Link URL directly in API responses
+   * `.dev.vars` to echo the passcode directly in API responses
    * instead of requiring email delivery.
    */
   ENVIRONMENT: string;
+  /**
+   * HMAC key for emailed passcodes (`hashOtpCode`). A 6-digit code has only
+   * 10^6 possibilities, so an unkeyed digest of one is reversible from a
+   * database read; keeping this key outside D1 is what makes the stored
+   * digests useless on their own. Required — issuance throws without it.
+   */
+  OTP_PEPPER: string;
 }
 
 // Augment Cloudflare.Env for `import { env } from "cloudflare:workers"` in tests.
@@ -45,5 +52,6 @@ declare namespace Cloudflare {
     RESEND_API_KEY: string;
     MAIL_FROM: string;
     ENVIRONMENT: string;
+    OTP_PEPPER: string;
   }
 }

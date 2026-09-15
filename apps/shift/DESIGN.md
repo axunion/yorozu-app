@@ -187,7 +187,7 @@ Token overrides belong in `src/styles/shift-tokens.css`, imported only from
 
 | Route | Role | What it is |
 |---|---|---|
-| `/login` | — | Magic Link request, posting `app: "shift"` |
+| `/login` | — | Passcode request and entry, posting `app: "shift"` |
 | `/` | owner | Period list and the create form |
 | `/` | staff | Own published shifts, plus a link to submit |
 | `/periods/:id` | owner | The builder: coverage, warnings, cost, CSV |

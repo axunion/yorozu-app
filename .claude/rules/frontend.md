@@ -29,7 +29,7 @@ Always check `result.ok` before accessing `result.data`.
 
 ## Shared UI components
 
-Check `@yorozu/ui` before writing raw HTML. Available: `Button`, `Card`, `ConfirmDialog`, `ErrorAlert`, `Field`, `Select`.
+Check `@yorozu/ui` before writing raw HTML. Available: `Button`, `Card`, `CodeEntryForm`, `ConfirmDialog`, `ErrorAlert`, `Field`, `Select`.
 
 - Use `ConfirmDialog` for all destructive actions — never `window.confirm`
 - Use `ErrorAlert` for API error messages
