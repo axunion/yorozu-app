@@ -51,19 +51,19 @@ const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next) => {
   const origin = c.req.header("Origin") ?? "";
   const isAllowedOrigin = allowed.includes(origin);
 
-  if (isAllowedOrigin) {
-    c.header("Access-Control-Allow-Origin", origin);
-    c.header("Access-Control-Allow-Credentials", "true");
-    c.header(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PATCH, DELETE, OPTIONS",
-    );
-    c.header("Access-Control-Allow-Headers", "Content-Type");
-    c.header("Vary", "Origin");
-  }
+  const corsHeaders: Record<string, string> = isAllowedOrigin
+    ? {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods":
+          "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        Vary: "Origin",
+      }
+    : {};
 
   if (c.req.method === "OPTIONS") {
-    return c.body(null, 204);
+    return c.body(null, 204, corsHeaders);
   }
 
   if (origin && !isAllowedOrigin && STATE_CHANGING_METHODS.has(c.req.method)) {
@@ -71,6 +71,13 @@ const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next) => {
   }
 
   await next();
+
+  // Applied to the final response rather than via c.header() before next():
+  // handlers that return a raw Response (errorResponse) bypass Hono's prepared
+  // headers, which left every 4xx unreadable to the cross-origin SPAs.
+  for (const [name, value] of Object.entries(corsHeaders)) {
+    c.res.headers.set(name, value);
+  }
 });
 
 // ---------------------------------------------------------------------------
