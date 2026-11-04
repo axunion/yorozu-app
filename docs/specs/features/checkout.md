@@ -35,7 +35,9 @@ renders both so staff can double-check the bill before settling it.
 - CheckoutPanel: a one-tap method selector (radiogroup, defaults to
   現金) always visible per pending bill; a discount entry hidden behind
   a "割引を追加" tap (deliberate friction against casual misuse) that
-  blocks checkout until a reason is entered whenever an amount is.
+  blocks checkout until a reason is entered whenever an amount is, and
+  while the amount exceeds the bill — shown as an error, never capped, so
+  a mistyped amount cannot silently become a ¥0 sale.
 
 ### Voiding a payment (`PATCH /api/payments/:id/void`)
 

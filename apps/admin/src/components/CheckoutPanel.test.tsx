@@ -316,6 +316,66 @@ describe("CheckoutPanel", () => {
     expect(body.discount_reason).toBeUndefined();
   });
 
+  it("blocks checkout instead of silently capping a discount larger than the bill", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch([
+      {
+        url: "/api/payments/pending",
+        method: "GET",
+        json: { data: [mockPendingOrder] },
+      },
+    ]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { findByRole, findByLabelText, findByText } = render(() => (
+      <CheckoutPanel />
+    ));
+    await user.click(await findByRole("button", { name: "割引を追加" }));
+
+    const amountInput = await findByLabelText("割引額 (円)");
+    await user.type(amountInput, "99999");
+    await user.type(await findByLabelText("理由"), "常連割引");
+
+    // The typo stays visible so staff can see what they entered.
+    expect((amountInput as HTMLInputElement).value).toBe("99999");
+    await findByText("割引額が請求額（¥1,200）を超えています");
+    const checkoutBtn = await findByRole("button", { name: /会計完了/ });
+    expect(checkoutBtn).toHaveProperty("disabled", true);
+
+    await user.click(checkoutBtn);
+    const posted = fetchMock.mock.calls.some(
+      (args: unknown[]) =>
+        ((args[1] as RequestInit | undefined)?.method ?? "").toUpperCase() ===
+        "POST",
+    );
+    expect(posted).toBe(false);
+  });
+
+  it("allows a discount of exactly the bill amount", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        {
+          url: "/api/payments/pending",
+          method: "GET",
+          json: { data: [mockPendingOrder] },
+        },
+      ]),
+    );
+
+    const { findByRole, findByLabelText, queryByText } = render(() => (
+      <CheckoutPanel />
+    ));
+    await user.click(await findByRole("button", { name: "割引を追加" }));
+    await user.type(await findByLabelText("割引額 (円)"), "1200");
+    await user.type(await findByLabelText("理由"), "招待");
+
+    expect(queryByText(/を超えています/)).toBeNull();
+    const checkoutBtn = await findByRole("button", { name: /会計完了/ });
+    expect(checkoutBtn).toHaveProperty("disabled", false);
+  });
+
   it("enters a discount, previews the discounted total, and sends it on checkout", async () => {
     const user = userEvent.setup();
     const fetchMock = mockFetch([
