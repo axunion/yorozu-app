@@ -100,6 +100,10 @@ behavior.
 - **Open to both roles:** the order board, staff calls, payments/checkout,
   and `POST /api/stores/me/email-change` (any active member manages their
   own login email; gated by "is this your own account", not role).
+- In `apps/admin`, a staff session gets no dashboard link to the menu,
+  seats or staff screens; opening one directly shows an owner-only notice
+  instead of the screen, and Settings shows the store name as text. This
+  is UX only — the API gate above is the actual guard.
 
 ### Staff management (`apps/api/src/routes/staff.ts`, owner-only)
 

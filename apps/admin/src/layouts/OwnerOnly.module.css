@@ -1,0 +1,9 @@
+.notice {
+  margin: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-muted-foreground);
+  font-size: var(--text-sm);
+}
