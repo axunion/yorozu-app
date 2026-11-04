@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Whole-check discounts (roadmap Phase 4 item 3).
  * Covers POST /api/payments' `discount_amount`/`discount_reason`:

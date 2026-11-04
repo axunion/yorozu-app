@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Menu item photos (roadmap Phase 3 item 1): R2-backed upload, serving, and
  * deletion of menu item images.

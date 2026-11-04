@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Positions — the first shift route, so it also carries slice 1's obligation:
  * the entitlement gate asserted through a real endpoint, not a router built

@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { applyD1Migrations, env } from "cloudflare:test";
 
 // Apply all D1 migrations before each test so every test starts with a clean,

@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Account lifecycle (roadmap Phase 5 item 2): owner self-service
  * suspend/reactivate, and delete + export.

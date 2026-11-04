@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Cashless payment methods (roadmap Phase 4 item 1).
  * Covers POST /api/payments' `method` field: default, valid values,
@@ -69,23 +69,22 @@ describe("POST /api/payments method", () => {
     expect(body.data.method).toBe("cash");
   });
 
-  it.each([
-    "cash",
-    "card",
-    "qr",
-  ])("accepts and echoes method '%s'", async (method) => {
-    const { token } = await setupStore();
-    const { orderId } = await setupOrder(token);
+  it.each(["cash", "card", "qr"])(
+    "accepts and echoes method '%s'",
+    async (method) => {
+      const { token } = await setupStore();
+      const { orderId } = await setupOrder(token);
 
-    const res = await app.request(
-      "/api/payments",
-      withAuth(token, jsonInit("POST", { order_id: orderId, method })),
-      env,
-    );
-    expect(res.status).toBe(201);
-    const body = (await res.json()) as { data: { method: string } };
-    expect(body.data.method).toBe(method);
-  });
+      const res = await app.request(
+        "/api/payments",
+        withAuth(token, jsonInit("POST", { order_id: orderId, method })),
+        env,
+      );
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as { data: { method: string } };
+      expect(body.data.method).toBe(method);
+    },
+  );
 
   it("returns 400 VALIDATION_ERROR for an unrecognized method value", async () => {
     const { token } = await setupStore();

@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Payment void/refund (roadmap Phase 4 item 5).
  * Covers PATCH /api/payments/:id/void: reversal, order reopening,

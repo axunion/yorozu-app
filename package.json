@@ -6,12 +6,12 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "^24",
+      "version": "^26",
       "onFail": "download"
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "^11",
+      "version": "^12",
       "onFail": "download"
     }
   },
@@ -35,9 +35,9 @@
     "db:studio": "pnpm --filter @yorozu/db db:studio"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.0",
+    "@biomejs/biome": "2.6.4",
     "@playwright/test": "catalog:",
-    "lefthook": "^2.1.9",
-    "typescript": "^6.0.3"
+    "lefthook": "^2.2.2",
+    "typescript": "^7.0.2"
   }
 }

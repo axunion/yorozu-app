@@ -8,7 +8,7 @@ paths:
 
 ## Workers runtime tests (apps/api)
 
-- Start every file with `/// <reference types="@cloudflare/vitest-pool-workers/types" />`
+- Start every file with `/// <reference types="@cloudflare/vitest-plugin/types" />`
 - Import env binding: `import { env } from "cloudflare:workers"`
 - Always pass `env` as the third argument: `app.request(path, init, env)`
 - Reuse helpers from `../test-helpers`: `seedStore`, `withAuth`, `jsonInit`, `extractSessionToken`

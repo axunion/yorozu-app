@@ -4,20 +4,20 @@ packages:
 
 # Shared dependency versions — workspaces reference these as "catalog:".
 catalog:
-  "@cloudflare/workers-types": ^4.20260621.1
-  "@kobalte/core": ^0.13.11
-  "@playwright/test": ^1.62.1
-  "@solidjs/router": ^0.15.3
+  "@cloudflare/workers-types": ^5.20261103.1
+  "@kobalte/core": ^0.13.14
+  "@playwright/test": ^1.64.1
+  "@solidjs/router": ^1.0.1
   "@solidjs/testing-library": ^0.8.10
-  "@testing-library/user-event": ^14.6.1
-  drizzle-orm: ^0.45.2
-  happy-dom: ^20.10.6
-  solid-js: ^1.9.13
-  vite: ^8.0.0
-  vite-plugin-solid: ^2.11.12
-  vitest: ^4.1.9
-  wrangler: ^4.103.0
-  zod: ^4.4.3
+  "@testing-library/user-event": ^14.6.8
+  drizzle-orm: ^0.45.4
+  happy-dom: ^21.0.4
+  solid-js: ^1.9.18
+  vite: ^8.3.5
+  vite-plugin-solid: ^2.11.15
+  vitest: ^5.1.0
+  wrangler: ^4.157.0
+  zod: ^4.6.7
 
 allowBuilds:
   esbuild: true

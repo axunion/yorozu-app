@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Item options / modifiers (roadmap Phase 3 item 2): customer bootstrap
  * embedding, order submission validation, snapshot durability, and

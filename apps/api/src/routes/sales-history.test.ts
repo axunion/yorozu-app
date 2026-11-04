@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Sales history & daily summary (roadmap Phase 2 item 2).
  * Covers GET /api/payments range filtering, validation, tenant

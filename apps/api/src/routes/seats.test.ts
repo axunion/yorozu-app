@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Seat lifecycle (roadmap Phase 2 item 5): rename, soft-delete, QR rotation.
  */

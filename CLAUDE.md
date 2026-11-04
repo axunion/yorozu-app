@@ -20,7 +20,7 @@ Bias toward caution over speed; on trivial tasks, use judgment.
   `noUncheckedIndexedAccess`, `verbatimModuleSyntax`). Use `@yorozu/*` path
   aliases for cross-package imports.
 - **Testing runtime split:** `apps/api` tests run on the Workers runtime via
-  `@cloudflare/vitest-pool-workers` (D1 migrations applied in setup). Frontend
+  `@cloudflare/vitest-plugin` (D1 migrations applied in setup). Frontend
   apps use vitest + `happy-dom`.
 
 Run `pnpm check` before committing.

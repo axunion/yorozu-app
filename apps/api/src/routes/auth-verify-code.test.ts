@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { env } from "cloudflare:workers";
 import { OTP_MAX_ATTEMPTS } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";

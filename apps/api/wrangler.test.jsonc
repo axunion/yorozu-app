@@ -1,5 +1,5 @@
 {
-  // Wrangler config for vitest-pool-workers (API integration tests).
+  // Wrangler config for vitest-plugin (API integration tests).
   // Excludes "main" intentionally — tests import Hono routes directly.
   "name": "yorozu-app-api-test",
   "compatibility_date": "2025-01-01",

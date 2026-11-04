@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Schedule periods: the half-month cycle and its state machine,
  * collecting -> building -> published, with published terminal.

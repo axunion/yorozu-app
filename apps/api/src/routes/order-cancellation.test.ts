@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Order cancellation & correction (roadmap Phase 2 item 1).
  * Covers the transition matrix, idempotency, cross-tenant isolation, and

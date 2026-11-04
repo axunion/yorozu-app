@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Availability collection: a member saves their own submission, and the
  * manager reads everyone's — including who has not submitted yet, which is

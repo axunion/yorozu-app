@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Digital receipt (roadmap Phase 4 item 2).
  * Covers GET /api/order/:seatToken/receipt/:orderId: content, seat

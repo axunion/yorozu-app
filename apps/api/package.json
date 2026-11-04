@@ -12,15 +12,15 @@
     "db:reset": "rm -rf .wrangler/state/v3/d1 && pnpm db:migrate"
   },
   "dependencies": {
-    "@hono/zod-validator": "^0.8.0",
+    "@hono/zod-validator": "^0.9.1",
     "@yorozu/core": "workspace:*",
     "@yorozu/db": "workspace:*",
     "drizzle-orm": "catalog:",
-    "hono": "^4.12.26",
+    "hono": "^4.13.16",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.18",
+    "@cloudflare/vitest-plugin": "^1.5.1",
     "@cloudflare/workers-types": "catalog:",
     "vitest": "catalog:",
     "wrangler": "catalog:"

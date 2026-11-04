@@ -58,7 +58,7 @@ proposal forgot it.
 ### 5. Runtime placement
 
 `apps/api` tests run on the Workers runtime with a real migrated D1
-(`@cloudflare/vitest-pool-workers`); frontend tests use happy-dom. Flag
+(`@cloudflare/vitest-plugin`); frontend tests use happy-dom. Flag
 API tests that mock D1/Drizzle instead of using the real database, and
 frontend tests that assert on things happy-dom cannot represent.
 

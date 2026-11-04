@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * Shift patterns and staffing requirements — the store-level templates the
  * schedule builder enters shifts from and measures coverage against.

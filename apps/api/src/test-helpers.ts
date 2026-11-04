@@ -3,7 +3,7 @@
  * Import from this file instead of defining local copies in each test file.
  */
 
-// The env binding is only available inside vitest-pool-workers.
+// The env binding is only available inside vitest-plugin.
 // Import from cloudflare:workers is safe here because this file is only
 // executed in the workers test project.
 import { env } from "cloudflare:workers";

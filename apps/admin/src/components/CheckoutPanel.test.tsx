@@ -196,60 +196,64 @@ describe("CheckoutPanel", () => {
         (init?.method ?? "").toUpperCase() === "POST"
       );
     });
-    const body = JSON.parse((postCall?.[1] as RequestInit).body as string);
+    const body = JSON.parse(
+      (postCall?.[1] as RequestInit | undefined)?.body as string,
+    );
     expect(body.method).toBe("cash");
   });
 
   it.each([
     { label: "カード", method: "card" },
     { label: "QR決済", method: "qr" },
-  ])("sends the selected payment method when $label is chosen", async ({
-    label,
-    method,
-  }) => {
-    const user = userEvent.setup();
-    const fetchMock = mockFetch([
-      {
-        url: "/api/payments/pending",
-        method: "GET",
-        json: { data: [mockPendingOrder] },
-      },
-      {
-        url: "/api/payments",
-        method: "POST",
-        json: {
-          data: {
-            id: "payment-1",
-            order_id: "order-checkout-1",
-            total_amount: 1200,
-            method,
-            paid_at: Date.now(),
+  ])(
+    "sends the selected payment method when $label is chosen",
+    async ({ label, method }) => {
+      const user = userEvent.setup();
+      const fetchMock = mockFetch([
+        {
+          url: "/api/payments/pending",
+          method: "GET",
+          json: { data: [mockPendingOrder] },
+        },
+        {
+          url: "/api/payments",
+          method: "POST",
+          json: {
+            data: {
+              id: "payment-1",
+              order_id: "order-checkout-1",
+              total_amount: 1200,
+              method,
+              paid_at: Date.now(),
+            },
           },
         },
-      },
-    ]);
-    vi.stubGlobal("fetch", fetchMock);
+      ]);
+      vi.stubGlobal("fetch", fetchMock);
 
-    const { findByRole } = render(() => <CheckoutPanel />);
-    const methodBtn = await findByRole("button", { name: label });
-    await user.click(methodBtn);
-    expect(methodBtn.getAttribute("aria-pressed")).toBe("true");
+      const { findByRole } = render(() => <CheckoutPanel />);
+      const methodBtn = await findByRole("button", { name: label });
+      await user.click(methodBtn);
+      expect(methodBtn.getAttribute("aria-pressed")).toBe("true");
 
-    const checkoutBtn = await findByRole("button", { name: /会計完了/ });
-    await user.click(checkoutBtn);
+      const checkoutBtn = await findByRole("button", { name: /会計完了/ });
+      await user.click(checkoutBtn);
 
-    const postCall = fetchMock.mock.calls.find((args: unknown[]) => {
-      const url = args[0] as string;
-      const init = args[1] as RequestInit | undefined;
-      return (
-        url.includes("/api/payments") &&
-        !url.includes("/pending") &&
-        (init?.method ?? "").toUpperCase() === "POST"
+      const postCall = fetchMock.mock.calls.find((args: unknown[]) => {
+        const url = args[0] as string;
+        const init = args[1] as RequestInit | undefined;
+        return (
+          url.includes("/api/payments") &&
+          !url.includes("/pending") &&
+          (init?.method ?? "").toUpperCase() === "POST"
+        );
+      });
+      const body = JSON.parse(
+        (postCall?.[1] as RequestInit | undefined)?.body as string,
       );
-    });
-    const body = JSON.parse((postCall?.[1] as RequestInit).body as string);
-    expect(body.method).toBe(method);
-  });
+      expect(body.method).toBe(method);
+    },
+  );
 
   it("does not show the discount fields until 割引を追加 is tapped", async () => {
     vi.stubGlobal(
@@ -305,7 +309,9 @@ describe("CheckoutPanel", () => {
         (init?.method ?? "").toUpperCase() === "POST"
       );
     });
-    const body = JSON.parse((postCall?.[1] as RequestInit).body as string);
+    const body = JSON.parse(
+      (postCall?.[1] as RequestInit | undefined)?.body as string,
+    );
     expect(body.discount_amount).toBeUndefined();
     expect(body.discount_reason).toBeUndefined();
   });
@@ -359,7 +365,9 @@ describe("CheckoutPanel", () => {
         (init?.method ?? "").toUpperCase() === "POST"
       );
     });
-    const body = JSON.parse((postCall?.[1] as RequestInit).body as string);
+    const body = JSON.parse(
+      (postCall?.[1] as RequestInit | undefined)?.body as string,
+    );
     expect(body.discount_amount).toBe(200);
     expect(body.discount_reason).toBe("常連割引");
     // The client sends only the discount, never a total — the server

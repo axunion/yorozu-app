@@ -495,7 +495,9 @@ describe("SalesHistory void", () => {
       );
     });
     expect(voidCall).toBeDefined();
-    const body = JSON.parse((voidCall?.[1] as RequestInit).body as string);
+    const body = JSON.parse(
+      (voidCall?.[1] as RequestInit | undefined)?.body as string,
+    );
     expect(body.void_reason).toBe("誤会計");
 
     // The list is re-fetched after a successful void, not just PATCHed.

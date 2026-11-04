@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers/types" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 /**
  * The shift roster: which positions each member can work, and the wage, cap
  * and minor flag the warnings and cost estimate read.
