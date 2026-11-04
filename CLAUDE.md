@@ -5,18 +5,6 @@ on D1, with shared logic in `packages/*`.
 
 Bias toward caution over speed; on trivial tasks, use judgment.
 
-## Approach
-
-- **Change scope.** Change only what was requested. Don't "improve" adjacent code,
-  comments, or formatting; match the existing style. Delete code your own change makes
-  unused, never leave it commented out. Point out pre-existing dead code only; don't
-  delete, split, or refactor it unless asked.
-- **Implementation size.** Don't add unrequested features, abstractions, or
-  configurability. Extract a helper only when it's used in 3+ places; otherwise inline
-  it. Don't write error handling for cases that can't happen.
-- **Uncertainty.** When more than one interpretation is possible, present the options
-  instead of silently picking one.
-
 ## Tooling
 
 - **Linting/formatting:** Biome only — no ESLint, no Prettier.
@@ -39,10 +27,6 @@ Run `pnpm check` before committing.
 
 ## Testing
 
-- Write tests before or alongside implementation — they are your success
-  criteria.
-- Test observable outcomes and edge cases, not implementation details.
-- Each test is fully self-contained; no shared mutable state between tests.
 - **Structural correctness** (state transitions, API responses, rendered DOM
   behavior) belongs in the automated suite and runs via `pnpm check` / `pnpm test`.
   **Visual/subjective judgment** ("does this look right", spacing, color) is not
@@ -65,7 +49,7 @@ makes it safe to spawn without asking first.
   or `researcher` when the change leans on an unfamiliar external API (Hono/Cloudflare
   Workers, Drizzle/D1, SolidJS, Kobalte). Afterward, **without asking first**, run
   `reviewer` and `tester` in parallel, plus `tenant-security-reviewer` or `ui-reviewer`
-  if their surface was touched (see the trigger table in
+  if their surface was touched (see the per-slice reviewer triggers in
   `docs/reference/implementation-loop.md`). `reviewer` always runs — it covers
   scope, simplicity, and general correctness that the surface-specific reviewers don't;
   they add a deeper, surface-specific pass on top when applicable. All of these agents
@@ -84,13 +68,10 @@ makes it safe to spawn without asking first.
     `/goal`'s evaluator only pattern-matches the condition text and has no built-in
     knowledge that these agents exist.
 
-Note what stays constant across all three tiers: the main conversation writes the code
-every time. Only the scaffolding around it changes — none, then verification after,
-then research before and verification after with iteration. There is deliberately no
-`implementer` agent: implementation needs the full context of planning and iteration
-built up in this conversation, a write agent enforces no tool restriction worth having,
-and each retry pass would re-spawn it with no memory of the code it just wrote. What
-`reviewer`/`tester`/`researcher`/`inspector` provide — an opinion from something that
+There is deliberately no `implementer` agent: implementation needs the full context
+of planning and iteration built up in this conversation, a write agent enforces no tool
+restriction worth having, and each retry pass would re-spawn it with no memory of the
+code it just wrote. What `reviewer`/`tester`/`researcher`/`inspector` provide — an opinion from something that
 didn't write the code — depends on none of them writing it either.
 
 **Visual-verification gate** (separate axis from the tiers above — keyed to whether
@@ -105,32 +86,6 @@ overlap with `docs/reference/manual-smoke-test.md` (the full manual cross-app
 walkthrough) or the `apps/e2e` Playwright suite (`pnpm e2e`, see
 `docs/reference/browser-e2e.md` — a persistent regression suite that
 explicitly excludes visual regression checking from its scope).
-
-## Language
-
-Default to the user's language for everything interactive — chat replies, plan-mode
-proposals, clarifying questions, and any other back-and-forth during the session.
-
-Switch to English only for durable artifacts: things other people or tools will read
-after the session ends — in-code comments, console/log/error output, AI-readable
-instruction files, and reader-facing docs (README and the like). Scratch notes and other
-throwaway dev artifacts stay in the user's language.
-
-## Commits
-
-Format — plain prose, no prefixes or labels (`feat:`, `fix:`, and the like):
-
-```
-<summary: imperative mood, ≤70 chars, no trailing period>
-
-<motivation: one sentence, only when not evident from the diff>
-
-- <change bullets: only for 2+ distinct changes>
-```
-
-- Never commit secrets (`*.key`, `*.pem`, `credentials*`).
-- Never use `--no-verify`. Use `--amend` only when explicitly asked; default to a new
-  commit.
 
 ## Layout
 

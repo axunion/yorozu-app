@@ -14,7 +14,7 @@ paths:
 - Reuse helpers from `../test-helpers`: `seedStore`, `withAuth`, `jsonInit`, `extractSessionToken`
 - Each test is fully self-contained; use `crypto.randomUUID()` for unique email/name seeds to avoid D1 UNIQUE conflicts across tests in the same pool run
 
-## Frontend tests (apps/admin, apps/order, apps/signup, packages/ui)
+## Frontend tests (apps/admin, apps/order, apps/shift, apps/signup, packages/ui)
 
 - Do NOT add `afterEach(cleanup)` manually — it is registered globally in each workspace's `setupFiles` (e.g. `src/setup.ts`)
 - Do not reuse the same accessible name across tests in the same file; happy-dom throws on duplicate accessible names

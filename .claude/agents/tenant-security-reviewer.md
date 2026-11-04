@@ -62,13 +62,18 @@ violations.
 
 ## 2. Session & token handling
 
-- Token entropy: session and magic-link tokens must be generated with
-  `crypto.randomUUID()` or equivalent CSPRNG output — flag any predictable or
-  low-entropy generation.
+- Token entropy: session tokens must be generated with `crypto.randomUUID()` or
+  equivalent CSPRNG output; passcodes (`magic_link_tokens`, 6 digits) must come from
+  `crypto.getRandomValues` — flag any predictable generation.
+- Passcode storage and guessing limits: passcodes are stored only as the keyed digest
+  `hashOtpCode(id, code, OTP_PEPPER)`, never plain or unkeyed-hashed. Verification must
+  count failures in `attempt_count` and stop at `OTP_MAX_ATTEMPTS`, and issuance must
+  respect `MAGIC_LINK_HOURLY_CAP` — flag any path that bypasses these (see
+  `docs/reference/auth.md`).
 - Expiry enforcement: every token check must validate an expiry timestamp before
   accepting the token, not just its presence.
-- Single-use validation: magic-link tokens must be invalidated (deleted or marked used)
-  on successful verification — flag any path that allows replay.
+- Single-use validation: passcodes must be consumed (`used_at` set) on successful
+  verification — flag any path that allows replay.
 - Timing-safe comparison: token comparisons against a stored value must not use a
   short-circuiting `===` on secret material where a timing side-channel would matter
   (DB-driven lookups by token value are fine; comparing a decoded/derived secret

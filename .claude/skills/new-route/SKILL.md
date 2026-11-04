@@ -13,7 +13,7 @@ description: Scaffold a new Hono API route with Zod validation and a correspondi
 - Return errors with `errorResponse(code, message, status)` from `@yorozu/core` —
   use the established codes: `VALIDATION_ERROR` (400), `INVALID_CODE` (400),
   `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `CONFLICT` (409),
-  `RATE_LIMITED` (429); don't invent new ones
+  `RATE_LIMITED` (429), `INTERNAL_ERROR` (500); don't invent new ones
 - Return success as `c.json({ data: ... })` — pass `201` as the second argument for creates
 - Mount the router in `apps/api/src/app.ts`
 
@@ -41,7 +41,3 @@ change, update that file first and keep this condensed copy in sync.
 4. Mount the route in `apps/api/src/app.ts`.
 5. Run `pnpm --filter @yorozu/api test` to verify the tests pass.
 6. Run `pnpm check` to verify types and linting pass across all workspaces.
-
-Note: `pnpm test` and `pnpm check` need `dangerouslyDisableSandbox: true` in the tool
-call — Vitest and Wrangler require filesystem and network access beyond the default
-sandbox limits.

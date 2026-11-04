@@ -67,7 +67,7 @@ order either way.
    Triggers are per-surface, so a typical slice runs one or two
    reviewers, not all three. When more than one reviewer matches, launch
    them in parallel — they are read-only and independent.
-5. **Commit** following the CLAUDE.md commit format. Never bypass
+5. **Commit** using the usual commit message conventions. Never bypass
    lefthook (it re-runs Biome and the full test suite). Committing at
    each green slice is part of this loop — no separate approval is
    needed once the loop has been invoked for the item.

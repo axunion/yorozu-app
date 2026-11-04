@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "Reviews a pending diff against this project's CLAUDE.md conventions and general correctness. Use proactively after any non-trivial implementation change, before it is considered done. Complements the surface-specific reviewers (tenant-security-reviewer, ui-reviewer, test-quality-reviewer) — those trigger on specific file types; this one always runs and checks what they don't: scope, simplicity, conventions, and general logic correctness. Read-only — inspects the diff and code, never edits."
+description: "Reviews a pending diff against this project's and the user's global CLAUDE.md conventions and general correctness. Use proactively after any non-trivial implementation change, before it is considered done. Complements the surface-specific reviewers (tenant-security-reviewer, ui-reviewer, test-quality-reviewer) — those trigger on specific file types; this one always runs and checks what they don't: scope, simplicity, conventions, and general logic correctness. Read-only — inspects the diff and code, never edits."
 tools: Read, Bash, Grep, Glob
 model: inherit
 ---

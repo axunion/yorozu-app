@@ -42,7 +42,7 @@ said so.
   matchers (`expect(res.status).toBeLessThan(500)`).
 - Flag tests that duplicate an existing test without adding a case.
 
-### 3. Self-containment (per CLAUDE.md)
+### 3. Self-containment
 
 Each test creates its own fixtures; no shared mutable state between
 tests; no dependence on execution order. Flag `beforeAll`-created rows
