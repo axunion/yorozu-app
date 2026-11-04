@@ -1,6 +1,7 @@
 import { apiFetch, jsonFetch } from "@yorozu/core/client";
-import { ErrorAlert } from "@yorozu/ui";
+import { Button, ErrorAlert } from "@yorozu/ui";
 import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
+import NotFoundPage from "../pages/NotFoundPage";
 import CategoryNav from "./CategoryNav";
 import CheckoutBar from "./CheckoutBar";
 import Header from "./Header";
@@ -133,6 +134,9 @@ export default function OrderScreen(props: { seatToken: string }) {
   const [call, setCall] = createSignal<Call | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal("");
+  // An unknown or rotated QR token: nothing on this screen can work, so it
+  // gets the not-found page rather than an error banner above an empty menu.
+  const [notFound, setNotFound] = createSignal(false);
   const ready = createMemo(() => !loading() && !error());
   const menuGroups = createMemo(() =>
     groupMenuItems(categories(), menuItems()),
@@ -181,7 +185,9 @@ export default function OrderScreen(props: { seatToken: string }) {
     const result = await apiFetch<BootstrapData>(
       `/api/order/${props.seatToken}`,
     );
-    if (!result.ok || !result.data) {
+    if (result.status === 404) {
+      setNotFound(true);
+    } else if (!result.ok || !result.data) {
       setCategories([]);
       setMenuItems([]);
       setOrderIfCurrent(seq, null);
@@ -200,6 +206,7 @@ export default function OrderScreen(props: { seatToken: string }) {
   // call resolving in the background doesn't reset in-progress UI (e.g. an
   // open item detail sheet) the way re-running loadBootstrap would.
   async function pollCall() {
+    if (notFound()) return;
     const result = await apiFetch<BootstrapData>(
       `/api/order/${props.seatToken}`,
     );
@@ -214,7 +221,7 @@ export default function OrderScreen(props: { seatToken: string }) {
   // call poll since a served tick is informational, not something the
   // customer is actively waiting on the way an open call is.
   async function pollOrder() {
-    if (order() === null) return;
+    if (notFound() || order() === null) return;
     const seq = ++orderSeq;
     const result = await apiFetch<BootstrapData>(
       `/api/order/${props.seatToken}`,
@@ -284,9 +291,9 @@ export default function OrderScreen(props: { seatToken: string }) {
   }
 
   return (
-    <>
+    <Show when={!notFound()} fallback={<NotFoundPage />}>
       <Header
-        seatName={seatName() || "セルフオーダー"}
+        seatName={seatName()}
         callOpen={call()?.status === "open"}
         onCallStaff={handleCallStaff}
       />
@@ -302,6 +309,11 @@ export default function OrderScreen(props: { seatToken: string }) {
 
         <Show when={!loading() && error()}>
           <ErrorAlert>{error()}</ErrorAlert>
+          <Show when={!seatName()}>
+            <Button type="button" variant="secondary" onClick={loadBootstrap}>
+              再読み込み
+            </Button>
+          </Show>
         </Show>
 
         <Show when={receiptOrderId()}>
@@ -326,6 +338,6 @@ export default function OrderScreen(props: { seatToken: string }) {
       <Show when={ready()}>
         <CheckoutBar order={order()} onRequestPayment={handleRequestPayment} />
       </Show>
-    </>
+    </Show>
   );
 }

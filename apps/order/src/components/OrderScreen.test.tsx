@@ -122,27 +122,63 @@ describe("OrderScreen", () => {
     expect(getByText(/読み込み中/)).toBeTruthy();
   });
 
-  it("shows error when bootstrap API call fails", async () => {
+  it("shows the not-found page, without a call button, for an unknown seat", async () => {
     vi.stubGlobal(
       "fetch",
-      mockFetch([
-        {
-          url: "/api/order/",
-          method: "GET",
-          ok: false,
-          json: {
-            error: {
-              code: "NOT_FOUND",
-              message: "席が見つかりません",
-            },
-          },
-        },
-      ]),
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({
+          error: { code: "NOT_FOUND", message: "Seat not found" },
+        }),
+      }),
     );
 
-    const { findByRole } = render(() => <OrderScreen seatToken="bad-token" />);
-    const alert = await findByRole("alert");
-    expect(alert.textContent).toContain("席が見つかりません");
+    render(() => <OrderScreen seatToken="bad-token" />);
+    await screen.findByText("ページが見つかりません");
+    expect(screen.queryByText("Seat not found")).toBeNull();
+    expect(screen.queryByRole("button", { name: "スタッフを呼ぶ" })).toBeNull();
+  });
+
+  it("stops polling once the seat turns out not to exist", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({
+        error: { code: "NOT_FOUND", message: "Seat not found" },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(() => <OrderScreen seatToken="gone-token" />);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(screen.getByText("ページが見つかりません")).toBeTruthy();
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers a reload when the menu fails to load, and recovers on retry", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => bootstrapWithMenu,
+      });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+
+    render(() => <OrderScreen seatToken="flaky-token" />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("通信エラー");
+    expect(screen.queryByRole("button", { name: "スタッフを呼ぶ" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "再読み込み" }));
+    await screen.findByText("コーヒー");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("renders the menu after successful bootstrap", async () => {

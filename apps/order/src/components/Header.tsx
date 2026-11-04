@@ -10,25 +10,30 @@ export default function Header(props: {
   return (
     <header class={styles.header}>
       <div class={styles.titleGroup}>
-        <h1 class={styles.title}>{props.seatName}</h1>
-        <p class={styles.subtitle}>セルフオーダー</p>
-      </div>
-      <div class={styles.callGroup}>
-        <Show when={props.callOpen}>
-          <p class={styles.callStatus} aria-live="polite">
-            呼んでいます
-          </p>
+        <h1 class={styles.title}>{props.seatName || "セルフオーダー"}</h1>
+        <Show when={props.seatName}>
+          <p class={styles.subtitle}>セルフオーダー</p>
         </Show>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          class={styles.callButton}
-          onClick={props.onCallStaff}
-        >
-          スタッフを呼ぶ
-        </Button>
       </div>
+      {/* No seat yet means nothing to call staff to — the request would 404. */}
+      <Show when={props.seatName}>
+        <div class={styles.callGroup}>
+          <Show when={props.callOpen}>
+            <p class={styles.callStatus} aria-live="polite">
+              呼んでいます
+            </p>
+          </Show>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            class={styles.callButton}
+            onClick={props.onCallStaff}
+          >
+            スタッフを呼ぶ
+          </Button>
+        </div>
+      </Show>
     </header>
   );
 }

@@ -4,6 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import Header from "./Header";
 
 describe("Header", () => {
+  it("shows neither the subtitle twice nor a call button before a seat has loaded", () => {
+    const { getAllByText, queryByRole } = render(() => (
+      <Header seatName="" callOpen={false} onCallStaff={vi.fn()} />
+    ));
+
+    expect(getAllByText("セルフオーダー")).toHaveLength(1);
+    expect(queryByRole("button", { name: "スタッフを呼ぶ" })).toBeNull();
+  });
+
   it("renders the seat name and subtitle", () => {
     const { getByText } = render(() => (
       <Header seatName="テーブル1" callOpen={false} onCallStaff={vi.fn()} />
