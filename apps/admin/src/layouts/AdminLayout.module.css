@@ -14,8 +14,9 @@
 
 .headerInner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-2) var(--space-4);
   max-width: 960px;
   margin: 0 auto;
   padding: var(--space-4) var(--space-6);
@@ -23,11 +24,14 @@
 
 .headerTitle {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--text-2xl);
   font-weight: var(--font-bold);
 }
 
 .badge {
+  white-space: nowrap;
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   background: var(--color-on-primary-subtle);
@@ -36,6 +40,7 @@
 }
 
 .navLink {
+  white-space: nowrap;
   color: var(--color-on-primary-muted);
   text-decoration: none;
   font-size: var(--text-sm);
@@ -46,6 +51,7 @@
 }
 
 .logoutBtn {
+  white-space: nowrap;
   margin-left: auto;
   background: none;
   border: 1px solid var(--color-on-primary-border);
