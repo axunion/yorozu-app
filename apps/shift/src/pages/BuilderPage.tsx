@@ -7,6 +7,7 @@ import type {
   ShiftResponse,
 } from "@yorozu/core";
 import {
+  availabilityWarnings,
   type CoverageRow,
   coverage,
   estimatedLaborCost,
@@ -116,7 +117,10 @@ export default function BuilderPage() {
     })),
   );
 
-  const warnings = createMemo(() => laborWarnings(shifts(), profiles()));
+  const warnings = createMemo(() => [
+    ...laborWarnings(shifts(), profiles()),
+    ...availabilityWarnings(shifts(), schedule()?.submissions ?? []),
+  ]);
 
   const cost = createMemo(() => estimatedLaborCost(shifts(), profiles()));
 
@@ -276,6 +280,7 @@ export default function BuilderPage() {
                       shifts={shiftsByDate().get(workDate) ?? []}
                       coverage={coverageByDate().get(workDate) ?? []}
                       members={members()}
+                      submissions={data().submissions ?? []}
                       positions={positions()}
                       patterns={patterns()}
                       nameOf={nameOf}

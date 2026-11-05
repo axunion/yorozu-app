@@ -156,6 +156,10 @@ export default function AvailabilityPage() {
 
   const hasInvalid = () => days.some(isInvalid);
 
+  // A submission with every day 未定 tells the manager nothing; a draft may
+  // still be empty.
+  const allUndecided = () => days.every((day) => day.kind === "none");
+
   const save = async (submit: boolean) => {
     setError("");
     setSaved("");
@@ -344,12 +348,20 @@ export default function AvailabilityPage() {
                 下書き保存
               </Button>
               <Button
-                disabled={saving() || hasInvalid()}
+                aria-describedby={
+                  allUndecided() ? "availability-submit-hint" : undefined
+                }
+                disabled={saving() || hasInvalid() || allUndecided()}
                 onClick={() => save(true)}
               >
                 提出する
               </Button>
             </div>
+            <Show when={allUndecided()}>
+              <p id="availability-submit-hint" class={styles.submitHint}>
+                提出するには、少なくとも1日は「勤務可」か「休み」を選んでください。
+              </p>
+            </Show>
           </Show>
         </Card>
       </Show>

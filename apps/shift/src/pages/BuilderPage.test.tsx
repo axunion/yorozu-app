@@ -225,9 +225,106 @@ describe("BuilderPage", () => {
     renderPage();
 
     // member-2 has a *draft* submission, which is not a submitted one.
-    const line = await screen.findByText(/未提出/);
+    const line = await screen.findByText(/^未提出：/);
     expect(line.textContent).toContain("kitchen@test.internal");
     expect(line.textContent).not.toContain("hall@test.internal");
+  });
+
+  it("shows each member's submitted wish on the day card, available members first", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        scheduleRoute({
+          shifts: [],
+          submissions: [
+            {
+              id: "sub-1",
+              member_id: "member-1",
+              status: "submitted",
+              submitted_at: 1,
+              note: null,
+              entries: [
+                {
+                  id: "e-1",
+                  work_date: "2026-09-01",
+                  kind: "day_off",
+                  start_minutes: null,
+                  end_minutes: null,
+                },
+              ],
+            },
+            {
+              id: "sub-2",
+              member_id: "member-2",
+              status: "submitted",
+              submitted_at: 1,
+              note: null,
+              entries: [
+                {
+                  id: "e-2",
+                  work_date: "2026-09-01",
+                  kind: "available",
+                  start_minutes: 600,
+                  end_minutes: 900,
+                },
+              ],
+            },
+          ],
+        }),
+        ...routes().slice(1),
+      ]),
+    );
+
+    renderPage();
+
+    const wishes = await screen.findByRole("list", { name: "9/1(火)の希望" });
+    expect(
+      [...wishes.querySelectorAll("li")].map((li) => li.textContent),
+    ).toEqual([
+      "kitchen@test.internal勤務可 10:00–15:00",
+      "hall@test.internal休み希望",
+    ]);
+    const select = screen.getByLabelText("9/1(火)に追加するスタッフ");
+    expect(
+      [...select.querySelectorAll("option")].map((o) => o.textContent),
+    ).toEqual([
+      "スタッフを選ぶ",
+      "kitchen@test.internal（勤務可 10:00–15:00）",
+      "hall@test.internal（休み希望）",
+    ]);
+  });
+
+  it("warns about a shift on a requested day off", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        scheduleRoute({
+          submissions: [
+            {
+              id: "sub-1",
+              member_id: "member-1",
+              status: "submitted",
+              submitted_at: 1,
+              note: null,
+              entries: [
+                {
+                  id: "e-1",
+                  work_date: "2026-09-02",
+                  kind: "day_off",
+                  start_minutes: null,
+                  end_minutes: null,
+                },
+              ],
+            },
+          ],
+        }),
+        ...routes().slice(1),
+      ]),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("休み希望の日に入っています")).toBeTruthy();
   });
 
   it("totals only the members whose wage is recorded, and says who is left out", async () => {

@@ -15,7 +15,8 @@
 }
 
 .coverage,
-.shifts {
+.shifts,
+.availability {
   margin: 0 0 var(--space-2);
   padding: 0;
   list-style: none;
@@ -54,6 +55,33 @@
 .met {
   background: var(--color-surface);
   color: var(--color-muted-foreground);
+}
+
+.wish {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  color: var(--color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.wishName {
+  overflow-wrap: anywhere;
+  color: var(--color-foreground);
+}
+
+.wishAvailable {
+  border-style: solid;
+  background: var(--color-surface);
+}
+
+.wishDayOff {
+  border-color: var(--color-shortage-border);
+  color: var(--color-shortage-fg);
 }
 
 .shift {
@@ -97,9 +125,15 @@
 
 .adderLabel {
   display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
 }
 
+/* The member labels carry availability text; without a cap the select
+   outgrows a phone-width card. */
 .select {
+  min-width: 0;
+  max-width: 100%;
   min-height: var(--touch-target-min);
   padding: 0 var(--space-2);
   border: 1px solid var(--color-input);

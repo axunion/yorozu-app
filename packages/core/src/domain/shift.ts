@@ -370,3 +370,118 @@ export function estimatedLaborCost(
 
   return { total, per_date, per_member, unpriced_member_ids: [...unpriced] };
 }
+
+// ---------------------------------------------------------------------------
+// Availability
+// ---------------------------------------------------------------------------
+
+export type AvailabilityEntryLike = {
+  work_date: string;
+  kind: "available" | "day_off";
+  start_minutes: number | null;
+  end_minutes: number | null;
+};
+
+export type AvailabilitySubmissionLike = {
+  member_id: string;
+  status: "draft" | "submitted";
+  entries: AvailabilityEntryLike[];
+};
+
+/**
+ * What one member asked for on one date. Only a submitted submission
+ * counts: a draft is still being edited, so it reads as `not_submitted`.
+ * A submitted form that leaves the date blank is `undecided` (未定).
+ */
+export type DayAvailability =
+  | {
+      kind: "available";
+      bands: { start_minutes: number; end_minutes: number }[];
+    }
+  | { kind: "day_off" }
+  | { kind: "undecided" }
+  | { kind: "not_submitted" };
+
+export function dayAvailability(
+  submissions: AvailabilitySubmissionLike[],
+  member_id: string,
+  work_date: string,
+): DayAvailability {
+  const submission = submissions.find(
+    (s) => s.member_id === member_id && s.status === "submitted",
+  );
+  if (!submission) return { kind: "not_submitted" };
+  const entries = submission.entries.filter((e) => e.work_date === work_date);
+  if (entries.some((e) => e.kind === "day_off")) return { kind: "day_off" };
+  // Bands that touch or overlap read as one: a shift across 10:00–14:00 and
+  // 14:00–18:00 is inside what the member offered.
+  const sorted = entries
+    .flatMap((e) =>
+      e.start_minutes !== null && e.end_minutes !== null
+        ? [{ start_minutes: e.start_minutes, end_minutes: e.end_minutes }]
+        : [],
+    )
+    .sort((a, b) => a.start_minutes - b.start_minutes);
+  const bands: { start_minutes: number; end_minutes: number }[] = [];
+  for (const next of sorted) {
+    const last = bands.at(-1);
+    if (last && next.start_minutes <= last.end_minutes) {
+      last.end_minutes = Math.max(last.end_minutes, next.end_minutes);
+    } else {
+      bands.push(next);
+    }
+  }
+  return bands.length > 0
+    ? { kind: "available", bands }
+    : { kind: "undecided" };
+}
+
+export type AvailabilityWarningCode =
+  | "ON_REQUESTED_DAY_OFF"
+  | "OUTSIDE_AVAILABLE_BAND";
+
+export type AvailabilityWarning = {
+  code: AvailabilityWarningCode;
+  member_id: string;
+  work_date: string;
+};
+
+/**
+ * Shifts that go against what the member submitted: assigned on a day they
+ * asked off, or not inside any band they said they could work. Advisory like
+ * laborWarnings — a manager may have agreed the change with the member.
+ * Undecided and unsubmitted days raise nothing; there is nothing to go
+ * against.
+ */
+export function availabilityWarnings(
+  shifts: ShiftLike[],
+  submissions: AvailabilitySubmissionLike[],
+): AvailabilityWarning[] {
+  const warnings: AvailabilityWarning[] = [];
+  // One row per member, date and code, however many shifts (a split shift)
+  // break the same request.
+  const seen = new Set<string>();
+  const push = (warning: AvailabilityWarning) => {
+    const key = `${warning.code}|${warning.member_id}|${warning.work_date}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    warnings.push(warning);
+  };
+  for (const shift of shifts) {
+    const day = dayAvailability(submissions, shift.member_id, shift.work_date);
+    const base = { member_id: shift.member_id, work_date: shift.work_date };
+    if (day.kind === "day_off") {
+      push({ code: "ON_REQUESTED_DAY_OFF", ...base });
+    } else if (
+      day.kind === "available" &&
+      !day.bands.some(
+        (band) =>
+          band.start_minutes <= shift.start_minutes &&
+          shift.end_minutes <= band.end_minutes,
+      )
+    ) {
+      push({ code: "OUTSIDE_AVAILABLE_BAND", ...base });
+    }
+  }
+  return warnings;
+}
