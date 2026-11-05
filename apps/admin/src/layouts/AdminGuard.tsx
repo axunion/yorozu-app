@@ -13,6 +13,7 @@ export type StoreInfo = {
   id: string;
   name: string;
   email: string;
+  display_name: string | null;
   role: "owner" | "staff";
 };
 
@@ -20,6 +21,7 @@ export const StoreContext = createContext<StoreInfo>({
   id: "",
   name: "",
   email: "",
+  display_name: null,
   role: "staff",
 });
 

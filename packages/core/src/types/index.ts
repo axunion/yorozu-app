@@ -136,15 +136,44 @@ export interface EmailChangeVerifyResponse {
 // Staff (members)
 // ---------------------------------------------------------------------------
 
+/**
+ * A member's name as schedules and lists show it. Trimmed; blank clears it
+ * (null), and the UI falls back to the email.
+ */
+const memberDisplayName = z
+  .string()
+  .nullable()
+  .transform((s) => {
+    const trimmed = s?.trim() ?? "";
+    return trimmed.length === 0 ? null : trimmed;
+  })
+  .pipe(z.string().max(50).nullable());
+
 export const StaffInviteInput = z.object({
   email: z.email(),
   role: z.enum(["owner", "staff"]).default("staff"),
+  display_name: memberDisplayName.optional().default(null),
 });
 export type StaffInviteInput = z.infer<typeof StaffInviteInput>;
+
+/** Owner editing a member, or a member editing themselves. */
+export const UpdateMemberNameInput = z.object({
+  display_name: memberDisplayName,
+});
+export type UpdateMemberNameInput = z.infer<typeof UpdateMemberNameInput>;
+
+/** What every screen shows for a member: their name, else their email. */
+export function memberLabel(member: {
+  display_name: string | null;
+  email: string;
+}): string {
+  return member.display_name ?? member.email;
+}
 
 export interface StaffMemberResponse {
   id: string;
   email: string;
+  display_name: string | null;
   role: "owner" | "staff";
   status: "pending" | "active";
   created_at: number;

@@ -12,6 +12,7 @@ import {
   coverage,
   estimatedLaborCost,
   laborWarnings,
+  memberLabel,
   periodDates,
   workedMinutes,
 } from "@yorozu/core";
@@ -70,8 +71,10 @@ export default function BuilderPage() {
     () => new Map(positions().map((p) => [p.id, p])),
   );
 
-  const nameOf = (memberId: string) =>
-    memberById().get(memberId)?.email ?? "不明なスタッフ";
+  const nameOf = (memberId: string) => {
+    const member = memberById().get(memberId);
+    return member ? memberLabel(member) : "不明なスタッフ";
+  };
 
   const positionNameOf = (positionId: string | null) =>
     (positionId ? positionById().get(positionId)?.name : undefined) ?? "";
@@ -185,6 +188,7 @@ export default function BuilderPage() {
       [
         "日付",
         "スタッフ",
+        "メールアドレス",
         "ポジション",
         "開始",
         "終了",
@@ -194,6 +198,8 @@ export default function BuilderPage() {
       shifts().map((shift) => [
         shift.work_date,
         nameOf(shift.member_id),
+        // Beside the name: unique when names collide or are unset.
+        memberById().get(shift.member_id)?.email ?? "",
         positionNameOf(shift.position_id),
         formatMinutes(shift.start_minutes),
         formatMinutes(shift.end_minutes),
@@ -262,9 +268,7 @@ export default function BuilderPage() {
                 <Show when={nonSubmitters().length > 0}>
                   <p class={styles.nonSubmitters}>
                     未提出：
-                    {nonSubmitters()
-                      .map((m) => m.email)
-                      .join("、")}
+                    {nonSubmitters().map(memberLabel).join("、")}
                   </p>
                 </Show>
               </Card>

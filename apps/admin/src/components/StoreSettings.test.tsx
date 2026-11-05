@@ -1,7 +1,7 @@
 import { render, screen } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { StoreContext } from "../layouts/AdminGuard";
+import { StoreContext, type StoreInfo } from "../layouts/AdminGuard";
 import StoreSettings from "./StoreSettings";
 
 afterEach(() => {
@@ -38,15 +38,11 @@ function mockFetch(routes: MockRoute[]) {
 }
 
 function renderWithStore(
-  store: {
-    id: string;
-    name: string;
-    email: string;
-    role: "owner" | "staff";
-  } = {
+  store: StoreInfo = {
     id: "store-1",
     name: "テスト食堂",
     email: "owner@test.internal",
+    display_name: null,
     role: "owner",
   },
 ) {
@@ -69,6 +65,7 @@ describe("StoreSettings — store name", () => {
       id: "store-1",
       name: "スタッフ閲覧食堂",
       email: "staff@test.internal",
+      display_name: null,
       role: "staff",
     });
     await screen.findByText("スタッフ閲覧食堂");
@@ -294,6 +291,7 @@ describe("StoreSettings — danger zone", () => {
       id: "store-1",
       name: "テスト食堂",
       email: "staff@test.internal",
+      display_name: null,
       role: "staff",
     });
     await screen.findByText("テスト食堂");
@@ -422,5 +420,27 @@ describe("StoreSettings — danger zone", () => {
     );
 
     await screen.findByText("店舗名が一致しません。");
+  });
+
+  it("saves the member's own display name via PATCH /api/auth/me", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { display_name: "店長" } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithStore();
+    await user.type(screen.getByLabelText("表示名"), "店長");
+    await user.click(screen.getByRole("button", { name: "表示名を保存" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/auth/me"),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ display_name: "店長" }),
+      }),
+    );
+    expect(await screen.findAllByText("保存しました。")).toHaveLength(1);
   });
 });

@@ -162,7 +162,10 @@ unit-tested place and the routes stay thin.
   「確認してください」, and just as advisory: a manager may have agreed the
   change with the member. 未定 and 未提出 days raise nothing.
 
-**CSV export** of the period's shifts (date, staff, position, start, end,
+Members show as their display name, falling back to the email.
+
+**CSV export** of the period's shifts (date, staff name, email — unique
+when names collide or are unset — position, start, end,
 break, worked minutes), BOM-prefixed so Excel reads the Japanese correctly.
 
 ## Staff's own schedule (`/`)

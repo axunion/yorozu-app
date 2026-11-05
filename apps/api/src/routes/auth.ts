@@ -10,6 +10,7 @@ import {
   SESSION_TOKEN_COOKIE,
   SESSION_TTL_MS,
   sendVerificationCodeEmail,
+  UpdateMemberNameInput,
   VerifyCodeInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
@@ -49,12 +50,50 @@ export const authRouter = new Hono<{ Bindings: Env }>()
     const { id, name, member_id, role } = c.var.store;
     const db = createDb(c.env.DB);
     const rows = await db
-      .select({ email: schema.members.email })
+      .select({
+        email: schema.members.email,
+        display_name: schema.members.display_name,
+      })
       .from(schema.members)
       .where(eq(schema.members.id, member_id))
       .limit(1);
-    return c.json({ data: { id, name, email: rows[0]?.email ?? "", role } });
+    return c.json({
+      data: {
+        id,
+        name,
+        email: rows[0]?.email ?? "",
+        display_name: rows[0]?.display_name ?? null,
+        role,
+      },
+    });
   })
+
+  /**
+   * PATCH /api/auth/me
+   * The calling member sets their own display name (any role); null or
+   * blank clears it.
+   * Response: 200 { data: { display_name } }
+   */
+  .patch(
+    "/me",
+    requireStore,
+    bodyValidator(UpdateMemberNameInput),
+    async (c) => {
+      const { id: storeId, member_id } = c.var.store;
+      const { display_name } = c.req.valid("json");
+      const db = createDb(c.env.DB);
+      await db
+        .update(schema.members)
+        .set({ display_name })
+        .where(
+          and(
+            eq(schema.members.id, member_id),
+            eq(schema.members.store_id, storeId),
+          ),
+        );
+      return c.json({ data: { display_name } });
+    },
+  )
 
   /**
    * POST /api/auth/verify-code

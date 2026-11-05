@@ -31,7 +31,10 @@ stores 1 ──── * subscriptions          (which products this store has bo
 - **members** — one row per person who can log in to a store. `email` is
   **UNIQUE globally** (same constraint shape stores.email used to have —
   one email = one member, across all stores; a person can't be staff at
-  two stores with the same email). `role` (`'owner' | 'staff'`) gates
+  two stores with the same email). `display_name` (nullable, trimmed,
+  ≤ 50 chars) is what member lists, schedules and shift CSVs show, falling
+  back to `email` when unset (`memberLabel`, `@yorozu/core`). `role`
+  (`'owner' | 'staff'`) gates
   settings/menu/seats/staff-management (owner) vs. board/checkout (both);
   see [features/authentication.md](./features/authentication.md). A
   store's first member (created at signup) is always an owner; the API

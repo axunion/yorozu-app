@@ -1,4 +1,8 @@
-import type { PositionResponse, ShiftMemberResponse } from "@yorozu/core";
+import {
+  memberLabel,
+  type PositionResponse,
+  type ShiftMemberResponse,
+} from "@yorozu/core";
 import { jsonFetch } from "@yorozu/core/client";
 import { Button, Card } from "@yorozu/ui";
 import { createSignal, For, Show } from "solid-js";
@@ -84,7 +88,7 @@ export default function MembersSection(props: {
           <For each={props.members}>
             {(member) => (
               <li class={styles.item}>
-                <span class={styles.label}>{member.email}</span>
+                <span class={styles.label}>{memberLabel(member)}</span>
 
                 <Show
                   when={editing() === member.id}
@@ -103,7 +107,7 @@ export default function MembersSection(props: {
                         variant="ghost"
                         size="sm"
                         class={styles.tapTarget}
-                        aria-label={`${member.email}の勤務条件を編集`}
+                        aria-label={`${memberLabel(member)}の勤務条件を編集`}
                         disabled={busy()}
                         onClick={() => open(member)}
                       >
@@ -162,14 +166,14 @@ export default function MembersSection(props: {
                 <Show when={props.positions.length > 0}>
                   <fieldset class={styles.positionGroup}>
                     <legend class={styles.srOnly}>
-                      {member.email}のポジション
+                      {memberLabel(member)}のポジション
                     </legend>
                     <For each={props.positions}>
                       {(position) => (
                         <button
                           type="button"
                           class={styles.positionChip}
-                          aria-label={`${member.email} ${position.name}`}
+                          aria-label={`${memberLabel(member)} ${position.name}`}
                           aria-pressed={member.position_ids.includes(
                             position.id,
                           )}

@@ -115,6 +115,33 @@ export default function StoreSettings() {
     }
   };
 
+  const [myName, setMyName] = createSignal(store.display_name ?? "");
+  const [myNameSaving, setMyNameSaving] = createSignal(false);
+  const [myNameSaved, setMyNameSaved] = createSignal(false);
+  const [myNameError, setMyNameError] = createSignal("");
+
+  const handleMyNameSubmit = async (e: SubmitEvent) => {
+    e.preventDefault();
+    setMyNameError("");
+    setMyNameSaving(true);
+    try {
+      const result = await jsonFetch<{ display_name: string | null }>(
+        "/api/auth/me",
+        "PATCH",
+        { display_name: myName() },
+      );
+      if (!result.ok) {
+        setMyNameError(result.message ?? "表示名の保存に失敗しました。");
+        return;
+      }
+      // Show what was stored: the server trims, and blank becomes none.
+      setMyName(result.data?.display_name ?? "");
+      setMyNameSaved(true);
+    } finally {
+      setMyNameSaving(false);
+    }
+  };
+
   const [newEmail, setNewEmail] = createSignal("");
   const [emailError, setEmailError] = createSignal("");
   const [emailSubmitting, setEmailSubmitting] = createSignal(false);
@@ -213,6 +240,31 @@ export default function StoreSettings() {
             </Show>
           </form>
         </Show>
+      </section>
+
+      <section class={styles.section}>
+        <h2 class={styles.heading}>自分の表示名</h2>
+        <form onSubmit={handleMyNameSubmit} class={styles.form}>
+          <Field
+            id="settings-display-name"
+            label="表示名"
+            value={myName()}
+            onInput={(e) => {
+              setMyName(e.currentTarget.value);
+              setMyNameSaved(false);
+            }}
+            placeholder="例：山田 花子（空欄ならメールアドレスを表示）"
+            maxLength={50}
+            disabled={myNameSaving()}
+            error={myNameError()}
+          />
+          <Button type="submit" disabled={myNameSaving()}>
+            {myNameSaving() ? "保存中..." : "表示名を保存"}
+          </Button>
+          <Show when={myNameSaved()}>
+            <p class={styles.savedNote}>保存しました。</p>
+          </Show>
+        </form>
       </section>
 
       <section class={styles.section}>

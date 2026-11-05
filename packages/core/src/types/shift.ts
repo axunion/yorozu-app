@@ -296,6 +296,7 @@ export interface StaffingRequirementResponse {
 export interface ShiftMemberResponse {
   id: string;
   email: string;
+  display_name: string | null;
   role: "owner" | "staff";
   position_ids: string[];
   hourly_wage: number | null;

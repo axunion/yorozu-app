@@ -85,6 +85,7 @@ export const shiftMembersRouter = new Hono<AuthEnv>()
         .select({
           id: schema.members.id,
           email: schema.members.email,
+          display_name: schema.members.display_name,
           role: schema.members.role,
         })
         .from(schema.members)

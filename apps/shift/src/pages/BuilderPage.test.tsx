@@ -508,7 +508,21 @@ describe("BuilderPage", () => {
   });
 
   it("exports the schedule as CSV with worked minutes per row", async () => {
-    vi.stubGlobal("fetch", mockFetch(routes()));
+    // member-1 has a display name, member-2 falls back to the email.
+    vi.stubGlobal(
+      "fetch",
+      mockFetch(
+        routes([
+          {
+            url: "/api/shift/members",
+            json: data([
+              { ...members[0], display_name: "山田" },
+              { ...members[1], display_name: null },
+            ]),
+          },
+        ]),
+      ),
+    );
     const blobs: Blob[] = [];
     vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
       blobs.push(blob as Blob);
@@ -531,16 +545,16 @@ describe("BuilderPage", () => {
 
     const rows = (await (blobs[0] as Blob).text()).split("\r\n");
     expect(rows[0]).toContain(
-      "日付,スタッフ,ポジション,開始,終了,休憩(分),実働(分)",
+      "日付,スタッフ,メールアドレス,ポジション,開始,終了,休憩(分),実働(分)",
     );
     // Every shift in the period and nothing else: header plus three rows.
     expect(rows).toHaveLength(4);
     expect(rows[1]).toBe(
-      "2026-09-01,hall@test.internal,ホール,09:00,19:00,0,600",
+      "2026-09-01,山田,hall@test.internal,ホール,09:00,19:00,0,600",
     );
     // The break is subtracted here too, so this row is not a copy of the first.
     expect(rows[3]).toBe(
-      "2026-09-02,kitchen@test.internal,ホール,09:00,17:00,60,420",
+      "2026-09-02,kitchen@test.internal,kitchen@test.internal,ホール,09:00,17:00,60,420",
     );
     expect(downloadName).toBe("shifts-2026-09-01_2026-09-02.csv");
   });

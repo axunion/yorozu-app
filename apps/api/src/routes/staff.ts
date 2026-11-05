@@ -5,6 +5,7 @@ import {
   now,
   StaffInviteInput,
   sendVerificationCodeEmail,
+  UpdateMemberNameInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
 import { and, eq, gt, inArray, ne } from "drizzle-orm";
@@ -36,7 +37,7 @@ export const staffRouter = new Hono<AuthEnv>()
    */
   .post("/", bodyValidator(StaffInviteInput), async (c) => {
     const { id: storeId } = c.var.store;
-    const { email, role } = c.req.valid("json");
+    const { email, role, display_name } = c.req.valid("json");
     const db = createDb(c.env.DB);
 
     const recentInvites = await db
@@ -76,6 +77,7 @@ export const staffRouter = new Hono<AuthEnv>()
       id: memberId,
       store_id: storeId,
       email,
+      display_name,
       role,
     });
 
@@ -140,6 +142,7 @@ export const staffRouter = new Hono<AuthEnv>()
         data: {
           id: memberId,
           email,
+          display_name,
           role,
           status: "pending" as const,
           created_at: Date.now(),
@@ -163,6 +166,7 @@ export const staffRouter = new Hono<AuthEnv>()
       .select({
         id: schema.members.id,
         email: schema.members.email,
+        display_name: schema.members.display_name,
         role: schema.members.role,
         status: schema.members.status,
         created_at: schema.members.created_at,
@@ -171,6 +175,38 @@ export const staffRouter = new Hono<AuthEnv>()
       .from(schema.members)
       .where(eq(schema.members.store_id, storeId));
     return c.json({ data: rows });
+  })
+
+  /**
+   * PATCH /api/staff/:id
+   * Sets a member's display name; null (or blank) clears it so screens fall
+   * back to the email. 404 for another store's member.
+   * Response: 200 { data: { id, display_name } }
+   */
+  .patch("/:id", bodyValidator(UpdateMemberNameInput), async (c) => {
+    const { id: storeId } = c.var.store;
+    const targetId = c.req.param("id");
+    const { display_name } = c.req.valid("json");
+    const db = createDb(c.env.DB);
+
+    const updated = await db
+      .update(schema.members)
+      .set({ display_name })
+      .where(
+        and(
+          eq(schema.members.id, targetId),
+          eq(schema.members.store_id, storeId),
+        ),
+      )
+      .returning({
+        id: schema.members.id,
+        display_name: schema.members.display_name,
+      });
+    const member = updated[0];
+    if (!member) {
+      return errorResponse("NOT_FOUND", "メンバーが見つかりません。", 404);
+    }
+    return c.json({ data: member });
   })
 
   /**
