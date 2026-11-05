@@ -130,6 +130,56 @@ describe("OrderBoard", () => {
     await findByText(/会計要求中/);
   });
 
+  it("sends an open order to the register via 会計へ", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch([
+      {
+        url: "/api/admin/orders/order-1/request-payment",
+        method: "PATCH",
+        json: { data: { id: "order-1", status: "payment_requested" } },
+      },
+      { url: "/api/admin/orders", method: "GET", json: { data: [mockOrder] } },
+    ]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { findByRole } = render(() => <OrderBoard />);
+    await user.click(await findByRole("button", { name: "会計へ テーブル1" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/admin/orders/order-1/request-payment"),
+      expect.objectContaining({ method: "PATCH" }),
+    );
+  });
+
+  it("offers 会計へ only for an open order with something left to charge", async () => {
+    const requested = {
+      ...mockOrder,
+      id: "order-2",
+      seat_name: "テーブル2",
+      status: "payment_requested",
+    };
+    const allCancelled = {
+      ...mockOrder,
+      id: "order-3",
+      seat_name: "テーブル3",
+      items: [{ ...mockOrder.items[0], status: "cancelled" }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        {
+          url: "/api/admin/orders",
+          method: "GET",
+          json: { data: [requested, allCancelled] },
+        },
+      ]),
+    );
+
+    const { findByText, queryByRole } = render(() => <OrderBoard />);
+    await findByText("テーブル3");
+    expect(queryByRole("button", { name: /^会計へ/ })).toBeNull();
+  });
+
   it("sends PATCH to serve endpoint when 提供済み button is clicked", async () => {
     const user = userEvent.setup();
     const servedOrder = {

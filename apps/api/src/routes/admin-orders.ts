@@ -1,4 +1,9 @@
-import { errorResponse, now, sumOrderItems } from "@yorozu/core";
+import {
+  AddOrderItemsInput,
+  errorResponse,
+  now,
+  sumOrderItems,
+} from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
 import { and, asc, eq, gt, inArray, ne } from "drizzle-orm";
 import { Hono } from "hono";
@@ -8,6 +13,8 @@ import {
   mapOrderItem,
   type OrderItemPayload,
 } from "../order-item";
+import { addItemsToSeatOrder, fetchOrderableMenu } from "../seat-order";
+import { bodyValidator } from "../validator";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -357,6 +364,158 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
     }
 
     return c.json({ data: await mapAdminOrderItem(db, storeId, result) });
+  })
+
+  /**
+   * GET /api/admin/orders/entry
+   * What staff need to enter an order on a customer's behalf: the store's
+   * active seats and the orderable menu (same shape as the customer
+   * bootstrap). Open to both roles, unlike /api/seats and /api/menu.
+   *
+   * Response: 200 { data: { seats: { id, name }[], menu } }
+   */
+  .get("/entry", async (c) => {
+    const { id: storeId } = c.var.store;
+    const db = createDb(c.env.DB);
+    const [seats, menu] = await Promise.all([
+      db
+        .select({ id: schema.seats.id, name: schema.seats.name })
+        .from(schema.seats)
+        .where(
+          and(
+            eq(schema.seats.store_id, storeId),
+            eq(schema.seats.is_active, true),
+          ),
+        )
+        .orderBy(asc(schema.seats.created_at)),
+      fetchOrderableMenu(db, storeId),
+    ]);
+    return c.json({ data: { seats, menu } });
+  })
+
+  /**
+   * POST /api/admin/orders/seats/:seatId/items
+   * Staff order entry: adds items to the seat's active order exactly as the
+   * customer's POST /api/order/:seatToken/items does (same validation and
+   * snapshots), for guests without a phone or a spoken re-order.
+   *
+   * 404 for an unknown, retired or other-store seat.
+   *
+   * Response: 201 (new order) or 200 (appended), { data: { order } }
+   */
+  .post(
+    "/seats/:seatId/items",
+    bodyValidator(AddOrderItemsInput),
+    async (c) => {
+      const { id: storeId } = c.var.store;
+      const seatId = c.req.param("seatId");
+      const { items } = c.req.valid("json");
+      const db = createDb(c.env.DB);
+
+      const seatRows = await db
+        .select({ id: schema.seats.id })
+        .from(schema.seats)
+        .where(
+          and(
+            eq(schema.seats.id, seatId),
+            eq(schema.seats.store_id, storeId),
+            eq(schema.seats.is_active, true),
+          ),
+        )
+        .limit(1);
+      if (!seatRows[0]) {
+        return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
+      }
+
+      const result = await addItemsToSeatOrder(db, storeId, seatId, items);
+      if (result instanceof Response) return result;
+      return c.json(
+        { data: { order: result.order } },
+        result.created ? 201 : 200,
+      );
+    },
+  )
+
+  /**
+   * PATCH /api/admin/orders/:id/request-payment
+   * Sends an order to the register on the customer's behalf: 'open' →
+   * 'payment_requested', the same transition as the customer's
+   * 会計をお願いする — for a customer who walks to the register without
+   * tapping, or whose phone died.
+   *
+   * Idempotent: already 'payment_requested' → 200 unchanged.
+   * 409 if the order is 'paid'/'cancelled', or has no live (non-cancelled)
+   * item — there would be nothing to charge.
+   *
+   * Multi-tenant safe: store_id filter; 404 (not 403) on miss.
+   *
+   * Response: 200 { data: { id, status } }
+   */
+  .patch("/:id/request-payment", async (c) => {
+    const { id: storeId } = c.var.store;
+    const orderId = c.req.param("id");
+    const db = createDb(c.env.DB);
+
+    const orderRows = await db
+      .select()
+      .from(schema.orders)
+      .where(
+        and(eq(schema.orders.id, orderId), eq(schema.orders.store_id, storeId)),
+      )
+      .limit(1);
+    const order = orderRows[0];
+    if (!order) {
+      return errorResponse("NOT_FOUND", "注文が見つかりません。", 404);
+    }
+
+    if (order.status === "payment_requested") {
+      return c.json({ data: { id: order.id, status: order.status } });
+    }
+
+    if (order.status !== "open") {
+      return errorResponse(
+        "CONFLICT",
+        "会計済みまたはキャンセル済みの注文は会計に回せません。",
+        409,
+      );
+    }
+
+    const liveItems = await db
+      .select({ id: schema.orderItems.id })
+      .from(schema.orderItems)
+      .where(
+        and(
+          eq(schema.orderItems.order_id, orderId),
+          eq(schema.orderItems.store_id, storeId),
+          ne(schema.orderItems.status, "cancelled"),
+        ),
+      )
+      .limit(1);
+    if (liveItems.length === 0) {
+      return errorResponse("CONFLICT", "会計できる明細がありません。", 409);
+    }
+
+    // Guarded on 'open' so a concurrent cancel or checkout isn't
+    // overwritten; zero rows changed means that race was lost.
+    const updated = await db
+      .update(schema.orders)
+      .set({ status: "payment_requested" })
+      .where(
+        and(
+          eq(schema.orders.id, orderId),
+          eq(schema.orders.store_id, storeId),
+          eq(schema.orders.status, "open"),
+        ),
+      );
+    if (updated.meta.changes === 0) {
+      return errorResponse(
+        "CONFLICT",
+        "注文の状態が変わったため会計に回せませんでした。",
+        409,
+      );
+    }
+
+    return c.json({ data: { id: order.id, status: "payment_requested" } });
   })
 
   /**

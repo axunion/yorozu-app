@@ -42,8 +42,37 @@ orders. Requires the `session_token` cookie (`requireStore`).
   already `cancelled`. 409 if `paid`. Frees the seat for a new order,
   same as `paid` does.
 
-All four endpoints are single-row-scoped with `store_id` filters;
+### Sending an order to the register (`PATCH /api/admin/orders/:id/request-payment`)
+
+- 「会計へ」 on an open order card. The same `open → payment_requested`
+  transition as the customer's 会計をお願いする, for a customer who walks
+  to the register without tapping it or whose phone died. Idempotent if
+  already `payment_requested`; 409 if `paid`/`cancelled`, or if every
+  item is `cancelled` (nothing to charge — the button is hidden then too).
+  Open to both roles.
+
+All five endpoints are single-row-scoped with `store_id` filters;
 cross-tenant ids → 404 (not 403).
+
+### Staff order entry (`/orders/new`)
+
+For guests without a smartphone or a spoken 「同じものをもう一つ」, staff
+enter items from 「＋ 注文を入力」 above the board (both roles).
+
+- `GET /api/admin/orders/entry` returns the store's active seats and the
+  orderable menu in the customer bootstrap's shape (available items with
+  their option groups). It exists because `/api/seats` and `/api/menu`
+  are owner-only.
+- `POST /api/admin/orders/seats/:seatId/items` takes the customer
+  add-items body and runs the same shared code
+  (`apps/api/src/seat-order.ts`): identical validation, snapshots, lazy
+  order creation (201/200), and the 409 once the bill is requested. An
+  unknown, retired or other-store seat → 404.
+- The page is a dense picker rather than the customer's bottom sheet:
+  items without options add in one tap, 「詳細」 opens an inline panel for
+  options, quantity and a note, and the picked lines (merged when
+  identical, adjustable ±) are sent together to the chosen seat. The
+  customer's screen picks the items up on its next poll.
 
 ### Staff calls (`/api/admin/calls`)
 

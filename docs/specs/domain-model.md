@@ -169,7 +169,7 @@ pending ──(passcode verified: signup or invite)──▶ active
 ### orders.status
 
 ```
-open ──(customer requests payment)──▶ payment_requested ──(staff checkout)──▶ paid
+open ──(customer or staff requests payment)──▶ payment_requested ──(staff checkout)──▶ paid
   ▲                    │                                                        │
   └───(staff reopens)──┘                                                        │
                         ▲                                                       │
@@ -178,9 +178,11 @@ open ──(customer requests payment)──▶ payment_requested ──(staff c
 open, payment_requested ──(staff cancels)──▶ cancelled
 ```
 
-- `open` — items can be added by the customer.
+- `open` — items can be added by the customer, or by staff on the
+  customer's behalf.
 - `payment_requested` — bill locked; adding items returns 409. Set by the
-  customer; staff can send it back to `open` (`PATCH
+  customer, or by staff (`PATCH /api/admin/orders/:id/request-payment`,
+  only with at least one non-cancelled item); staff can send it back to `open` (`PATCH
   /api/admin/orders/:id/reopen`, idempotent if already `open`).
 - `paid` — normally terminal (`closed_at` must be set, DB CHECK
   constraint) but reachable back to `payment_requested` if staff voids

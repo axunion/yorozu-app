@@ -280,6 +280,29 @@ export default function OrderBoard() {
     await loadOrders();
   };
 
+  // Same transition as the customer's 会計をお願いする, for a customer who
+  // walks to the register without tapping it.
+  const handleRequestPayment = async (orderId: string) => {
+    setPendingActions((prev) => new Set([...prev, orderId]));
+    try {
+      const result = await apiFetch(
+        `/api/admin/orders/${orderId}/request-payment`,
+        { method: "PATCH" },
+      );
+      if (!result.ok) {
+        setError(result.message ?? "会計への送信に失敗しました。");
+        return;
+      }
+      await loadOrders();
+    } finally {
+      setPendingActions((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
   const handleResolveCall = async (callId: string) => {
     setPendingActions((prev) => new Set([...prev, callId]));
     try {
@@ -394,6 +417,22 @@ export default function OrderBoard() {
                   <span class={styles.orderTotal}>
                     {formatCurrency(order.total)}
                   </span>
+                  <Show
+                    when={
+                      order.status === "open" &&
+                      order.items.some((item) => item.status !== "cancelled")
+                    }
+                  >
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      aria-label={`会計へ ${order.seat_name}`}
+                      disabled={pendingActions().has(order.id)}
+                      onClick={() => handleRequestPayment(order.id)}
+                    >
+                      {pendingActions().has(order.id) ? "処理中..." : "会計へ"}
+                    </Button>
+                  </Show>
                   <ConfirmDialog
                     triggerLabel="注文をキャンセル"
                     triggerVariant="danger"

@@ -285,7 +285,7 @@ their visual state must communicate urgency instantly.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐  ← Alert state
-│ ● Table 3    [会計要求中]   ¥4,200   [注文をキャンセル]        │
+│ ● Table 3  [新規注文]  ¥4,200  [会計へ] [注文をキャンセル]     │
 │ ───────────────────────────────────────────────────────────── │
 │  ラーメン         × 2   ¥1,600    [提供済み ✓] [取消]         │
 │  餃子             × 1     ¥500    [提供取消]   [取消]         │
@@ -321,7 +321,8 @@ their visual state must communicate urgency instantly.
 - `box-shadow: 0 0 0 3px var(--color-ring)` ring, applied by JS for ~10s
   when a poll detects an item newer than the watermark; a second alert
   on the same card restarts the window
-- Board-level controls (above the card grid): a `🔔/🔕 通知音` toggle
+- Board-level controls (above the card grid): 「＋ 注文を入力」 (primary
+  link to the staff order-entry page), and a `🔔/🔕 通知音` toggle
   button (`aria-pressed`), persisted to `localStorage`
   (`order-alert-sound`); `document.title` gains a `(N)` unserved-item
   count
@@ -330,6 +331,9 @@ their visual state must communicate urgency instantly.
 
 - Seat name: 18px / 700 / `#0F172A` — immediately identifiable even under glare
 - Status badge: see §4 Status Badges
+- 「会計へ」 (`secondary`, `sm`): only on an `open` order with at least one
+  non-cancelled item; sends it to the register. Placed before 「注文を
+  キャンセル」 so the destructive action stays last.
 - Age badge: elapsed time since the oldest still-`ordered` item was
   created (e.g. "12分"), clamped to a minimum of 0 so client/server
   clock skew can't display a negative age; an order whose items are
