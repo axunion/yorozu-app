@@ -47,6 +47,7 @@
 }
 
 .callButton {
+  min-height: var(--touch-target-min);
   white-space: normal;
   text-align: center;
 }

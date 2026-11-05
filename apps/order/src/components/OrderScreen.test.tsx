@@ -368,7 +368,7 @@ describe("OrderScreen", () => {
     await findByText("会計をお願いする");
   });
 
-  it("clicking '注文する' calls POST /items and updates order", async () => {
+  it("sends nothing until the cart is confirmed, then posts every line in one request", async () => {
     const fetchMock = mockFetch([
       { url: "/api/order/", method: "GET", json: bootstrapWithMenu },
       {
@@ -384,14 +384,24 @@ describe("OrderScreen", () => {
                   id: "oi1",
                   name_snapshot: "コーヒー",
                   unit_price_snapshot: 500,
-                  quantity: 1,
+                  quantity: 2,
                   status: "ordered",
                   created_at: 1000,
                   options: [],
                   note: null,
                 },
+                {
+                  id: "oi2",
+                  name_snapshot: "紅茶",
+                  unit_price_snapshot: 450,
+                  quantity: 1,
+                  status: "ordered",
+                  created_at: 1001,
+                  options: [],
+                  note: null,
+                },
               ],
-              total: 500,
+              total: 1450,
             },
           },
         },
@@ -400,21 +410,75 @@ describe("OrderScreen", () => {
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
 
-    const { findByRole } = render(() => <OrderScreen seatToken="test-token" />);
-    const orderBtn = await findByRole("button", { name: /コーヒーを注文する/ });
-    await user.click(orderBtn);
+    const { findByRole, getByRole } = render(() => (
+      <OrderScreen seatToken="test-token" />
+    ));
+    const addCoffee = await findByRole("button", {
+      name: "コーヒーをカートに追加",
+    });
+    await user.click(addCoffee);
+    await user.click(addCoffee);
+    await user.click(getByRole("button", { name: "紅茶をカートに追加" }));
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/items"),
-      expect.objectContaining({
-        method: "POST",
-        body: expect.stringContaining('"menu_item_id":"item1"'),
-      }),
+    const posts = () =>
+      fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === "POST",
+      );
+    expect(posts()).toHaveLength(0);
+
+    await user.click(
+      getByRole("button", { name: "カートを見る（3点 ¥1,450）" }),
+    );
+    await user.click(screen.getByRole("button", { name: "注文を確定" }));
+
+    expect(posts()).toHaveLength(1);
+    expect(JSON.parse(String(posts()[0]?.[1]?.body))).toEqual({
+      items: [
+        { menu_item_id: "item1", quantity: 2, option_ids: [], note: null },
+        { menu_item_id: "item2", quantity: 1, option_ids: [], note: null },
+      ],
+    });
+    expect((await screen.findByRole("status")).textContent).toContain(
+      "注文しました！",
     );
     await findByRole("button", { name: /会計をお願いする/ });
   });
 
-  it("shows error when POST /items fails", async () => {
+  it("lets the customer change a quantity or remove a line before confirming", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        { url: "/api/order/", method: "GET", json: bootstrapWithMenu },
+      ]),
+    );
+    const user = userEvent.setup();
+
+    const { findByRole, getByRole, queryByRole } = render(() => (
+      <OrderScreen seatToken="test-token" />
+    ));
+    await user.click(
+      await findByRole("button", { name: "コーヒーをカートに追加" }),
+    );
+    await user.click(getByRole("button", { name: "紅茶をカートに追加" }));
+    await user.click(getByRole("button", { name: /^カートを見る/ }));
+
+    await user.click(
+      screen.getByRole("button", { name: "コーヒーの数量を増やす" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "紅茶をカートから削除" }),
+    );
+
+    expect(
+      getByRole("button", { name: "カートを見る（2点 ¥1,000）", hidden: true }),
+    ).toBeTruthy();
+    // Cart lines aren't sent yet, so no bill request is offered for them.
+    expect(
+      queryByRole("button", { name: "会計をお願いする", hidden: true }),
+    ).toBeNull();
+  });
+
+  it("keeps the cart and shows the error in the sheet when the order is rejected", async () => {
     const fetchMock = mockFetch([
       { url: "/api/order/", method: "GET", json: bootstrapWithMenu },
       {
@@ -424,7 +488,7 @@ describe("OrderScreen", () => {
         json: {
           error: {
             code: "CONFLICT",
-            message: "会計要求中のため注文できません。",
+            message: "コーヒー は現在ご注文いただけません。",
           },
         },
       },
@@ -432,12 +496,20 @@ describe("OrderScreen", () => {
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
 
-    const { findByRole } = render(() => <OrderScreen seatToken="test-token" />);
-    const orderBtn = await findByRole("button", { name: /コーヒーを注文する/ });
-    await user.click(orderBtn);
+    const { findByRole, getByRole } = render(() => (
+      <OrderScreen seatToken="test-token" />
+    ));
+    await user.click(
+      await findByRole("button", { name: "コーヒーをカートに追加" }),
+    );
+    await user.click(getByRole("button", { name: /^カートを見る/ }));
+    await user.click(screen.getByRole("button", { name: "注文を確定" }));
 
-    const alert = await findByRole("alert");
-    expect(alert.textContent).toContain("会計要求中");
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("現在ご注文いただけません");
+    expect(
+      getByRole("button", { name: "カートを見る（1点 ¥500）", hidden: true }),
+    ).toBeTruthy();
   });
 
   it("shows 会計待ち message when order status is payment_requested", async () => {
@@ -455,8 +527,17 @@ describe("OrderScreen", () => {
       mockFetch([{ url: "/api/order/", method: "GET", json: bootstrap }]),
     );
 
-    const { findByText } = render(() => <OrderScreen seatToken="test-token" />);
+    const { findByText, getByRole } = render(() => (
+      <OrderScreen seatToken="test-token" />
+    ));
     await findByText(/会計をお待ちください/);
+    expect(
+      (
+        getByRole("button", {
+          name: "ラーメンをカートに追加",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 
   it("shows a cancelled item with a 取消済み label and excludes it from the total", async () => {
@@ -540,6 +621,71 @@ describe("OrderScreen", () => {
       expect.stringContaining("/request-payment"),
       expect.objectContaining({ method: "PATCH" }),
     );
+  });
+});
+
+describe("OrderScreen cart", () => {
+  it("discards unsent cart lines, with a notice, when the bill is requested from elsewhere", async () => {
+    vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    let billRequested = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: {
+              ...bootstrapWithOrder.data,
+              order: {
+                ...bootstrapWithOrder.data.order,
+                status: billRequested ? "payment_requested" : "open",
+              },
+            },
+          }),
+        }),
+      ),
+    );
+
+    render(() => <OrderScreen seatToken="test-token" />);
+    await vi.advanceTimersByTimeAsync(0);
+    await user.click(
+      screen.getByRole("button", { name: "ラーメンをカートに追加" }),
+    );
+    expect(screen.getByRole("button", { name: /^カートを見る/ })).toBeTruthy();
+
+    // A companion's phone requests the bill; this screen learns of it on
+    // its order poll.
+    billRequested = true;
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(screen.queryByRole("button", { name: /^カートを見る/ })).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain(
+      "カートの商品は注文されませんでした",
+    );
+  });
+
+  it("keeps focus on the stepper button while changing a line's quantity", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        { url: "/api/order/", method: "GET", json: bootstrapWithMenu },
+      ]),
+    );
+    const user = userEvent.setup();
+
+    render(() => <OrderScreen seatToken="test-token" />);
+    await user.click(
+      await screen.findByRole("button", { name: "コーヒーをカートに追加" }),
+    );
+    await user.click(screen.getByRole("button", { name: /^カートを見る/ }));
+    const increase = screen.getByRole("button", {
+      name: "コーヒーの数量を増やす",
+    });
+    await user.click(increase);
+
+    expect(document.activeElement).toBe(increase);
+    expect(increase.isConnected).toBe(true);
   });
 });
 
@@ -971,8 +1117,11 @@ describe("OrderScreen receipt banner", () => {
     await vi.advanceTimersByTimeAsync(0);
     await screen.findByRole("link", { name: "レシートを表示" });
 
-    const orderBtn = screen.getByRole("button", { name: /コーヒーを注文する/ });
-    await user.click(orderBtn);
+    await user.click(
+      screen.getByRole("button", { name: "コーヒーをカートに追加" }),
+    );
+    await user.click(screen.getByRole("button", { name: /^カートを見る/ }));
+    await user.click(screen.getByRole("button", { name: "注文を確定" }));
     await vi.advanceTimersByTimeAsync(0);
 
     expect(screen.queryByRole("link", { name: "レシートを表示" })).toBeNull();
@@ -1044,8 +1193,11 @@ describe("OrderScreen receipt banner", () => {
     await vi.advanceTimersByTimeAsync(10_000);
 
     // Before the receipt check resolves, the customer starts a fresh order.
-    const orderBtn = screen.getByRole("button", { name: /コーヒーを注文する/ });
-    await user.click(orderBtn);
+    await user.click(
+      screen.getByRole("button", { name: "コーヒーをカートに追加" }),
+    );
+    await user.click(screen.getByRole("button", { name: /^カートを見る/ }));
+    await user.click(screen.getByRole("button", { name: "注文を確定" }));
     await vi.advanceTimersByTimeAsync(0);
     expect(screen.queryByRole("link", { name: "レシートを表示" })).toBeNull();
 

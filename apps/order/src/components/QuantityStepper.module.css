@@ -11,7 +11,7 @@
   background: var(--color-background);
   border: none;
   border-radius: 0;
-  min-width: var(--space-8);
+  min-width: var(--touch-target-min);
   min-height: var(--touch-target-min);
   display: inline-flex;
   align-items: center;

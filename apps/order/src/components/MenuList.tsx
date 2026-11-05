@@ -1,88 +1,35 @@
 import { menuImageUrl } from "@yorozu/core/client";
-import { Button, ErrorAlert } from "@yorozu/ui";
-import { createSignal, For, onCleanup, Show } from "solid-js";
+import { Button } from "@yorozu/ui";
+import { createSignal, For, Show } from "solid-js";
+import type { CartEntry } from "../lib/cart";
 import ItemDetailSheet from "./ItemDetailSheet";
 import styles from "./MenuList.module.css";
-import type { AddItemsInput, MenuGroup, MenuItem } from "./OrderScreen";
+import type { MenuGroup, MenuItem } from "./OrderScreen";
 import { categoryElementId } from "./OrderScreen";
-import QuantityStepper from "./QuantityStepper";
 
 export default function MenuList(props: {
   groups: MenuGroup[];
-  onAddItems: (
-    items: AddItemsInput,
-  ) => Promise<{ ok: boolean; message?: string }>;
+  /** True once the bill is requested: the order accepts no more items. */
+  locked: boolean;
+  onAddToCart: (entry: CartEntry) => void;
 }) {
-  const [quantities, setQuantities] = createSignal<Record<string, number>>({});
-  const [submitting, setSubmitting] = createSignal(false);
-  const [error, setError] = createSignal("");
-  const [success, setSuccess] = createSignal("");
   const [detailItem, setDetailItem] = createSignal<MenuItem | null>(null);
 
-  let successTimeoutId: ReturnType<typeof setTimeout> | undefined;
-  function showSuccessTemporarily() {
-    setSuccess("注文しました！");
-    clearTimeout(successTimeoutId);
-    successTimeoutId = setTimeout(() => setSuccess(""), 2000);
-  }
-  onCleanup(() => clearTimeout(successTimeoutId));
-
-  function getQuantity(itemId: string): number {
-    return quantities()[itemId] ?? 1;
-  }
-
-  function setQuantity(itemId: string, value: number) {
-    setQuantities((prev) => ({ ...prev, [itemId]: Math.max(1, value) }));
-  }
-
-  async function handleOrderItem(itemId: string) {
-    setError("");
-    setSuccess("");
-    setSubmitting(true);
-    try {
-      const qty = getQuantity(itemId);
-      const result = await props.onAddItems([
-        { menu_item_id: itemId, quantity: qty },
-      ]);
-      if (!result.ok) {
-        setError(result.message ?? "注文に失敗しました。");
-      } else {
-        setQuantities((prev) => {
-          const next = { ...prev };
-          delete next[itemId];
-          return next;
-        });
-        showSuccessTemporarily();
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDetailAddItems(
-    items: AddItemsInput,
-  ): Promise<{ ok: boolean; message?: string }> {
-    setError("");
-    const result = await props.onAddItems(items);
-    if (result.ok) {
-      showSuccessTemporarily();
-    }
-    return result;
+  function addPlainItem(item: MenuItem) {
+    props.onAddToCart({
+      menu_item_id: item.id,
+      name: item.name,
+      unit_price: item.price,
+      quantity: 1,
+      option_ids: [],
+      option_labels: [],
+      note: null,
+    });
   }
 
   return (
     <section class={styles.section}>
       <h2 class={styles.heading}>メニュー</h2>
-
-      <Show when={error()}>
-        <ErrorAlert>{error()}</ErrorAlert>
-      </Show>
-
-      <Show when={success()}>
-        <p class={styles.alertSuccess} aria-live="polite">
-          {success()}
-        </p>
-      </Show>
 
       <Show
         when={props.groups.length > 0}
@@ -116,47 +63,34 @@ export default function MenuList(props: {
                           ¥{item.price.toLocaleString()}
                         </span>
                       </div>
-                      <Show
-                        when={item.option_groups.length === 0}
-                        fallback={
-                          <div class={styles.itemOrder}>
+                      <div class={styles.itemOrder}>
+                        <Show
+                          when={item.option_groups.length === 0}
+                          fallback={
                             <Button
                               variant="primary"
                               size="sm"
+                              class={styles.orderButton}
                               aria-label={`${item.name}のオプションを選ぶ`}
+                              disabled={props.locked}
                               onClick={() => setDetailItem(item)}
                             >
                               オプションを選ぶ
                             </Button>
-                          </div>
-                        }
-                      >
-                        <div class={styles.itemOrder}>
-                          <QuantityStepper
-                            itemName={item.name}
-                            quantity={getQuantity(item.id)}
-                            decreaseDisabled={
-                              submitting() || getQuantity(item.id) <= 1
-                            }
-                            increaseDisabled={submitting()}
-                            onDecrease={() =>
-                              setQuantity(item.id, getQuantity(item.id) - 1)
-                            }
-                            onIncrease={() =>
-                              setQuantity(item.id, getQuantity(item.id) + 1)
-                            }
-                          />
+                          }
+                        >
                           <Button
                             variant="primary"
                             size="sm"
-                            aria-label={`${item.name}を注文する`}
-                            onClick={() => handleOrderItem(item.id)}
-                            disabled={submitting()}
+                            class={styles.orderButton}
+                            aria-label={`${item.name}をカートに追加`}
+                            disabled={props.locked}
+                            onClick={() => addPlainItem(item)}
                           >
-                            {submitting() ? "注文中..." : "注文する"}
+                            カートに追加
                           </Button>
-                        </div>
-                      </Show>
+                        </Show>
+                      </div>
                     </li>
                   )}
                 </For>
@@ -172,7 +106,7 @@ export default function MenuList(props: {
             item={item()}
             open={true}
             onOpenChange={(open) => !open && setDetailItem(null)}
-            onAddItems={handleDetailAddItems}
+            onAddToCart={props.onAddToCart}
           />
         )}
       </Show>

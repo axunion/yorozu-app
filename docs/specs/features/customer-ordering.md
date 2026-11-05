@@ -33,13 +33,35 @@ drop that information for screen reader users). See
 [menu-management.md](./menu-management.md#item-photos-apimenuitemsidimage-apimenuimageskey)
 for how `image_key` resolves to a servable URL.
 
-An item with no attached option groups keeps the one-tap add button
-(`MenuList.tsx`); an item with one or more groups instead opens an
-item detail sheet (`ItemDetailSheet.tsx`) — a group with `max_select
-=== 1` renders as radios (plus a "no selection" option when
-`min_select === 0`), otherwise as checkboxes disabled once
-`max_select` is reached — plus a quantity stepper and a free-text note
-field (≤ 200 chars).
+### Cart and confirm step
+
+Nothing reaches the kitchen without a review step. Menu taps only fill a
+cart kept in the page's memory (`OrderScreen.tsx`, `lib/cart.ts`); it is
+lost on reload, and lines with the same item, options and note merge.
+
+- An item with no attached option groups has a one-tap 「カートに追加」
+  button (`MenuList.tsx`). An item with one or more groups instead opens
+  an item detail sheet (`ItemDetailSheet.tsx`) — a group with
+  `max_select === 1` renders as radios (plus a "no selection" option when
+  `min_select === 0`), otherwise as checkboxes disabled once `max_select`
+  is reached — plus a quantity stepper and a free-text note field
+  (≤ 200 chars). Its footer (quantity, line total, 「カートに追加」) is
+  pinned to the bottom of the sheet.
+- A fixed bottom bar (`BottomBar.tsx`) shows 「カートを見る（n点 ¥x）」 while
+  the cart has items, and 「注文済み ¥x / 内容を見る」 (scrolls to the order
+  summary) once the order has items. The bill request is offered only
+  while the cart is empty, so unsent items can't be forgotten.
+- The cart review sheet (`CartSheet.tsx`) lists each line with a
+  quantity stepper and 「削除」, then the total. 「注文を確定」 sends the
+  whole cart in one `POST /items` request. On success the cart clears and
+  a fixed toast shows 「注文しました！」; on failure the error stays in the
+  sheet and the cart is kept, so the customer can remove the offending
+  line and retry.
+- Once the order is `payment_requested`, every add button is disabled and
+  the bar shows the waiting message. If the bill was requested elsewhere
+  (a companion's phone, or staff from the order board) while this phone
+  still held unsent lines, the cart is emptied and a warning toast says
+  they were not ordered.
 
 ### Adding items (`POST /api/order/:seatToken/items`)
 
@@ -81,7 +103,8 @@ field (≤ 200 chars).
   でいます" while the call is open. `OrderScreen` polls only the `call`
   field of the bootstrap response every 5s to pick up a staff resolve —
   deliberately not the full bootstrap, so in-progress UI (e.g. an open
-  item detail sheet) isn't disturbed by the poll.
+  item detail sheet) isn't disturbed by the poll. The cart is separate
+  client state, so no poll ever touches it.
 - Resolved by staff from the order board (see
   [order-fulfillment.md](./order-fulfillment.md#staff-calls-apiadmincalls)).
 
@@ -96,7 +119,7 @@ field (≤ 200 chars).
   whole `order` field (not just one sub-field), since the order
   summary's rows have no nested interactive state to protect the way
   an open item detail sheet would.
-- Every request that can set `order` (initial load, add-items, request-
+- Every request that can set `order` (initial load, cart confirm, request-
   payment, and the poll) is guarded by a monotonic sequence number: the
   most recently *started* request always wins, so a slow poll response
   can't overwrite a mutation's fresher result if it resolves after it
@@ -142,9 +165,12 @@ receipt above remains reachable.
 
 - **No customer self-cancel** — once an order reaches the kitchen,
   voiding an item or the whole order is staff-mediated only
-  (`docs/specs/features/order-fulfillment.md`); a "call staff"
-  button is the intended UX for customer-initiated corrections.
-  (Deliberate v1 decision — revisit with pilot feedback)
+  (`docs/specs/features/order-fulfillment.md`); the cart's confirm step
+  removes most of the need for it, and a "call staff" button covers the
+  rest. (Deliberate v1 decision — revisit with pilot feedback)
+- **Cart size** — the API accepts at most 50 lines per request; a cart
+  with more distinct lines is rejected as a whole with a validation
+  message. Not capped client-side, since a table rarely comes close.
 - **Japanese only.** (Backlog)
 - **No formal 領収書 (addressee receipt)** — the digital receipt above
   covers レシート only; a 領収書 needs the store's registered

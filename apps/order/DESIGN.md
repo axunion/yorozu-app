@@ -17,7 +17,8 @@
   and calm trust while delivering a self-order experience that completes entirely
   within a single mobile screen.
 - **Density:** Relaxed mobile-first layout. Item names and prices are large and
-  legible; ordering actions resolve in one tap.
+  legible; adding to the cart is one tap, and every order passes one review
+  step before it reaches the kitchen.
 - **Keywords:** terracotta, sand, premium, intuitive, warmth, simple.
 - **Signature:** Terracotta (fired-clay red-brown) drives all primary CTAs.
   Honey ochre accents supplementary emphasis. Base tones are warm ivory and
@@ -37,7 +38,7 @@
 
 | Role | Hex | Usage |
 |------|-----|-------|
-| Primary | `#C0552F` | Main brand color. Per-item order CTAs ("Order") |
+| Primary | `#C0552F` | Main brand color. Per-item add-to-cart CTAs and the cart CTA |
 | Primary Hover | `#A2441F` | Hovered primary button |
 | Primary Active | `#88381A` | Pressed/active primary button |
 | Primary Foreground | `#FFFFFF` | Text on terracotta background |
@@ -196,7 +197,7 @@ exclusively for category nav chips.
 **Success (payment request / confirmed completion)**
 - Background: `#6E7F35` — Text: `#FFFFFF`
 - Hover: background `#5C6B2E`
-- Use for: the "Request payment" CTA in the Sticky Checkout Bar. This is a
+- Use for: the "Request payment" CTA in the Sticky Bottom Bar. This is a
   completion action (not a per-item order action), so the success variant
   applies — not primary/terracotta.
 
@@ -252,7 +253,7 @@ mobile-optimized layout.
 ┌──────────────────────────────────────────────┐
 │ [photo]  Item name                ¥1,200     │
 │          Description (optional)               │
-│                      [−][ 1 ][＋]  [Order]  │
+│                            [Add to cart]     │
 └──────────────────────────────────────────────┘
 ```
 
@@ -271,7 +272,10 @@ mobile-optimized layout.
 - Description (only when set): 12px / `#9A8E82` (Subtle Foreground),
   `white-space: normal` — sits between name and price
 - Price: 14px / 600 / `#C0552F` (terracotta draws the eye to the price)
-- Stepper + button: flex row, right-aligned
+- Add button (「カートに追加」, or 「オプションを選ぶ」 for an item with option
+  groups): right-aligned, at least 44px tall. Quantity is adjusted in the
+  item detail sheet and the cart review sheet, not on the row.
+- Once the bill is requested, every add button is disabled.
 
 ---
 
@@ -283,7 +287,8 @@ mobile-optimized layout.
 
 - Touch target for each button: minimum 44 × 44px (WCAG 2.1)
 - Container: `border: 1px solid #D8CCBE` / `border-radius: 6px` / `overflow: hidden`
-- Decrease / Increase button: background `#FAF6F1` / text `#2B221C` / `min-width: 2rem`
+- Used in the item detail sheet and the cart review sheet
+- Decrease / Increase button: background `#FAF6F1` / text `#2B221C` / 44 × 44px minimum
 - Count display: 14px / 600 / `#2B221C` / `min-width: 1.5rem` / `text-align: center`
 - Disabled state: `opacity: 0.4`
 
@@ -312,10 +317,34 @@ mobile-optimized layout.
 
 ---
 
-### Sticky Checkout Bar
+### Bottom Sheets (item detail, cart review)
 
-Permanently visible at the bottom of the viewport to make the payment step
-instantly reachable regardless of scroll position.
+- Anchored to the bottom, max-height 85vh, level-3 shadow, `role="dialog"`.
+- Only the body scrolls; the footer (quantity, total and the submit button)
+  stays pinned to the bottom of the sheet, separated by a top border, so a
+  tall option list never pushes the submit button off-screen.
+- Cart review: one row per line (name, options, note, line price, stepper,
+  「削除」), then the total and 「メニューに戻る」 / 「注文を確定」. Decreasing a
+  line below 1 removes it.
+
+---
+
+### Toast
+
+Order feedback (「注文しました！」) appears in a toast anchored to the top
+edge of the bottom bar, so it is visible wherever the customer has scrolled
+and clears the bar whatever its height. Success colors (warning colors when
+unsent cart lines were dropped because the bill was requested elsewhere),
+level-2 shadow, `role="status"`, hidden after 4 seconds. Errors from
+sending the cart stay inside the cart review sheet, next to what caused them.
+
+---
+
+### Sticky Bottom Bar
+
+Permanently visible at the bottom of the viewport to keep the cart, the
+running order total and the payment step reachable regardless of scroll
+position. Hidden while there is neither an order nor a cart.
 
 - Position: `sticky; bottom: 0`
 - Background: `#FFFFFF` — Border Top: `1px solid #E7DED4`
@@ -323,9 +352,15 @@ instantly reachable regardless of scroll position.
 - Safe area: `padding-bottom: env(safe-area-inset-bottom)` for iPhone notch/Dynamic Island
 - Button: success variant / full width / height 52px / 16px font
 
-**States:**
-- `open` (order in progress): success button "Request payment"
-- `payment_requested` (awaiting staff): text message "Your payment request has been received. A staff member will be with you shortly."
+**Rows (top to bottom):**
+- Ordered so far (when the order has items): 「注文済み ¥x」 with a 「内容を見る」
+  link that scrolls to the order summary. 44px tall.
+- CTA, by state:
+  - cart has items: primary button 「カートを見る（n点 ¥x）」 opening the cart
+    review sheet. The bill request is hidden meanwhile, so unsent items can't
+    be left behind.
+  - cart empty, `open` order: success button "Request payment"
+  - `payment_requested` (awaiting staff): text message "Your payment request has been received. A staff member will be with you shortly."
 
 ---
 
@@ -398,7 +433,7 @@ instantly reachable regardless of scroll position.
 │  Order Summary Section                  │
 │                                         │
 ├─────────────────────────────────────────┤
-│  Sticky Checkout Bar (sticky bottom)    │
+│  Sticky Bottom Bar (sticky bottom)      │
 └─────────────────────────────────────────┘
 ```
 
@@ -422,10 +457,10 @@ black to keep elevation consistent with the earth-tone palette.
 
 ### Do
 
-- **Use terracotta (`#C0552F`) for per-item order CTAs.** The "Order" button
-  on each menu item row must always use the primary/terracotta color.
+- **Use terracotta (`#C0552F`) for per-item add-to-cart CTAs.** The add
+  button on each menu item row must always use the primary/terracotta color.
   The "Request payment" button is a completion action and uses the success
-  variant (`#6E7F35`) — see §4 Sticky Checkout Bar.
+  variant (`#6E7F35`) — see §4 Sticky Bottom Bar.
 - **Keep touch targets at 44 × 44px or larger.** Applies to stepper buttons and
   all interactive elements.
 - **Keep input font size at 16px or above.** Prevents iOS Safari from
@@ -486,7 +521,8 @@ intentionally minimal — no multi-column grids.
 
 ### Safe area insets
 
-Apply `padding-bottom: env(safe-area-inset-bottom)` to the Sticky Checkout Bar
+Apply `padding-bottom: env(safe-area-inset-bottom)` to the Sticky Bottom Bar
+and the bottom sheets' footers
 to avoid overlap with the iPhone home indicator.
 
 ---

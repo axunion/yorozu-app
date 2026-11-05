@@ -148,13 +148,23 @@ test("a store can be registered and taken through order to payment", async ({
       customer.getByRole("heading", { name: "その他", exact: true }),
     ).toBeVisible();
 
+    // Taps only fill the local cart; nothing reaches the kitchen until the
+    // review sheet's 注文を確定 sends every line in one request.
+    const addKaraage = customer.getByRole("button", {
+      name: "唐揚げをカートに追加",
+    });
+    await addKaraage.click();
+    await addKaraage.click();
     await customer
-      .getByRole("button", { name: "唐揚げの数量を増やす" })
+      .getByRole("button", { name: "ビールをカートに追加" })
       .click();
-    await customer.getByRole("button", { name: "唐揚げを注文する" }).click();
+    await customer
+      .getByRole("button", {
+        name: `カートを見る（3点 ¥${ORDER_TOTAL.toLocaleString()}）`,
+      })
+      .click();
+    await customer.getByRole("button", { name: "注文を確定" }).click();
     await expect(customer.getByText("注文しました！")).toBeVisible();
-
-    await customer.getByRole("button", { name: "ビールを注文する" }).click();
 
     const summary = customer
       .locator("section")
