@@ -1,6 +1,7 @@
 import { apiFetch, jsonFetch } from "@yorozu/core/client";
-import { ErrorAlert } from "@yorozu/ui";
+import { Button, ErrorAlert } from "@yorozu/ui";
 import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
+import NotFoundPage from "../pages/NotFoundPage";
 import CategoryNav from "./CategoryNav";
 import CheckoutBar from "./CheckoutBar";
 import Header from "./Header";
@@ -133,6 +134,9 @@ export default function OrderScreen(props: { seatToken: string }) {
   const [call, setCall] = createSignal<Call | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal("");
+  // An unknown or rotated QR token: nothing on this screen can work, so it
+  // gets the not-found page rather than an error banner above an empty menu.
+  const [notFound, setNotFound] = createSignal(false);
   const ready = createMemo(() => !loading() && !error());
   const menuGroups = createMemo(() =>
     groupMenuItems(categories(), menuItems()),
@@ -174,13 +178,22 @@ export default function OrderScreen(props: { seatToken: string }) {
     }
   }
 
+  // Every bootstrap consumer treats a 404 the same way: the seat is gone.
+  async function fetchBootstrap() {
+    const result = await apiFetch<BootstrapData>(
+      `/api/order/${props.seatToken}`,
+    );
+    if (result.status === 404) setNotFound(true);
+    return result;
+  }
+
   async function loadBootstrap() {
     setLoading(true);
     setError("");
     const seq = ++orderSeq;
-    const result = await apiFetch<BootstrapData>(
-      `/api/order/${props.seatToken}`,
-    );
+    const result = await fetchBootstrap();
+    // NotFoundPage replaces the whole screen; nothing else to update.
+    if (notFound()) return;
     if (!result.ok || !result.data) {
       setCategories([]);
       setMenuItems([]);
@@ -200,9 +213,8 @@ export default function OrderScreen(props: { seatToken: string }) {
   // call resolving in the background doesn't reset in-progress UI (e.g. an
   // open item detail sheet) the way re-running loadBootstrap would.
   async function pollCall() {
-    const result = await apiFetch<BootstrapData>(
-      `/api/order/${props.seatToken}`,
-    );
+    if (notFound()) return;
+    const result = await fetchBootstrap();
     if (result.ok && result.data) {
       setCall(result.data.call);
     }
@@ -214,11 +226,9 @@ export default function OrderScreen(props: { seatToken: string }) {
   // call poll since a served tick is informational, not something the
   // customer is actively waiting on the way an open call is.
   async function pollOrder() {
-    if (order() === null) return;
+    if (notFound() || order() === null) return;
     const seq = ++orderSeq;
-    const result = await apiFetch<BootstrapData>(
-      `/api/order/${props.seatToken}`,
-    );
+    const result = await fetchBootstrap();
     if (result.ok && result.data) {
       setOrderIfCurrent(seq, result.data.order);
     }
@@ -284,9 +294,9 @@ export default function OrderScreen(props: { seatToken: string }) {
   }
 
   return (
-    <>
+    <Show when={!notFound()} fallback={<NotFoundPage />}>
       <Header
-        seatName={seatName() || "セルフオーダー"}
+        seatName={seatName()}
         callOpen={call()?.status === "open"}
         onCallStaff={handleCallStaff}
       />
@@ -302,6 +312,9 @@ export default function OrderScreen(props: { seatToken: string }) {
 
         <Show when={!loading() && error()}>
           <ErrorAlert>{error()}</ErrorAlert>
+          <Button type="button" variant="secondary" onClick={loadBootstrap}>
+            再読み込み
+          </Button>
         </Show>
 
         <Show when={receiptOrderId()}>
@@ -326,6 +339,6 @@ export default function OrderScreen(props: { seatToken: string }) {
       <Show when={ready()}>
         <CheckoutBar order={order()} onRequestPayment={handleRequestPayment} />
       </Show>
-    </>
+    </Show>
   );
 }

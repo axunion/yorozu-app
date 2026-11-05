@@ -64,6 +64,18 @@ describe("StoreSettings — store name", () => {
     expect(input.value).toBe("テスト食堂");
   });
 
+  it("shows the store name as read-only text for a staff-role session", async () => {
+    renderWithStore({
+      id: "store-1",
+      name: "スタッフ閲覧食堂",
+      email: "staff@test.internal",
+      role: "staff",
+    });
+    await screen.findByText("スタッフ閲覧食堂");
+    expect(screen.queryByLabelText("店舗名")).toBeNull();
+    expect(screen.queryByRole("button", { name: "保存" })).toBeNull();
+  });
+
   it("shows the current email as read-only text", async () => {
     renderWithStore();
     await screen.findByText("owner@test.internal");
@@ -284,7 +296,7 @@ describe("StoreSettings — danger zone", () => {
       email: "staff@test.internal",
       role: "staff",
     });
-    await screen.findByLabelText("店舗名");
+    await screen.findByText("テスト食堂");
     expect(screen.queryByText("危険な操作")).toBeNull();
   });
 

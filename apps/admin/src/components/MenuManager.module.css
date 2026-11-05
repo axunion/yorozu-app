@@ -76,8 +76,14 @@
   justify-content: flex-end;
 }
 
+.fieldCheck input {
+  /* .field input stretches text inputs to the column; a checkbox must not. */
+  width: auto;
+}
+
 .fieldCheck label {
   display: flex;
+  white-space: nowrap;
   align-items: center;
   gap: var(--space-1);
   font-size: var(--text-sm);

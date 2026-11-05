@@ -96,6 +96,11 @@ export default function CheckoutPanel() {
     return discount.amount > 0 && discount.reason.trim() === "";
   };
 
+  // Rejected rather than capped: silently capping turned a mistyped amount
+  // into a 100% discount (a ¥0 sale) with nothing on screen to notice it.
+  const discountExceedsBill = (order: PendingOrder): boolean =>
+    discountFor(order.id).amount > order.total;
+
   const setDiscount = (orderId: string, discount: Partial<Discount>) => {
     setDiscountByOrder((prev) =>
       new Map(prev).set(orderId, { ...discountFor(orderId), ...discount }),
@@ -231,7 +236,10 @@ export default function CheckoutPanel() {
                 <StatusBadge tone="warning">会計要求中</StatusBadge>
                 <span class={styles.checkoutTotal}>
                   <Show
-                    when={discountFor(order.id).amount > 0}
+                    when={
+                      discountFor(order.id).amount > 0 &&
+                      !discountExceedsBill(order)
+                    }
                     fallback={formatCurrency(order.total)}
                   >
                     <span class={styles.checkoutTotalOriginal}>
@@ -326,11 +334,16 @@ export default function CheckoutPanel() {
                       inputMode="numeric"
                       value={discountFor(order.id).amount || ""}
                       disabled={processing().has(order.id)}
+                      error={
+                        discountExceedsBill(order)
+                          ? `割引額が請求額（${formatCurrency(order.total)}）を超えています`
+                          : undefined
+                      }
                       onInput={(e) =>
                         setDiscount(order.id, {
-                          amount: Math.min(
-                            order.total,
-                            Math.max(0, Number(e.currentTarget.value) || 0),
+                          amount: Math.max(
+                            0,
+                            Number(e.currentTarget.value) || 0,
                           ),
                         })
                       }
@@ -367,7 +380,8 @@ export default function CheckoutPanel() {
                   variant="primary"
                   disabled={
                     processing().has(order.id) ||
-                    discountReasonMissing(order.id)
+                    discountReasonMissing(order.id) ||
+                    discountExceedsBill(order)
                   }
                   onClick={() => handleCheckout(order.id)}
                 >

@@ -72,35 +72,22 @@ explicit-action path; sliding expiry is the inactivity path.
 ### CORS and CSRF
 
 The API must allow credentials and enumerate each allowed origin explicitly (`*` is forbidden
-when `Access-Control-Allow-Credentials: true`). This is a hand-written middleware
-(`corsMiddleware`, `apps/api/src/app.ts`), not Hono's built-in `cors()` helper, because it also
-has to defend against CSRF:
+when `Access-Control-Allow-Credentials: true`). `apps/api/src/app.ts` runs two middlewares
+over the same allowlist (`ADMIN_ORIGIN`, `ORDER_ORIGIN`, `SIGNUP_ORIGIN`, `SHIFT_ORIGIN`):
 
-```ts
-// apps/api/src/app.ts (shape, not verbatim)
-const allowed = [
-  env.ADMIN_ORIGIN,
-  env.ORDER_ORIGIN,
-  env.SIGNUP_ORIGIN,
-  env.SHIFT_ORIGIN,
-];
-const origin = c.req.header("Origin") ?? "";
-const isAllowedOrigin = allowed.includes(origin);
-
-if (isAllowedOrigin) {
-  // set Access-Control-Allow-Origin/Credentials/Methods/Headers, Vary: Origin
-}
-if (c.req.method === "OPTIONS") return c.body(null, 204);
-if (origin && !isAllowedOrigin && STATE_CHANGING_METHODS.has(c.req.method)) {
-  return c.body(null, 403); // CSRF guard, see below
-}
-```
+- `corsMiddleware` — Hono's built-in `cors()` with an origin callback, `credentials: true`,
+  and an explicit method list. It writes its headers through `c.res` before `next()`, so they
+  also land on handlers that return a raw `Response` (`errorResponse`); headers set with
+  `c.header()` would be dropped there, leaving every 4xx unreadable cross-origin.
+- `csrfOriginMiddleware` — returns 403 for a state-changing method whose `Origin` is present
+  but not allowlisted (see below). Hono's `csrf()` helper is not used because it only checks
+  form-like content types.
 
 CORS headers alone only control whether client-side JS can *read* a cross-origin response —
 they don't stop the browser from *sending* the request in the first place (e.g. a hidden
 cross-site form POST). Combined with `SameSite=None` (required below for cross-subdomain
 cookie delivery), that gap would let a cross-site page trigger state-changing requests
-(`POST`/`PUT`/`PATCH`/`DELETE`) with the victim's session cookie attached. The middleware
+(`POST`/`PUT`/`PATCH`/`DELETE`) with the victim's session cookie attached. `csrfOriginMiddleware`
 closes it by hard-rejecting (403) any such request whose `Origin` header is present but not
 in the allowlist. A request with no `Origin` header at all (same-origin navigations,
 non-browser clients, most test requests) is left to the route's own auth check instead of

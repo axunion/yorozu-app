@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { createMiddleware } from "hono/factory";
 import { adminOrdersRouter } from "./routes/admin-orders";
 import { authRouter } from "./routes/auth";
@@ -40,38 +41,37 @@ import { storesRouter } from "./routes/stores";
 // clients, tests) are left to the route's own auth checks.
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next) => {
-  const allowed = [
-    c.env.ADMIN_ORIGIN,
-    c.env.ORDER_ORIGIN,
-    c.env.SIGNUP_ORIGIN,
-    c.env.SHIFT_ORIGIN,
+const allowedOrigins = (env: Env): string[] =>
+  [
+    env.ADMIN_ORIGIN,
+    env.ORDER_ORIGIN,
+    env.SIGNUP_ORIGIN,
+    env.SHIFT_ORIGIN,
   ].filter(Boolean);
 
-  const origin = c.req.header("Origin") ?? "";
-  const isAllowedOrigin = allowed.includes(origin);
-
-  if (isAllowedOrigin) {
-    c.header("Access-Control-Allow-Origin", origin);
-    c.header("Access-Control-Allow-Credentials", "true");
-    c.header(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PATCH, DELETE, OPTIONS",
-    );
-    c.header("Access-Control-Allow-Headers", "Content-Type");
-    c.header("Vary", "Origin");
-  }
-
-  if (c.req.method === "OPTIONS") {
-    return c.body(null, 204);
-  }
-
-  if (origin && !isAllowedOrigin && STATE_CHANGING_METHODS.has(c.req.method)) {
-    return c.body(null, 403);
-  }
-
-  await next();
+// hono/cors writes through c.res before next(), so its headers survive
+// handlers that return a raw Response (errorResponse) — c.header() would not.
+const corsMiddleware = cors({
+  origin: (origin, c) =>
+    allowedOrigins(c.env).includes(origin) ? origin : null,
+  credentials: true,
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type"],
 });
+
+const csrfOriginMiddleware = createMiddleware<{ Bindings: Env }>(
+  async (c, next) => {
+    const origin = c.req.header("Origin");
+    if (
+      origin &&
+      STATE_CHANGING_METHODS.has(c.req.method) &&
+      !allowedOrigins(c.env).includes(origin)
+    ) {
+      return c.body(null, 403);
+    }
+    await next();
+  },
+);
 
 // ---------------------------------------------------------------------------
 // App
@@ -80,6 +80,7 @@ const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next) => {
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", corsMiddleware);
+app.use("*", csrfOriginMiddleware);
 
 // Public endpoints
 app.route("/api/stores", storesRouter);

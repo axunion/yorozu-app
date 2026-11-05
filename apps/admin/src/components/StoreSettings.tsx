@@ -187,27 +187,32 @@ export default function StoreSettings() {
     <div class={styles.storeSettings}>
       <section class={styles.section}>
         <h2 class={styles.heading}>店舗名</h2>
-        <form onSubmit={handleNameSubmit} class={styles.form}>
-          <Field
-            id="settings-store-name"
-            label="店舗名"
-            value={name()}
-            onInput={(e) => {
-              setName(e.currentTarget.value);
-              setNameSaved(false);
-            }}
-            required
-            maxLength={100}
-            disabled={nameSaving()}
-            error={nameError()}
-          />
-          <Button type="submit" disabled={nameSaving()}>
-            {nameSaving() ? "保存中..." : "保存"}
-          </Button>
-          <Show when={nameSaved()}>
-            <p class={styles.savedNote}>保存しました。</p>
-          </Show>
-        </form>
+        <Show
+          when={store.role === "owner"}
+          fallback={<p class={styles.storeName}>{store.name}</p>}
+        >
+          <form onSubmit={handleNameSubmit} class={styles.form}>
+            <Field
+              id="settings-store-name"
+              label="店舗名"
+              value={name()}
+              onInput={(e) => {
+                setName(e.currentTarget.value);
+                setNameSaved(false);
+              }}
+              required
+              maxLength={100}
+              disabled={nameSaving()}
+              error={nameError()}
+            />
+            <Button type="submit" disabled={nameSaving()}>
+              {nameSaving() ? "保存中..." : "保存"}
+            </Button>
+            <Show when={nameSaved()}>
+              <p class={styles.savedNote}>保存しました。</p>
+            </Show>
+          </form>
+        </Show>
       </section>
 
       <section class={styles.section}>
