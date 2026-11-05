@@ -112,6 +112,22 @@ const bootstrapWithOrder = {
   },
 };
 
+// Raw fetch responses for tests that sequence calls to the same URL, which
+// mockFetch's URL routing can't express.
+const seatNotFoundResponse = {
+  ok: false,
+  status: 404,
+  json: async () => ({
+    error: { code: "NOT_FOUND", message: "Seat not found" },
+  }),
+};
+
+const bootstrapWithMenuResponse = {
+  ok: true,
+  status: 200,
+  json: async () => bootstrapWithMenu,
+};
+
 describe("OrderScreen", () => {
   it("shows loading state before bootstrap completes", () => {
     vi.stubGlobal(
@@ -123,16 +139,7 @@ describe("OrderScreen", () => {
   });
 
   it("shows the not-found page, without a call button, for an unknown seat", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 404,
-        json: async () => ({
-          error: { code: "NOT_FOUND", message: "Seat not found" },
-        }),
-      }),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(seatNotFoundResponse));
 
     render(() => <OrderScreen seatToken="bad-token" />);
     await screen.findByText("ページが見つかりません");
@@ -142,13 +149,7 @@ describe("OrderScreen", () => {
 
   it("stops polling once the seat turns out not to exist", async () => {
     vi.useFakeTimers();
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      json: async () => ({
-        error: { code: "NOT_FOUND", message: "Seat not found" },
-      }),
-    });
+    const fetchMock = vi.fn().mockResolvedValue(seatNotFoundResponse);
     vi.stubGlobal("fetch", fetchMock);
 
     render(() => <OrderScreen seatToken="gone-token" />);
@@ -163,11 +164,7 @@ describe("OrderScreen", () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => bootstrapWithMenu,
-      });
+      .mockResolvedValue(bootstrapWithMenuResponse);
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
 
@@ -185,18 +182,8 @@ describe("OrderScreen", () => {
     vi.useFakeTimers();
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => bootstrapWithMenu,
-      })
-      .mockResolvedValue({
-        ok: false,
-        status: 404,
-        json: async () => ({
-          error: { code: "NOT_FOUND", message: "Seat not found" },
-        }),
-      });
+      .mockResolvedValueOnce(bootstrapWithMenuResponse)
+      .mockResolvedValue(seatNotFoundResponse);
     vi.stubGlobal("fetch", fetchMock);
 
     render(() => <OrderScreen seatToken="rotated-token" />);
@@ -207,14 +194,10 @@ describe("OrderScreen", () => {
     expect(screen.getByText("ページが見つかりません")).toBeTruthy();
   });
 
-  it("offers a reload when a later bootstrap fails after the seat loaded", async () => {
+  it("offers a reload after a failed staff call hides the menu", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => bootstrapWithMenu,
-      })
+      .mockResolvedValueOnce(bootstrapWithMenuResponse)
       .mockResolvedValueOnce({
         ok: false,
         status: 500,
@@ -222,11 +205,7 @@ describe("OrderScreen", () => {
           error: { code: "INTERNAL", message: "呼び出しに失敗しました。" },
         }),
       })
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => bootstrapWithMenu,
-      });
+      .mockResolvedValue(bootstrapWithMenuResponse);
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
 

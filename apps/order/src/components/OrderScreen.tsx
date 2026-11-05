@@ -178,15 +178,22 @@ export default function OrderScreen(props: { seatToken: string }) {
     }
   }
 
+  // Every bootstrap consumer treats a 404 the same way: the seat is gone.
+  async function fetchBootstrap() {
+    const result = await apiFetch<BootstrapData>(
+      `/api/order/${props.seatToken}`,
+    );
+    if (result.status === 404) setNotFound(true);
+    return result;
+  }
+
   async function loadBootstrap() {
     setLoading(true);
     setError("");
     const seq = ++orderSeq;
-    const result = await apiFetch<BootstrapData>(
-      `/api/order/${props.seatToken}`,
-    );
+    const result = await fetchBootstrap();
     if (result.status === 404) {
-      setNotFound(true);
+      // NotFoundPage replaces the whole screen; nothing else to update.
     } else if (!result.ok || !result.data) {
       setCategories([]);
       setMenuItems([]);
@@ -207,12 +214,8 @@ export default function OrderScreen(props: { seatToken: string }) {
   // open item detail sheet) the way re-running loadBootstrap would.
   async function pollCall() {
     if (notFound()) return;
-    const result = await apiFetch<BootstrapData>(
-      `/api/order/${props.seatToken}`,
-    );
-    if (result.status === 404) {
-      setNotFound(true);
-    } else if (result.ok && result.data) {
+    const result = await fetchBootstrap();
+    if (result.ok && result.data) {
       setCall(result.data.call);
     }
   }
@@ -225,12 +228,8 @@ export default function OrderScreen(props: { seatToken: string }) {
   async function pollOrder() {
     if (notFound() || order() === null) return;
     const seq = ++orderSeq;
-    const result = await apiFetch<BootstrapData>(
-      `/api/order/${props.seatToken}`,
-    );
-    if (result.status === 404) {
-      setNotFound(true);
-    } else if (result.ok && result.data) {
+    const result = await fetchBootstrap();
+    if (result.ok && result.data) {
       setOrderIfCurrent(seq, result.data.order);
     }
   }
