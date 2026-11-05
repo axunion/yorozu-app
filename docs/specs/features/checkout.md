@@ -126,13 +126,19 @@ renders both so staff can double-check the bill before settling it.
 - `computeTaxBreakdown` (`@yorozu/core`) buckets **pre-discount** line
   totals by rate, then derives each bucket's tax portion via the
   inclusive-tax formula (`tax = total − round(total / (1 + rate/100))`)
-  — rounded once per bucket (half down), never per line item. Used by
-  the customer receipt (see
+  — rounded once per bucket (half down), never per line item. The
+  receipt prints each bucket on a tax-inclusive base, the usual layout on
+  Japanese receipts — 「10%対象 ¥1,980（内消費税 ¥180）」, i.e.
+  `taxable_amount + tax_amount` — so it reconciles with the inclusive
+  prices at a glance. Used by the customer receipt (see
   [customer-ordering.md](./customer-ordering.md#digital-receipt-get-apiorderseattokenreceiptorderid));
   not currently surfaced on the admin side.
 
 ## Known limitations (→ roadmap)
 
+- **No invoice registration number (T + 13 digits)** on receipts, so they
+  are not 適格簡易請求書 under the invoice system; there is no store field
+  for it yet. Decide together with the formal 領収書 backlog item.
 - **No split billing** — one order, one payment. Deferred to backlog;
   revisit only on real demand (see
   `docs/proposals/payments-expansion.md`).

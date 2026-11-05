@@ -160,7 +160,13 @@ export default function ReceiptScreen(props: {
                 {(bucket) => (
                   <li class={styles.taxRow}>
                     <span>{bucket.rate}%対象</span>
-                    <span>{formatCurrency(bucket.taxable_amount)}</span>
+                    {/* Tax-inclusive base, as 「内消費税」 implies and as the
+                        menu prices are: base + tax is the bucket's total. */}
+                    <span>
+                      {formatCurrency(
+                        bucket.taxable_amount + bucket.tax_amount,
+                      )}
+                    </span>
                     <span>(内消費税 {formatCurrency(bucket.tax_amount)})</span>
                   </li>
                 )}
