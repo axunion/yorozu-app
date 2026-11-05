@@ -76,7 +76,8 @@ const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next) => {
   // handlers that return a raw Response (errorResponse) bypass Hono's prepared
   // headers, which left every 4xx unreadable to the cross-origin SPAs.
   for (const [name, value] of Object.entries(corsHeaders)) {
-    c.res.headers.set(name, value);
+    if (name === "Vary") c.res.headers.append(name, value);
+    else c.res.headers.set(name, value);
   }
 });
 

@@ -210,7 +210,9 @@ export default function OrderScreen(props: { seatToken: string }) {
     const result = await apiFetch<BootstrapData>(
       `/api/order/${props.seatToken}`,
     );
-    if (result.ok && result.data) {
+    if (result.status === 404) {
+      setNotFound(true);
+    } else if (result.ok && result.data) {
       setCall(result.data.call);
     }
   }
@@ -226,7 +228,9 @@ export default function OrderScreen(props: { seatToken: string }) {
     const result = await apiFetch<BootstrapData>(
       `/api/order/${props.seatToken}`,
     );
-    if (result.ok && result.data) {
+    if (result.status === 404) {
+      setNotFound(true);
+    } else if (result.ok && result.data) {
       setOrderIfCurrent(seq, result.data.order);
     }
   }
@@ -309,11 +313,9 @@ export default function OrderScreen(props: { seatToken: string }) {
 
         <Show when={!loading() && error()}>
           <ErrorAlert>{error()}</ErrorAlert>
-          <Show when={!seatName()}>
-            <Button type="button" variant="secondary" onClick={loadBootstrap}>
-              再読み込み
-            </Button>
-          </Show>
+          <Button type="button" variant="secondary" onClick={loadBootstrap}>
+            再読み込み
+          </Button>
         </Show>
 
         <Show when={receiptOrderId()}>
