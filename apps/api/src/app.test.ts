@@ -86,7 +86,7 @@ describe("CORS response headers", () => {
     );
   });
 
-  it("adds no CORS headers for a disallowed Origin", async () => {
+  it("sets no Access-Control-Allow-Origin for a disallowed Origin", async () => {
     const res = await app.request(
       `/api/order/${crypto.randomUUID()}`,
       { headers: { Origin: "http://evil.example" } },

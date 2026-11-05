@@ -192,9 +192,9 @@ export default function OrderScreen(props: { seatToken: string }) {
     setError("");
     const seq = ++orderSeq;
     const result = await fetchBootstrap();
-    if (result.status === 404) {
-      // NotFoundPage replaces the whole screen; nothing else to update.
-    } else if (!result.ok || !result.data) {
+    // NotFoundPage replaces the whole screen; nothing else to update.
+    if (notFound()) return;
+    if (!result.ok || !result.data) {
       setCategories([]);
       setMenuItems([]);
       setOrderIfCurrent(seq, null);
