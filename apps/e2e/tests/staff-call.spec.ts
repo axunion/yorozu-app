@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openAdminTab } from "../admin-nav";
 import { readDevCode } from "../dev-code";
 import { ADMIN_ORIGIN, ORDER_ORIGIN, SIGNUP_ORIGIN } from "../origins";
 
@@ -36,7 +37,7 @@ test("a customer can call staff and staff can clear the call", async ({
     await admin.getByRole("button", { name: "登録を完了する" }).click();
     await admin.waitForURL(`${ADMIN_ORIGIN}/`);
 
-    await admin.getByRole("link", { name: "座席管理・QR 発行" }).click();
+    await openAdminTab(admin, "座席");
     await admin.getByLabel("座席名").fill("テーブル5");
     await admin.getByRole("button", { name: "座席を追加" }).click();
 
@@ -47,8 +48,7 @@ test("a customer can call staff and staff can clear the call", async ({
   });
 
   await test.step("2. staff open the order board, with no call waiting", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "注文確認・提供管理" }).click();
+    await openAdminTab(admin, "注文");
     await expect(admin.getByText("アクティブな注文はありません")).toBeVisible();
     // The banner only renders when a call is open, so its absence here is
     // what makes step 4 a statement about loadCalls' 5s poll.

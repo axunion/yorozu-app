@@ -18,6 +18,15 @@ All endpoints require the `session_token` cookie (`requireStore`).
   order SPA's only route is `/:seatToken`, no `/order/` path segment).
 - `PATCH /api/seats/:id` — renames the seat (same 1–100 char rule as
   create).
+- Seat names are unique among a store's **active** seats: create or
+  rename to a name another active seat holds → 409, since two
+  「テーブル1」 make printed QR cards easy to swap. A retired seat's name is
+  free to reuse.
+- **Printing** (`/seats/print`, owner-only, linked from 座席管理): every
+  active seat's QR as a cut-out table card — store name, QR, seat name and
+  a one-line instruction — three across and three down per A4 page via
+  print CSS, with the admin chrome hidden. 「印刷する」 opens the browser's
+  print dialog.
 - `DELETE /api/seats/:id` — soft-deletes (retires): sets
   `seats.is_active = false`. The row — and its name — survives forever
   so historical orders/sales stay intact. Idempotent on an

@@ -4,7 +4,7 @@ import OwnerOnly from "../layouts/OwnerOnly";
 
 export default function StaffPage() {
   return (
-    <AdminLayout title="スタッフ管理" backHref="/" backLabel="← 管理トップ">
+    <AdminLayout title="スタッフ管理">
       <OwnerOnly>
         <StaffManager />
       </OwnerOnly>

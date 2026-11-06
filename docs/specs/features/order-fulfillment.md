@@ -54,6 +54,14 @@ orders. Requires the `session_token` cookie (`requireStore`).
 All five endpoints are single-row-scoped with `store_id` filters;
 cross-tenant ids → 404 (not 403).
 
+### Summary counts (`GET /api/admin/orders/summary`)
+
+Aggregates only — orders with at least one item still `ordered` (a
+table that has everything and is just eating is not work waiting), open
+staff calls, bills waiting at the register (`payment_requested`) and today's (JST) settled sales (non-voided
+payments: total and count). Both roles. Every admin page polls it every
+10s for the tab-bar badges, and the dashboard shows it as status tiles.
+
 ### Staff order entry (`/orders/new`)
 
 For guests without a smartphone or a spoken 「同じものをもう一つ」, staff

@@ -11,8 +11,11 @@ All endpoints require the `session_token` cookie (`requireStore`).
 
 - `GET` — list, ordered by `sort_order`.
 - `POST` / `PATCH /:id` — name (1–100 chars) and `sort_order` (int ≥ 0).
+  The admin list edits both inline (「編集」 → name + 表示順), matching the
+  item rows.
 - `DELETE /:id` — items in the category are **not** deleted; their
-  `category_id` becomes null (uncategorized).
+  `category_id` becomes null (uncategorized, shown as 「その他」). The
+  confirm dialog says so.
 
 ### Items (`/api/menu/items`)
 

@@ -3,7 +3,7 @@ import AdminLayout from "../layouts/AdminLayout";
 
 export default function ReportsPage() {
   return (
-    <AdminLayout title="レポート" backHref="/" backLabel="← 管理トップ">
+    <AdminLayout title="レポート">
       <ReportsManager />
     </AdminLayout>
   );

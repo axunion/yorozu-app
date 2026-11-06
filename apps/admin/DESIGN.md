@@ -247,6 +247,7 @@ screen context.
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  [Store Name]        [Screen Badge]   [← Back]   [Logout]   │
+│  ホーム  注文 ③ 呼出 1  会計 ②  売上  レポート … 設定        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -257,7 +258,19 @@ screen context.
 - Store Name: 24px / 700 (`<h1>`)
 - Screen Badge: 12px / 600 / background `rgba(255,255,255,0.2)` / radius `radius-full`
   — e.g. "注文確認・提供管理"
-- Back link: 14px / `rgba(255,255,255,0.8)` — hover: `#FFFFFF`
+- Back link: 14px / `rgba(255,255,255,0.8)` — hover: `#FFFFFF`. Only on
+  sub-pages (注文入力 → 注文確認, QR 印刷 → 座席管理); top-level screens
+  are reached through the tab bar.
+- **Tab bar** (`<nav aria-label="管理メニュー">`, second header row):
+  ホーム / 注文 / 会計 / 売上 / レポート / メニュー・座席・スタッフ (owner
+  only) / 設定. 14px / 500 / `rgba(255,255,255,0.8)`; the current screen is
+  white with a 3px white bottom border. One row that scrolls sideways on a
+  phone. Count badges (Alert Solid pill, 12px / 700, white) poll
+  `GET /api/admin/orders/summary` every 10s: orders with an item still to
+  serve and open calls (「呼出 n」) on 注文, bills waiting on 会計; each
+  carries screen-reader text naming what it counts. The last counts are kept
+  across page changes, so badges don't blink on navigation, and the current
+  tab is scrolled into view on a phone. Hidden in print.
 - Logout button: 14px / ghost style — `border: 1px solid rgba(255,255,255,0.4)` /
   radius `radius-sm` — hover: `border-color #FFFFFF`
 
@@ -265,8 +278,12 @@ screen context.
 
 ### Dashboard Navigation (`DashboardPage`)
 
-The dashboard hub presents the main sections (menu, seats, orders,
-checkout, sales, reports, staff, settings) as navigation links.
+The dashboard hub opens with today's status — four Surface tiles
+(`radius-lg`, 24px / 700 tabular figures): 本日の売上 (settled, non-voided
+payments since 00:00 JST, with the count), 未提供の注文, 呼び出し and
+会計待ち, from the same summary the tab badges use. Below them, the main
+sections (menu, seats, orders, checkout, sales, reports, staff, settings)
+as navigation links.
 
 - Container: Surface card / `border-radius: radius-lg` / `padding: space-8` /
   `border: 2px dashed border` — signals "interim" state (scaffold placeholder)
@@ -360,7 +377,9 @@ their visual state must communicate urgency instantly.
 
 - Background: `#FFFFFF` (slightly lighter than `#FFEDD5` card for contrast)
 - Padding: 8px 12px — Border Radius: `radius-sm` (6px)
-- Item name: 14px / 500 / `#0F172A` — `flex: 1`
+- Item name: 14px / 500 / `#0F172A` — `flex: 1 1 160px` (`space-10 × 4`),
+  so a long name pushes quantity, price and buttons onto their own line
+  instead of being squeezed into a narrow column
 - Quantity (`× N`): 14px / `#475569` / `tabular-nums`
 - Line price: 14px / 600 / `#0F172A` / `tabular-nums` / `text-align: right`
 - `ordered` state: "提供済み" button (`success` variant / `sm` size) +
@@ -511,7 +530,9 @@ image on confirm — old printed codes stop working immediately); "無効化"
 (`ConfirmDialog`, `danger` — the row disappears from the active list on
 success). A "無効化した座席を表示" checkbox toggle reveals a read-only
 retired-seats list (name + a `danger`-tone "無効" Status Badge, no
-actions — no un-retire in v1).
+actions — no un-retire in v1). A primary 「QR コードを印刷」 link above the
+manager opens the print sheet (`SeatPrintSheet`): a responsive grid of
+dashed-border cards on screen, three per row and 90mm tall on A4 paper.
 
 ---
 

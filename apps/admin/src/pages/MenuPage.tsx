@@ -5,7 +5,7 @@ import OwnerOnly from "../layouts/OwnerOnly";
 
 export default function MenuPage() {
   return (
-    <AdminLayout title="メニュー管理" backHref="/" backLabel="← 管理トップ">
+    <AdminLayout title="メニュー管理">
       <OwnerOnly>
         <MenuManager />
         <OptionGroupManager />

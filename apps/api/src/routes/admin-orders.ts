@@ -1,11 +1,26 @@
 import {
   AddOrderItemsInput,
   errorResponse,
+  jstDayRange,
   now,
   sumOrderItems,
+  todayJst,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, asc, eq, gt, inArray, ne } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  sum,
+} from "drizzle-orm";
 import { Hono } from "hono";
 import { type AuthEnv, requireStore } from "../middleware";
 import {
@@ -364,6 +379,86 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
     }
 
     return c.json({ data: await mapAdminOrderItem(db, storeId, result) });
+  })
+
+  /**
+   * GET /api/admin/orders/summary
+   * Counts for the admin nav badges and the dashboard: orders with an
+   * item still to serve, open staff calls, bills waiting at the register,
+   * and today's (JST) settled sales. Aggregates only, so every admin page can poll it cheaply.
+   * Open to both roles, like the board and register it summarizes.
+   *
+   * Response: 200 { data: { unserved_orders, open_calls, pending_bills,
+   *   today_sales: { total, count } } }
+   */
+  .get("/summary", async (c) => {
+    const { id: storeId } = c.var.store;
+    const db = createDb(c.env.DB);
+    const today = jstDayRange(todayJst());
+
+    const [orderRows, unservedRows, callRows, salesRows] = await Promise.all([
+      db
+        .select({ status: schema.orders.status, n: count() })
+        .from(schema.orders)
+        .where(
+          and(
+            eq(schema.orders.store_id, storeId),
+            inArray(schema.orders.status, ["open", "payment_requested"]),
+          ),
+        )
+        .groupBy(schema.orders.status),
+      // Orders with something still to serve — a table that has everything
+      // and is just eating is not work waiting on the board.
+      db
+        .select({ n: countDistinct(schema.orderItems.order_id) })
+        .from(schema.orderItems)
+        .innerJoin(
+          schema.orders,
+          eq(schema.orderItems.order_id, schema.orders.id),
+        )
+        .where(
+          and(
+            eq(schema.orderItems.store_id, storeId),
+            eq(schema.orders.store_id, storeId),
+            eq(schema.orderItems.status, "ordered"),
+            inArray(schema.orders.status, ["open", "payment_requested"]),
+          ),
+        ),
+      db
+        .select({ n: count() })
+        .from(schema.staffCalls)
+        .where(
+          and(
+            eq(schema.staffCalls.store_id, storeId),
+            eq(schema.staffCalls.status, "open"),
+          ),
+        ),
+      db
+        .select({ total: sum(schema.payments.total_amount), n: count() })
+        .from(schema.payments)
+        .where(
+          and(
+            eq(schema.payments.store_id, storeId),
+            isNull(schema.payments.voided_at),
+            gte(schema.payments.paid_at, today.from),
+            lt(schema.payments.paid_at, today.to),
+          ),
+        ),
+    ]);
+
+    const ordersWith = (status: string) =>
+      orderRows.find((row) => row.status === status)?.n ?? 0;
+    return c.json({
+      data: {
+        unserved_orders: unservedRows[0]?.n ?? 0,
+        open_calls: callRows[0]?.n ?? 0,
+        pending_bills: ordersWith("payment_requested"),
+        today_sales: {
+          total: Number(salesRows[0]?.total ?? 0),
+          count: salesRows[0]?.n ?? 0,
+        },
+      },
+    });
   })
 
   /**

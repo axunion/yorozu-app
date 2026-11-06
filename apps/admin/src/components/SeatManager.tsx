@@ -2,6 +2,7 @@ import { apiFetch, jsonFetch } from "@yorozu/core/client";
 import { Button, ConfirmDialog, ErrorAlert } from "@yorozu/ui";
 import QRCode from "qrcode";
 import { createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { orderUrl } from "../lib/orderUrl";
 import styles from "./SeatManager.module.css";
 import StatusBadge from "./StatusBadge";
 
@@ -15,11 +16,7 @@ type Seat = {
 };
 
 async function generateQrDataUrl(qrToken: string): Promise<string> {
-  const orderBase =
-    (import.meta as { env?: Record<string, string> }).env?.VITE_ORDER_BASE ??
-    "";
-  const url = `${orderBase}/${qrToken}`;
-  return QRCode.toDataURL(url, { width: 160, margin: 1 });
+  return QRCode.toDataURL(orderUrl(qrToken), { width: 160, margin: 1 });
 }
 
 export default function SeatManager() {
@@ -162,12 +159,8 @@ export default function SeatManager() {
   };
 
   const handleCopyUrl = async (qrToken: string) => {
-    const orderBase =
-      (import.meta as { env?: Record<string, string> }).env?.VITE_ORDER_BASE ??
-      "";
-    const url = `${orderBase}/${qrToken}`;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(orderUrl(qrToken));
     } catch {
       setError("URLのコピーに失敗しました。手動でコピーしてください。");
     }
@@ -210,10 +203,7 @@ export default function SeatManager() {
           <ul class={styles.seatList}>
             <For each={activeSeats()}>
               {(seat) => {
-                const orderBase =
-                  (import.meta as { env?: Record<string, string> }).env
-                    ?.VITE_ORDER_BASE ?? "";
-                const orderUrl = () => `${orderBase}/${seat.qr_token}`;
+                const seatOrderUrl = () => orderUrl(seat.qr_token);
                 return (
                   <li class={styles.seatListItem}>
                     <div class={styles.seatInfo}>
@@ -262,11 +252,11 @@ export default function SeatManager() {
                       </Show>
                       <a
                         class={styles.seatUrl}
-                        href={orderUrl()}
+                        href={seatOrderUrl()}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        {orderUrl()}
+                        {seatOrderUrl()}
                       </a>
                     </div>
                     <Show when={qrUrls()[seat.id]}>

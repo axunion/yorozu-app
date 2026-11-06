@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openAdminTab } from "../admin-nav";
 import { readDevCode } from "../dev-code";
 import { ADMIN_ORIGIN, ORDER_ORIGIN, SIGNUP_ORIGIN } from "../origins";
 
@@ -87,7 +88,7 @@ test("a store can be registered and taken through order to payment", async ({
   });
 
   await test.step("3. set up the menu", async () => {
-    await admin.getByRole("link", { name: "メニュー管理" }).click();
+    await openAdminTab(admin, "メニュー");
 
     await admin.getByLabel("カテゴリ名").fill("フード");
     await admin.getByRole("button", { name: "カテゴリを追加" }).click();
@@ -108,8 +109,7 @@ test("a store can be registered and taken through order to payment", async ({
   let orderUrl = "";
 
   await test.step("4. issue a seat and its QR link", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "座席管理・QR 発行" }).click();
+    await openAdminTab(admin, "座席");
 
     await admin.getByLabel("座席名").fill("テーブル1");
     await admin.getByRole("button", { name: "座席を追加" }).click();
@@ -127,8 +127,7 @@ test("a store can be registered and taken through order to payment", async ({
   });
 
   await test.step("5. staff open the order board, still empty", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "注文確認・提供管理" }).click();
+    await openAdminTab(admin, "注文");
     // Opened before the customer orders, so what appears in step 7 can only
     // have arrived on the board's own 5s poll.
     await expect(admin.getByText("アクティブな注文はありません")).toBeVisible();
@@ -204,8 +203,7 @@ test("a store can be registered and taken through order to payment", async ({
   });
 
   await test.step("9. staff open the register, still empty", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "会計・レジ" }).click();
+    await openAdminTab(admin, "会計");
     // Same trick as step 5, for CheckoutPanel's own 5s poll.
     await expect(admin.getByText("会計待ちの伝票はありません")).toBeVisible();
   });
@@ -242,8 +240,7 @@ test("a store can be registered and taken through order to payment", async ({
   });
 
   await test.step("13. the sale lands in the report", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "レポート" }).click();
+    await openAdminTab(admin, "レポート");
 
     const ranking = admin
       .locator("section")

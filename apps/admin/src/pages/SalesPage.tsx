@@ -3,7 +3,7 @@ import AdminLayout from "../layouts/AdminLayout";
 
 export default function SalesPage() {
   return (
-    <AdminLayout title="売上履歴" backHref="/" backLabel="← 管理トップ">
+    <AdminLayout title="売上履歴">
       <SalesHistory />
     </AdminLayout>
   );

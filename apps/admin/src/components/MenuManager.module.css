@@ -294,3 +294,12 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* A row's inline edit form: fills the row, without the add form's divider. */
+.inlineEditForm {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
