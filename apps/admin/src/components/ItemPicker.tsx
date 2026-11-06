@@ -18,7 +18,8 @@ export type MenuItem = {
   price: number;
   option_groups: OptionGroup[];
 };
-const formatYen = (amount: number) => `¥${amount.toLocaleString("ja-JP")}`;
+export const formatYen = (amount: number) =>
+  `¥${amount.toLocaleString("ja-JP")}`;
 
 /**
  * Inline panel under a menu row: options, quantity and a note for one item.

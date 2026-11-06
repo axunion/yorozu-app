@@ -9,7 +9,7 @@ import {
   MAX_LINE_QUANTITY,
   setDraftQuantity,
 } from "../lib/draftOrder";
-import ItemPicker, { type MenuItem } from "./ItemPicker";
+import ItemPicker, { formatYen, type MenuItem } from "./ItemPicker";
 import styles from "./StaffOrderEntry.module.css";
 
 type EntryData = {
@@ -19,8 +19,6 @@ type EntryData = {
     items: MenuItem[];
   };
 };
-
-const formatYen = (amount: number) => `¥${amount.toLocaleString("ja-JP")}`;
 
 /**
  * A dense, board-side picker for entering an order on a guest's behalf.

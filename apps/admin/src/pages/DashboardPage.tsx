@@ -1,14 +1,13 @@
 import { A } from "@solidjs/router";
 import { Show } from "solid-js";
 import { useStoreInfo } from "../layouts/AdminGuard";
-import AdminLayout, { useAdminSummary } from "../layouts/AdminLayout";
+import AdminLayout, { adminSummary } from "../layouts/AdminLayout";
 import styles from "./DashboardPage.module.css";
 
 /** Today at a glance, from the same counts the nav badges poll. */
 function TodayStatus() {
-  const summary = useAdminSummary();
   return (
-    <Show when={summary()}>
+    <Show when={adminSummary()}>
       {(s) => (
         <dl class={styles.stats}>
           <div class={styles.stat}>

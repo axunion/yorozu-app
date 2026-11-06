@@ -21,17 +21,13 @@ export type CartEntry = Omit<CartLine, "key">;
 
 export const MAX_LINE_QUANTITY = 99;
 
-/** Same item, options and note → same line, so repeated taps add quantity. */
-function lineKey(entry: CartEntry): string {
-  return JSON.stringify([
+export function addToCart(lines: CartLine[], entry: CartEntry): CartLine[] {
+  // Same item, options and note → same line, so repeated taps add quantity.
+  const key = JSON.stringify([
     entry.menu_item_id,
     [...entry.option_ids].sort(),
     entry.note ?? "",
   ]);
-}
-
-export function addToCart(lines: CartLine[], entry: CartEntry): CartLine[] {
-  const key = lineKey(entry);
   const existing = lines.find((line) => line.key === key);
   if (!existing) return [...lines, { ...entry, key }];
   return lines.map((line) =>

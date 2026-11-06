@@ -147,7 +147,9 @@ export default function MenuManager() {
     setEditingCatId(null);
     queueMicrotask(() =>
       document
-        .querySelector<HTMLButtonElement>(`[aria-label="編集 ${cat.name}"]`)
+        .querySelector<HTMLButtonElement>(
+          `[aria-label="${CSS.escape(`編集 ${cat.name}`)}"]`,
+        )
         ?.focus(),
     );
   };

@@ -81,7 +81,7 @@ export default function StaffManager() {
     queueMicrotask(() =>
       document
         .querySelector<HTMLButtonElement>(
-          `[aria-label="表示名を編集 ${member.email}"]`,
+          `[aria-label="${CSS.escape(`表示名を編集 ${member.email}`)}"]`,
         )
         ?.focus(),
     );

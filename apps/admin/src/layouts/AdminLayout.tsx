@@ -29,7 +29,7 @@ const [summary, setSummary] = createRoot(() =>
 );
 
 /** The latest nav-badge counts, for pages that show them too (dashboard). */
-export const useAdminSummary = () => summary;
+export { summary as adminSummary };
 
 const SUMMARY_POLL_MS = 10_000;
 
@@ -96,6 +96,9 @@ export default function AdminLayout(props: Props) {
   });
 
   const handleLogout = async () => {
+    // Module-scoped, so it would otherwise greet the next account to log in
+    // on this tab with this store's counts.
+    setSummary(null);
     await apiFetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     navigate("/login");
   };
