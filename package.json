@@ -28,6 +28,7 @@
     "fix": "biome check --write",
     "test": "pnpm -r test",
     "e2e": "pnpm --filter @yorozu/e2e e2e",
+    "e2e:cross-origin": "pnpm --filter @yorozu/e2e e2e:cross-origin",
     "db:generate": "pnpm --filter @yorozu/db db:generate",
     "db:migrate": "pnpm --filter @yorozu/api db:migrate",
     "db:reset": "pnpm --filter @yorozu/api db:reset",

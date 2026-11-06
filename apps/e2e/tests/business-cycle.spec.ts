@@ -1,7 +1,13 @@
 import { expect, type Page, test } from "@playwright/test";
 import { openAdminTab } from "../admin-nav";
 import { readDevCode } from "../dev-code";
-import { ADMIN_ORIGIN, ORDER_ORIGIN, SIGNUP_ORIGIN } from "../origins";
+import {
+  ADMIN_ORIGIN,
+  API_ORIGIN,
+  CROSS_ORIGIN,
+  ORDER_ORIGIN,
+  SIGNUP_ORIGIN,
+} from "../origins";
 
 /**
  * The golden path from docs/reference/manual-smoke-test.md, driven through
@@ -104,6 +110,18 @@ test("a store can be registered and taken through order to payment", async ({
     // Left uncategorized on purpose — the customer menu has to group it under
     // 「その他」 rather than drop it.
     await addMenuItem(admin, { name: "ビール", price: BEER_PRICE });
+
+    // A PUT with a binary body: the request most likely to trip CORS
+    // preflight when the API is on another origin.
+    // A 2×2 PNG: enough for the admin's downscaler and the API's type check.
+    await admin
+      .getByLabel("画像を選択 唐揚げ")
+      .setInputFiles(
+        new URL("../fixtures/karaage.png", import.meta.url).pathname,
+      );
+    await expect(
+      admin.locator("li").filter({ hasText: "唐揚げ" }).getByText("画像を変更"),
+    ).toBeVisible();
   });
 
   let orderUrl = "";
@@ -146,6 +164,16 @@ test("a store can be registered and taken through order to payment", async ({
     await expect(
       customer.getByRole("heading", { name: "その他", exact: true }),
     ).toBeVisible();
+    // The photo is served by the API — straight from its own origin in
+    // cross-origin mode, which is also what proves this run took that path.
+    const photo = customer.getByRole("img", { name: "唐揚げ" });
+    await expect(photo).toHaveAttribute(
+      "src",
+      CROSS_ORIGIN ? new RegExp(`^${API_ORIGIN}/`) : /^\/api\//,
+    );
+    await expect
+      .poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBeGreaterThan(0);
 
     // Taps only fill the local cart; nothing reaches the kitchen until the
     // review sheet's 注文を確定 sends every line in one request.
