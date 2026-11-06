@@ -23,13 +23,20 @@ export type AdminSummary = {
 
 // Module scope rather than component state: every page mounts its own
 // AdminLayout, and a per-mount signal would blank the badges and the
-// dashboard tiles for a round-trip on every tab switch.
-const [summary, setSummary] = createRoot(() =>
-  createSignal<AdminSummary | null>(null),
+// dashboard tiles for a round-trip on every tab switch. Tagged with the
+// store it was fetched for, so another account on this tab never sees it.
+const [cached, setCached] = createRoot(() =>
+  createSignal<{ storeId: string; counts: AdminSummary } | null>(null),
 );
 
-/** The latest nav-badge counts, for pages that show them too (dashboard). */
-export { summary as adminSummary };
+/** The latest nav-badge counts for this store (the dashboard shows them too). */
+export function useAdminSummary(): () => AdminSummary | null {
+  const store = useStoreInfo();
+  return () => {
+    const entry = cached();
+    return entry?.storeId === store.id ? entry.counts : null;
+  };
+}
 
 const SUMMARY_POLL_MS = 10_000;
 
@@ -81,9 +88,13 @@ export default function AdminLayout(props: Props) {
 
   // During service staff hop between the board and the register; the counts
   // say where they are needed without a detour through the dashboard.
+  const summary = useAdminSummary();
   const loadSummary = async () => {
+    // A tab left in the background doesn't need the counts refreshed.
+    if (document.visibilityState === "hidden") return;
+    const storeId = store.id;
     const result = await apiFetch<AdminSummary>("/api/admin/orders/summary");
-    if (result.ok && result.data) setSummary(result.data);
+    if (result.ok && result.data) setCached({ storeId, counts: result.data });
   };
   onMount(() => {
     // On a phone the tab row scrolls; keep the current screen's tab in view.
@@ -96,11 +107,13 @@ export default function AdminLayout(props: Props) {
   });
 
   const handleLogout = async () => {
-    // Module-scoped, so it would otherwise greet the next account to log in
-    // on this tab with this store's counts.
-    setSummary(null);
     await apiFetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     navigate("/login");
+  };
+
+  const badgesFor = (item: NavItem) => {
+    const s = summary();
+    return s && item.badge ? item.badge(s).filter((b) => b.count > 0) : [];
   };
 
   const navItems = () =>
@@ -135,14 +148,7 @@ export default function AdminLayout(props: Props) {
                     activeClass={styles.tabActive}
                   >
                     {item.label}
-                    <Index
-                      each={(() => {
-                        const s = summary();
-                        return s && item.badge
-                          ? item.badge(s).filter((b) => b.count > 0)
-                          : [];
-                      })()}
-                    >
+                    <Index each={badgesFor(item)}>
                       {(b) => (
                         <span class={styles.count}>
                           <Show when={b().prefix}>

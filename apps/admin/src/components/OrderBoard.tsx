@@ -282,26 +282,12 @@ export default function OrderBoard() {
 
   // Same transition as the customer's 会計をお願いする, for a customer who
   // walks to the register without tapping it.
-  const handleRequestPayment = async (orderId: string) => {
-    setPendingActions((prev) => new Set([...prev, orderId]));
-    try {
-      const result = await apiFetch(
-        `/api/admin/orders/${orderId}/request-payment`,
-        { method: "PATCH" },
-      );
-      if (!result.ok) {
-        setError(result.message ?? "会計への送信に失敗しました。");
-        return;
-      }
-      await loadOrders();
-    } finally {
-      setPendingActions((prev) => {
-        const next = new Set(prev);
-        next.delete(orderId);
-        return next;
-      });
-    }
-  };
+  const handleRequestPayment = (orderId: string) =>
+    runItemAction(
+      orderId,
+      `/api/admin/orders/${orderId}/request-payment`,
+      "会計への送信に失敗しました。",
+    );
 
   const handleResolveCall = async (callId: string) => {
     setPendingActions((prev) => new Set([...prev, callId]));

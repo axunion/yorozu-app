@@ -30,14 +30,7 @@ export function addToCart(lines: CartLine[], entry: CartEntry): CartLine[] {
   ]);
   const existing = lines.find((line) => line.key === key);
   if (!existing) return [...lines, { ...entry, key }];
-  return lines.map((line) =>
-    line.key === key
-      ? {
-          ...line,
-          quantity: Math.min(MAX_LINE_QUANTITY, line.quantity + entry.quantity),
-        }
-      : line,
-  );
+  return setLineQuantity(lines, key, existing.quantity + entry.quantity);
 }
 
 /** Sets a line's quantity; 0 or below removes the line. */

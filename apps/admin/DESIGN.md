@@ -268,8 +268,9 @@ screen context.
   phone. Count badges (Alert Solid pill, 12px / 700, white) poll
   `GET /api/admin/orders/summary` every 10s: orders with an item still to
   serve and open calls (「呼出 n」) on 注文, bills waiting on 会計; each
-  carries screen-reader text naming what it counts. The last counts are kept
-  across page changes, so badges don't blink on navigation, and the current
+  carries screen-reader text naming what it counts. Polls are skipped while
+  the tab is hidden. The last counts are kept across page changes (for the
+  same store only), so badges don't blink on navigation, and the current
   tab is scrolled into view on a phone. Hidden in print.
 - Logout button: 14px / ghost style — `border: 1px solid rgba(255,255,255,0.4)` /
   radius `radius-sm` — hover: `border-color #FFFFFF`

@@ -11,8 +11,8 @@ import {
   and,
   asc,
   count,
-  countDistinct,
   eq,
+  exists,
   gt,
   gte,
   inArray,
@@ -396,32 +396,38 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
     const db = createDb(c.env.DB);
     const today = jstDayRange(todayJst());
 
-    const [orderRows, unservedRows, callRows, salesRows] = await Promise.all([
+    const [billRows, unservedRows, callRows, salesRows] = await Promise.all([
       db
-        .select({ status: schema.orders.status, n: count() })
+        .select({ n: count() })
+        .from(schema.orders)
+        .where(
+          and(
+            eq(schema.orders.store_id, storeId),
+            eq(schema.orders.status, "payment_requested"),
+          ),
+        ),
+      // Orders with something still to serve — a table that has everything
+      // and is just eating is not work waiting on the board. Driven from the
+      // store's few active orders, not its ever-growing order_items.
+      db
+        .select({ n: count() })
         .from(schema.orders)
         .where(
           and(
             eq(schema.orders.store_id, storeId),
             inArray(schema.orders.status, ["open", "payment_requested"]),
-          ),
-        )
-        .groupBy(schema.orders.status),
-      // Orders with something still to serve — a table that has everything
-      // and is just eating is not work waiting on the board.
-      db
-        .select({ n: countDistinct(schema.orderItems.order_id) })
-        .from(schema.orderItems)
-        .innerJoin(
-          schema.orders,
-          eq(schema.orderItems.order_id, schema.orders.id),
-        )
-        .where(
-          and(
-            eq(schema.orderItems.store_id, storeId),
-            eq(schema.orders.store_id, storeId),
-            eq(schema.orderItems.status, "ordered"),
-            inArray(schema.orders.status, ["open", "payment_requested"]),
+            exists(
+              db
+                .select({ id: schema.orderItems.id })
+                .from(schema.orderItems)
+                .where(
+                  and(
+                    eq(schema.orderItems.order_id, schema.orders.id),
+                    eq(schema.orderItems.store_id, storeId),
+                    eq(schema.orderItems.status, "ordered"),
+                  ),
+                ),
+            ),
           ),
         ),
       db
@@ -446,13 +452,11 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
         ),
     ]);
 
-    const ordersWith = (status: string) =>
-      orderRows.find((row) => row.status === status)?.n ?? 0;
     return c.json({
       data: {
         unserved_orders: unservedRows[0]?.n ?? 0,
         open_calls: callRows[0]?.n ?? 0,
-        pending_bills: ordersWith("payment_requested"),
+        pending_bills: billRows[0]?.n ?? 0,
         today_sales: {
           total: Number(salesRows[0]?.total ?? 0),
           count: salesRows[0]?.n ?? 0,
@@ -551,13 +555,30 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
     const orderId = c.req.param("id");
     const db = createDb(c.env.DB);
 
-    const orderRows = await db
-      .select()
-      .from(schema.orders)
-      .where(
-        and(eq(schema.orders.id, orderId), eq(schema.orders.store_id, storeId)),
-      )
-      .limit(1);
+    // Independent reads, so one round trip.
+    const [orderRows, liveItems] = await Promise.all([
+      db
+        .select()
+        .from(schema.orders)
+        .where(
+          and(
+            eq(schema.orders.id, orderId),
+            eq(schema.orders.store_id, storeId),
+          ),
+        )
+        .limit(1),
+      db
+        .select({ id: schema.orderItems.id })
+        .from(schema.orderItems)
+        .where(
+          and(
+            eq(schema.orderItems.order_id, orderId),
+            eq(schema.orderItems.store_id, storeId),
+            ne(schema.orderItems.status, "cancelled"),
+          ),
+        )
+        .limit(1),
+    ]);
     const order = orderRows[0];
     if (!order) {
       return errorResponse("NOT_FOUND", "注文が見つかりません。", 404);
@@ -575,17 +596,6 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
       );
     }
 
-    const liveItems = await db
-      .select({ id: schema.orderItems.id })
-      .from(schema.orderItems)
-      .where(
-        and(
-          eq(schema.orderItems.order_id, orderId),
-          eq(schema.orderItems.store_id, storeId),
-          ne(schema.orderItems.status, "cancelled"),
-        ),
-      )
-      .limit(1);
     if (liveItems.length === 0) {
       return errorResponse("CONFLICT", "会計できる明細がありません。", 409);
     }

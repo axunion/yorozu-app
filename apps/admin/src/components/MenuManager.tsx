@@ -148,7 +148,7 @@ export default function MenuManager() {
     queueMicrotask(() =>
       document
         .querySelector<HTMLButtonElement>(
-          `[aria-label="${CSS.escape(`編集 ${cat.name}`)}"]`,
+          `[data-edit-category="${CSS.escape(cat.id)}"]`,
         )
         ?.focus(),
     );
@@ -170,8 +170,7 @@ export default function MenuManager() {
         return;
       }
       await loadCategories();
-      // The row re-renders under its new name; focus its 編集 button.
-      endEditCategory({ ...cat, name: editCatName().trim() });
+      endEditCategory(cat);
     } finally {
       setCatUpdating(false);
     }
@@ -418,6 +417,7 @@ export default function MenuManager() {
                           variant="secondary"
                           size="sm"
                           aria-label={`編集 ${cat.name}`}
+                          data-edit-category={cat.id}
                           onClick={() => startEditCategory(cat)}
                         >
                           編集

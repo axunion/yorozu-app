@@ -9,7 +9,8 @@ import {
   MAX_LINE_QUANTITY,
   setDraftQuantity,
 } from "../lib/draftOrder";
-import ItemPicker, { formatYen, type MenuItem } from "./ItemPicker";
+import { formatYen } from "../lib/format";
+import ItemPicker, { type MenuItem } from "./ItemPicker";
 import styles from "./StaffOrderEntry.module.css";
 
 type EntryData = {

@@ -1,18 +1,20 @@
 import { A } from "@solidjs/router";
 import { Show } from "solid-js";
 import { useStoreInfo } from "../layouts/AdminGuard";
-import AdminLayout, { adminSummary } from "../layouts/AdminLayout";
+import AdminLayout, { useAdminSummary } from "../layouts/AdminLayout";
+import { formatYen } from "../lib/format";
 import styles from "./DashboardPage.module.css";
 
 /** Today at a glance, from the same counts the nav badges poll. */
 function TodayStatus() {
+  const summary = useAdminSummary();
   return (
-    <Show when={adminSummary()}>
+    <Show when={summary()}>
       {(s) => (
         <dl class={styles.stats}>
           <div class={styles.stat}>
             <dt>本日の売上</dt>
-            <dd>¥{s().today_sales.total.toLocaleString("ja-JP")}</dd>
+            <dd>{formatYen(s().today_sales.total)}</dd>
             <dd class={styles.statSub}>{s().today_sales.count}件</dd>
           </div>
           <div class={styles.stat}>

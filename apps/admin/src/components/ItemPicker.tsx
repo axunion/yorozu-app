@@ -1,6 +1,7 @@
 import { Button } from "@yorozu/ui";
 import { createSignal, For, Show } from "solid-js";
 import { type DraftEntry, MAX_LINE_QUANTITY } from "../lib/draftOrder";
+import { formatDelta } from "../lib/format";
 import styles from "./StaffOrderEntry.module.css";
 
 export type Option = { id: string; name: string; price_delta: number };
@@ -18,8 +19,6 @@ export type MenuItem = {
   price: number;
   option_groups: OptionGroup[];
 };
-export const formatYen = (amount: number) =>
-  `¥${amount.toLocaleString("ja-JP")}`;
 
 /**
  * Inline panel under a menu row: options, quantity and a note for one item.
@@ -113,8 +112,7 @@ export default function ItemPicker(props: {
                   {option.name}
                   <Show when={option.price_delta !== 0}>
                     <span class={styles.pickerHint}>
-                      {option.price_delta > 0 ? "+" : "-"}
-                      {formatYen(Math.abs(option.price_delta))}
+                      {formatDelta(option.price_delta)}
                     </span>
                   </Show>
                 </label>

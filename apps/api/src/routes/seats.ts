@@ -138,17 +138,21 @@ export const seatsRouter = new Hono<AuthEnv>()
     const { name } = c.req.valid("json");
     const db = createDb(c.env.DB);
 
-    const existing = await db
-      .select({ id: schema.seats.id })
-      .from(schema.seats)
-      .where(
-        and(eq(schema.seats.id, seatId), eq(schema.seats.store_id, storeId)),
-      )
-      .limit(1);
+    // Existence first in the response (404 before 409), but one round trip.
+    const [existing, taken] = await Promise.all([
+      db
+        .select({ id: schema.seats.id })
+        .from(schema.seats)
+        .where(
+          and(eq(schema.seats.id, seatId), eq(schema.seats.store_id, storeId)),
+        )
+        .limit(1),
+      nameTaken(db, storeId, name, seatId),
+    ]);
     if (existing.length === 0) {
       return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
     }
-    if (await nameTaken(db, storeId, name, seatId)) {
+    if (taken) {
       return errorResponse("CONFLICT", DUPLICATE_NAME_MESSAGE, 409);
     }
 
