@@ -118,6 +118,50 @@ describe("MenuManager", () => {
     );
   });
 
+  it("renames and reorders a category inline via PATCH", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch([
+      {
+        url: "/api/menu/categories",
+        method: "GET",
+        json: {
+          data: [{ id: "c1", name: "ドリンコ", sort_order: 0, store_id: "s1" }],
+        },
+      },
+      { url: "/api/menu/items", method: "GET", json: { data: [] } },
+      {
+        url: "/api/menu/categories/c1",
+        method: "PATCH",
+        json: {
+          data: { id: "c1", name: "ドリンク", sort_order: 2, store_id: "s1" },
+        },
+      },
+    ]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { findByRole, getByRole, getByDisplayValue } = render(() => (
+      <MenuManager />
+    ));
+    await user.click(await findByRole("button", { name: "編集 ドリンコ" }));
+    const name = getByDisplayValue("ドリンコ");
+    await user.clear(name);
+    await user.type(name, "ドリンク");
+    const sort = document.getElementById(
+      "cat-edit-sort-c1",
+    ) as HTMLInputElement;
+    await user.clear(sort);
+    await user.type(sort, "2");
+    await user.click(getByRole("button", { name: "保存" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/menu/categories/c1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ name: "ドリンク", sort_order: 2 }),
+      }),
+    );
+  });
+
   it("submits POST /api/menu/items when the item form is submitted", async () => {
     const user = userEvent.setup();
     const fetchMock = mockFetch([

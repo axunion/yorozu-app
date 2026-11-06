@@ -209,12 +209,13 @@
 }
 
 .orderItemName {
-  flex: 1;
+  /* A floor on the basis wraps the quantity, price and buttons onto their
+     own line before a long name is squeezed into a few-character column. */
+  flex: 1 1 calc(var(--space-10) * 4);
   font-weight: var(--font-medium);
   color: var(--color-foreground);
   min-width: 0;
-  word-break: break-all;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 .orderItemQty {

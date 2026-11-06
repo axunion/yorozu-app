@@ -31,6 +31,10 @@ behavior.
    compensates by deleting the store + member rows so the owner can retry.
 4. Email delivery failure leaves the store `pending`; the owner recovers
    via the login form (which resends the signup link).
+5. The passcode screen offers 「メールアドレスを修正する」 back to the
+   registration form, refilled with the store name and address entered, so
+   a mistyped address only needs the typo fixed. The store registered under
+   the wrong address stays `pending` and unused.
 
 ### Login (`POST /api/auth/login`, form hosted in `apps/admin`)
 
@@ -72,11 +76,14 @@ behavior.
 ### Session & logout
 
 - `GET /api/auth/me` resolves the session for SPA bootstrapping — returns
-  `{ id, name, email, role }` (401 when invalid/expired). `id`/`name` are
-  the store's; `email` is the **calling member's own** login email; `role`
+  `{ id, name, email, display_name, role }` (401 when invalid/expired).
+  `id`/`name` are the store's; `email` and `display_name` are the
+  **calling member's own**; `role`
   is `'owner'` or `'staff'`. Admin routes are guarded by `requireStore`,
   which additionally rejects (401) if the member itself isn't `active`
   (e.g. a removed or not-yet-verified member) even if the store is.
+- `PATCH /api/auth/me` — any member sets their own `display_name`
+  (店舗設定 → 自分の表示名); blank clears it.
 - `POST /api/auth/logout` deletes only the current session (other devices
   stay logged in), clears the cookie, redirects to the login page.
 - `POST /api/auth/logout-all` (`requireStore`) deletes **every** session
@@ -108,8 +115,9 @@ behavior.
 ### Staff management (`apps/api/src/routes/staff.ts`, owner-only)
 
 - `POST /api/staff` — invites a member into the caller's store: body
-  `{ email, role }` (`role` defaults `'staff'`; an owner can also invite a
-  co-owner). Creates a `pending` member and emails an `invite` passcode
+  `{ email, role, display_name? }` (`role` defaults `'staff'`; an owner can
+  also invite a co-owner; the name is optional so the form can stay one
+  field long). Creates a `pending` member and emails an `invite` passcode
   alongside the plain admin login URL to enter it at — the invitee is the
   one recipient with no screen already waiting, and that URL carries no
   credential. 400 if the email already belongs to any member (global
@@ -117,8 +125,10 @@ behavior.
   doesn't apply). Rate-limited to `MAGIC_LINK_HOURLY_CAP` invites per
   **store** per rolling hour (the per-member cap can't apply here — each
   invite is a brand-new member with no prior history).
-- `GET /api/staff` — lists the calling store's members (`id, email, role,
-  status, created_at, activated_at`).
+- `GET /api/staff` — lists the calling store's members (`id, email,
+  display_name, role, status, created_at, activated_at`).
+- `PATCH /api/staff/:id` — sets a member's `display_name` (trimmed,
+  ≤ 50 chars; blank clears it). 404 for another store's member.
 - `DELETE /api/staff/:id` — revokes a member's access: deletes the member
   row and cascades their sessions and passcode rows. For a store with
   shift management it also deletes that member's shift rows — their

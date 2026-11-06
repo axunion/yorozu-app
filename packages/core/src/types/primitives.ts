@@ -6,6 +6,8 @@
  */
 
 import { z } from "zod";
+// Every schema built from these primitives validates with Japanese messages.
+import "./zod-ja";
 
 /** Trimmed, non-empty display name (1–100 chars). */
 export const displayName = z

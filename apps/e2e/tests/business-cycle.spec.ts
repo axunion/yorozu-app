@@ -1,6 +1,13 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openAdminTab } from "../admin-nav";
 import { readDevCode } from "../dev-code";
-import { ADMIN_ORIGIN, ORDER_ORIGIN, SIGNUP_ORIGIN } from "../origins";
+import {
+  ADMIN_ORIGIN,
+  API_ORIGIN,
+  CROSS_ORIGIN,
+  ORDER_ORIGIN,
+  SIGNUP_ORIGIN,
+} from "../origins";
 
 /**
  * The golden path from docs/reference/manual-smoke-test.md, driven through
@@ -87,7 +94,7 @@ test("a store can be registered and taken through order to payment", async ({
   });
 
   await test.step("3. set up the menu", async () => {
-    await admin.getByRole("link", { name: "メニュー管理" }).click();
+    await openAdminTab(admin, "メニュー");
 
     await admin.getByLabel("カテゴリ名").fill("フード");
     await admin.getByRole("button", { name: "カテゴリを追加" }).click();
@@ -103,13 +110,24 @@ test("a store can be registered and taken through order to payment", async ({
     // Left uncategorized on purpose — the customer menu has to group it under
     // 「その他」 rather than drop it.
     await addMenuItem(admin, { name: "ビール", price: BEER_PRICE });
+
+    // A PUT with a binary body: the request most likely to trip CORS
+    // preflight when the API is on another origin.
+    // A 2×2 PNG: enough for the admin's downscaler and the API's type check.
+    await admin
+      .getByLabel("画像を選択 唐揚げ")
+      .setInputFiles(
+        new URL("../fixtures/karaage.png", import.meta.url).pathname,
+      );
+    await expect(
+      admin.locator("li").filter({ hasText: "唐揚げ" }).getByText("画像を変更"),
+    ).toBeVisible();
   });
 
   let orderUrl = "";
 
   await test.step("4. issue a seat and its QR link", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "座席管理・QR 発行" }).click();
+    await openAdminTab(admin, "座席");
 
     await admin.getByLabel("座席名").fill("テーブル1");
     await admin.getByRole("button", { name: "座席を追加" }).click();
@@ -127,8 +145,7 @@ test("a store can be registered and taken through order to payment", async ({
   });
 
   await test.step("5. staff open the order board, still empty", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "注文確認・提供管理" }).click();
+    await openAdminTab(admin, "注文");
     // Opened before the customer orders, so what appears in step 7 can only
     // have arrived on the board's own 5s poll.
     await expect(admin.getByText("アクティブな注文はありません")).toBeVisible();
@@ -147,14 +164,34 @@ test("a store can be registered and taken through order to payment", async ({
     await expect(
       customer.getByRole("heading", { name: "その他", exact: true }),
     ).toBeVisible();
+    // The photo is served by the API — straight from its own origin in
+    // cross-origin mode, which is also what proves this run took that path.
+    const photo = customer.getByRole("img", { name: "唐揚げ" });
+    await expect(photo).toHaveAttribute(
+      "src",
+      CROSS_ORIGIN ? new RegExp(`^${API_ORIGIN}/`) : /^\/api\//,
+    );
+    await expect
+      .poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBeGreaterThan(0);
 
+    // Taps only fill the local cart; nothing reaches the kitchen until the
+    // review sheet's 注文を確定 sends every line in one request.
+    const addKaraage = customer.getByRole("button", {
+      name: "唐揚げをカートに追加",
+    });
+    await addKaraage.click();
+    await addKaraage.click();
     await customer
-      .getByRole("button", { name: "唐揚げの数量を増やす" })
+      .getByRole("button", { name: "ビールをカートに追加" })
       .click();
-    await customer.getByRole("button", { name: "唐揚げを注文する" }).click();
+    await customer
+      .getByRole("button", {
+        name: `カートを見る（3点 ¥${ORDER_TOTAL.toLocaleString()}）`,
+      })
+      .click();
+    await customer.getByRole("button", { name: "注文を確定" }).click();
     await expect(customer.getByText("注文しました！")).toBeVisible();
-
-    await customer.getByRole("button", { name: "ビールを注文する" }).click();
 
     const summary = customer
       .locator("section")
@@ -194,8 +231,7 @@ test("a store can be registered and taken through order to payment", async ({
   });
 
   await test.step("9. staff open the register, still empty", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "会計・レジ" }).click();
+    await openAdminTab(admin, "会計");
     // Same trick as step 5, for CheckoutPanel's own 5s poll.
     await expect(admin.getByText("会計待ちの伝票はありません")).toBeVisible();
   });
@@ -232,8 +268,7 @@ test("a store can be registered and taken through order to payment", async ({
   });
 
   await test.step("13. the sale lands in the report", async () => {
-    await admin.getByRole("link", { name: "← 管理トップ" }).click();
-    await admin.getByRole("link", { name: "レポート" }).click();
+    await openAdminTab(admin, "レポート");
 
     const ranking = admin
       .locator("section")

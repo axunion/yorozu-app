@@ -225,9 +225,106 @@ describe("BuilderPage", () => {
     renderPage();
 
     // member-2 has a *draft* submission, which is not a submitted one.
-    const line = await screen.findByText(/未提出/);
+    const line = await screen.findByText(/^未提出：/);
     expect(line.textContent).toContain("kitchen@test.internal");
     expect(line.textContent).not.toContain("hall@test.internal");
+  });
+
+  it("shows each member's submitted wish on the day card, available members first", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        scheduleRoute({
+          shifts: [],
+          submissions: [
+            {
+              id: "sub-1",
+              member_id: "member-1",
+              status: "submitted",
+              submitted_at: 1,
+              note: null,
+              entries: [
+                {
+                  id: "e-1",
+                  work_date: "2026-09-01",
+                  kind: "day_off",
+                  start_minutes: null,
+                  end_minutes: null,
+                },
+              ],
+            },
+            {
+              id: "sub-2",
+              member_id: "member-2",
+              status: "submitted",
+              submitted_at: 1,
+              note: null,
+              entries: [
+                {
+                  id: "e-2",
+                  work_date: "2026-09-01",
+                  kind: "available",
+                  start_minutes: 600,
+                  end_minutes: 900,
+                },
+              ],
+            },
+          ],
+        }),
+        ...routes().slice(1),
+      ]),
+    );
+
+    renderPage();
+
+    const wishes = await screen.findByRole("list", { name: "9/1(火)の希望" });
+    expect(
+      [...wishes.querySelectorAll("li")].map((li) => li.textContent),
+    ).toEqual([
+      "kitchen@test.internal勤務可 10:00–15:00",
+      "hall@test.internal休み希望",
+    ]);
+    const select = screen.getByLabelText("9/1(火)に追加するスタッフ");
+    expect(
+      [...select.querySelectorAll("option")].map((o) => o.textContent),
+    ).toEqual([
+      "スタッフを選ぶ",
+      "kitchen@test.internal（勤務可 10:00–15:00）",
+      "hall@test.internal（休み希望）",
+    ]);
+  });
+
+  it("warns about a shift on a requested day off", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        scheduleRoute({
+          submissions: [
+            {
+              id: "sub-1",
+              member_id: "member-1",
+              status: "submitted",
+              submitted_at: 1,
+              note: null,
+              entries: [
+                {
+                  id: "e-1",
+                  work_date: "2026-09-02",
+                  kind: "day_off",
+                  start_minutes: null,
+                  end_minutes: null,
+                },
+              ],
+            },
+          ],
+        }),
+        ...routes().slice(1),
+      ]),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("休み希望の日に入っています")).toBeTruthy();
   });
 
   it("totals only the members whose wage is recorded, and says who is left out", async () => {
@@ -411,7 +508,21 @@ describe("BuilderPage", () => {
   });
 
   it("exports the schedule as CSV with worked minutes per row", async () => {
-    vi.stubGlobal("fetch", mockFetch(routes()));
+    // member-1 has a display name, member-2 falls back to the email.
+    vi.stubGlobal(
+      "fetch",
+      mockFetch(
+        routes([
+          {
+            url: "/api/shift/members",
+            json: data([
+              { ...members[0], display_name: "山田" },
+              { ...members[1], display_name: null },
+            ]),
+          },
+        ]),
+      ),
+    );
     const blobs: Blob[] = [];
     vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
       blobs.push(blob as Blob);
@@ -434,16 +545,16 @@ describe("BuilderPage", () => {
 
     const rows = (await (blobs[0] as Blob).text()).split("\r\n");
     expect(rows[0]).toContain(
-      "日付,スタッフ,ポジション,開始,終了,休憩(分),実働(分)",
+      "日付,スタッフ,メールアドレス,ポジション,開始,終了,休憩(分),実働(分)",
     );
     // Every shift in the period and nothing else: header plus three rows.
     expect(rows).toHaveLength(4);
     expect(rows[1]).toBe(
-      "2026-09-01,hall@test.internal,ホール,09:00,19:00,0,600",
+      "2026-09-01,山田,hall@test.internal,ホール,09:00,19:00,0,600",
     );
     // The break is subtracted here too, so this row is not a copy of the first.
     expect(rows[3]).toBe(
-      "2026-09-02,kitchen@test.internal,ホール,09:00,17:00,60,420",
+      "2026-09-02,kitchen@test.internal,kitchen@test.internal,ホール,09:00,17:00,60,420",
     );
     expect(downloadName).toBe("shifts-2026-09-01_2026-09-02.csv");
   });

@@ -457,7 +457,7 @@ describe("OptionGroupManager", () => {
           json: {
             error: {
               code: "VALIDATION_ERROR",
-              message: "min_select must be <= max_select",
+              message: "最小選択数は最大選択数以下にしてください。",
             },
           },
         },
@@ -471,6 +471,8 @@ describe("OptionGroupManager", () => {
     await user.click(getByRole("button", { name: /グループを追加/ }));
 
     const alert = await findByRole("alert");
-    expect(alert.textContent).toContain("min_select must be <= max_select");
+    expect(alert.textContent).toContain(
+      "最小選択数は最大選択数以下にしてください。",
+    );
   });
 });

@@ -31,7 +31,10 @@ stores 1 ──── * subscriptions          (which products this store has bo
 - **members** — one row per person who can log in to a store. `email` is
   **UNIQUE globally** (same constraint shape stores.email used to have —
   one email = one member, across all stores; a person can't be staff at
-  two stores with the same email). `role` (`'owner' | 'staff'`) gates
+  two stores with the same email). `display_name` (nullable, trimmed,
+  ≤ 50 chars) is what member lists, schedules and shift CSVs show, falling
+  back to `email` when unset (`memberLabel`, `@yorozu/core`). `role`
+  (`'owner' | 'staff'`) gates
   settings/menu/seats/staff-management (owner) vs. board/checkout (both);
   see [features/authentication.md](./features/authentication.md). A
   store's first member (created at signup) is always an owner; the API
@@ -169,7 +172,7 @@ pending ──(passcode verified: signup or invite)──▶ active
 ### orders.status
 
 ```
-open ──(customer requests payment)──▶ payment_requested ──(staff checkout)──▶ paid
+open ──(customer or staff requests payment)──▶ payment_requested ──(staff checkout)──▶ paid
   ▲                    │                                                        │
   └───(staff reopens)──┘                                                        │
                         ▲                                                       │
@@ -178,9 +181,11 @@ open ──(customer requests payment)──▶ payment_requested ──(staff c
 open, payment_requested ──(staff cancels)──▶ cancelled
 ```
 
-- `open` — items can be added by the customer.
+- `open` — items can be added by the customer, or by staff on the
+  customer's behalf.
 - `payment_requested` — bill locked; adding items returns 409. Set by the
-  customer; staff can send it back to `open` (`PATCH
+  customer, or by staff (`PATCH /api/admin/orders/:id/request-payment`,
+  only with at least one non-cancelled item); staff can send it back to `open` (`PATCH
   /api/admin/orders/:id/reopen`, idempotent if already `open`).
 - `paid` — normally terminal (`closed_at` must be set, DB CHECK
   constraint) but reachable back to `payment_requested` if staff voids

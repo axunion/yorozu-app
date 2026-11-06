@@ -48,7 +48,11 @@ export type SeatEnv = { Bindings: Env; Variables: { seat: SeatSession } };
 export const requireStore = createMiddleware<AuthEnv>(async (c, next) => {
   const token = getCookie(c, SESSION_TOKEN_COOKIE)?.trim() ?? "";
   if (!token) {
-    return errorResponse("UNAUTHORIZED", "Authentication required", 401);
+    return errorResponse(
+      "UNAUTHORIZED",
+      "ログインが必要です。もう一度ログインしてください。",
+      401,
+    );
   }
 
   const db = createDb(c.env.DB);
@@ -57,11 +61,19 @@ export const requireStore = createMiddleware<AuthEnv>(async (c, next) => {
   if (!store) {
     // Session missing or expired — clean up if the token was a real (but expired) session.
     await deleteSession(db, token);
-    return errorResponse("UNAUTHORIZED", "Authentication required", 401);
+    return errorResponse(
+      "UNAUTHORIZED",
+      "ログインが必要です。もう一度ログインしてください。",
+      401,
+    );
   }
 
   if (store.status !== "active" || store.member_status !== "active") {
-    return errorResponse("UNAUTHORIZED", "Authentication required", 401);
+    return errorResponse(
+      "UNAUTHORIZED",
+      "ログインが必要です。もう一度ログインしてください。",
+      401,
+    );
   }
 
   // Sliding expiry: refresh expires_at/last_used_at, throttled to once per
@@ -104,10 +116,12 @@ export const requireStore = createMiddleware<AuthEnv>(async (c, next) => {
  */
 export const requireOwner = createMiddleware<AuthEnv>(async (c, next) => {
   if (c.var.store.role !== "owner") {
-    return errorResponse("FORBIDDEN", "Owner access required", 403);
+    return errorResponse("FORBIDDEN", "この操作はオーナーのみ行えます。", 403);
   }
   await next();
 });
+
+const PRODUCT_LABEL = { order: "セルフオーダー", shift: "シフト管理" };
 
 /**
  * Hono middleware factory restricting a route to stores that subscribe to
@@ -137,7 +151,7 @@ export function requireEntitlement(product: "order" | "shift") {
     if (rows.length === 0) {
       return errorResponse(
         "FORBIDDEN",
-        `The ${product} product is not enabled for this store`,
+        `この店舗では${PRODUCT_LABEL[product]}をご契約いただいていません。`,
         403,
       );
     }
@@ -164,14 +178,14 @@ export const requireSeat = createMiddleware<SeatEnv>(async (c, next) => {
     // middleware on a route that contains :seatToken, not as a global .use().
     return errorResponse(
       "INTERNAL_ERROR",
-      "Server misconfiguration: seatToken route parameter missing",
+      "サーバーの設定に誤りがあります。",
       500,
     );
   }
 
   const seat = await getSeatByQrToken(createDb(c.env.DB), seatToken);
   if (!seat) {
-    return errorResponse("NOT_FOUND", "Seat not found", 404);
+    return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
   }
 
   c.set("seat", seat);

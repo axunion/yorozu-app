@@ -40,6 +40,11 @@ export default function MenuManager() {
   const [catSortOrder, setCatSortOrder] = createSignal(0);
   const [catSubmitting, setCatSubmitting] = createSignal(false);
 
+  const [editingCatId, setEditingCatId] = createSignal<string | null>(null);
+  const [editCatName, setEditCatName] = createSignal("");
+  const [editCatSortOrder, setEditCatSortOrder] = createSignal(0);
+  const [catUpdating, setCatUpdating] = createSignal(false);
+
   const [itemName, setItemName] = createSignal("");
   const [itemPrice, setItemPrice] = createSignal("");
   const [itemCategoryId, setItemCategoryId] = createSignal<string>("");
@@ -127,6 +132,47 @@ export default function MenuManager() {
       await loadCategories();
     } finally {
       setCatSubmitting(false);
+    }
+  };
+
+  const startEditCategory = (cat: Category) => {
+    setEditCatName(cat.name);
+    setEditCatSortOrder(cat.sort_order);
+    setEditingCatId(cat.id);
+  };
+
+  // The 編集 button and the form replace each other; hand focus back to the
+  // row's 編集 button instead of letting it drop to <body>.
+  const endEditCategory = (cat: Category) => {
+    setEditingCatId(null);
+    queueMicrotask(() =>
+      document
+        .querySelector<HTMLButtonElement>(
+          `[data-edit-category="${CSS.escape(cat.id)}"]`,
+        )
+        ?.focus(),
+    );
+  };
+
+  const handleCategoryUpdate = async (e: SubmitEvent, cat: Category) => {
+    const id = cat.id;
+    e.preventDefault();
+    setError("");
+    setCatUpdating(true);
+    try {
+      const result = await jsonFetch<Category>(
+        `/api/menu/categories/${id}`,
+        "PATCH",
+        { name: editCatName(), sort_order: editCatSortOrder() },
+      );
+      if (!result.ok) {
+        setError(result.message ?? "カテゴリの更新に失敗しました");
+        return;
+      }
+      await loadCategories();
+      endEditCategory(cat);
+    } finally {
+      setCatUpdating(false);
     }
   };
 
@@ -359,15 +405,75 @@ export default function MenuManager() {
             <For each={categories()}>
               {(cat) => (
                 <li class={styles.menuListItem}>
-                  <span class={styles.itemName}>{cat.name}</span>
-                  <span class={styles.itemSort}>順: {cat.sort_order}</span>
-                  <ConfirmDialog
-                    triggerLabel="削除"
-                    aria-label={`削除 ${cat.name}`}
-                    title="カテゴリの削除"
-                    description={`「${cat.name}」を削除しますか？この操作は元に戻せません。`}
-                    onConfirm={() => handleCategoryDelete(cat.id)}
-                  />
+                  <Show
+                    when={editingCatId() === cat.id}
+                    fallback={
+                      <>
+                        <span class={styles.itemName}>{cat.name}</span>
+                        <span class={styles.itemSort}>
+                          順: {cat.sort_order}
+                        </span>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          aria-label={`編集 ${cat.name}`}
+                          data-edit-category={cat.id}
+                          onClick={() => startEditCategory(cat)}
+                        >
+                          編集
+                        </Button>
+                        <ConfirmDialog
+                          triggerLabel="削除"
+                          aria-label={`削除 ${cat.name}`}
+                          title="カテゴリの削除"
+                          description={`「${cat.name}」を削除しますか？このカテゴリの商品は「その他」（カテゴリなし）に移ります。この操作は元に戻せません。`}
+                          onConfirm={() => handleCategoryDelete(cat.id)}
+                        />
+                      </>
+                    }
+                  >
+                    <form
+                      class={styles.inlineEditForm}
+                      onSubmit={(e) => handleCategoryUpdate(e, cat)}
+                    >
+                      <Field
+                        id={`cat-edit-name-${cat.id}`}
+                        label="カテゴリ名"
+                        value={editCatName()}
+                        onInput={(e) => setEditCatName(e.currentTarget.value)}
+                        onKeyDown={(e) =>
+                          e.key === "Escape" && endEditCategory(cat)
+                        }
+                        ref={(el) => queueMicrotask(() => el.focus())}
+                        required
+                        maxLength={100}
+                        disabled={catUpdating()}
+                      />
+                      <Field
+                        id={`cat-edit-sort-${cat.id}`}
+                        label="表示順"
+                        type="number"
+                        min={0}
+                        value={editCatSortOrder()}
+                        onInput={(e) =>
+                          setEditCatSortOrder(Number(e.currentTarget.value))
+                        }
+                        disabled={catUpdating()}
+                      />
+                      <Button type="submit" size="sm" disabled={catUpdating()}>
+                        {catUpdating() ? "保存中..." : "保存"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={catUpdating()}
+                        onClick={() => endEditCategory(cat)}
+                      >
+                        キャンセル
+                      </Button>
+                    </form>
+                  </Show>
                 </li>
               )}
             </For>

@@ -1,13 +1,32 @@
 import { apiFetch, jsonFetch } from "@yorozu/core/client";
 import { Button, ErrorAlert } from "@yorozu/ui";
-import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+  untrack,
+} from "solid-js";
+import {
+  addToCart,
+  type CartEntry,
+  type CartLine,
+  cartCount,
+  cartTotal,
+  setLineQuantity,
+  toAddItemsInput,
+} from "../lib/cart";
 import NotFoundPage from "../pages/NotFoundPage";
+import BottomBar from "./BottomBar";
+import CartSheet from "./CartSheet";
 import CategoryNav from "./CategoryNav";
-import CheckoutBar from "./CheckoutBar";
 import Header from "./Header";
 import MenuList from "./MenuList";
 import styles from "./OrderScreen.module.css";
-import OrderSummary from "./OrderSummary";
+import OrderSummary, { ORDER_SUMMARY_ID } from "./OrderSummary";
+import type { ToastMessage } from "./Toast";
 
 export type Category = {
   id: string;
@@ -82,13 +101,7 @@ type BootstrapData = {
 
 const CALL_POLL_INTERVAL_MS = 5000;
 const ORDER_POLL_INTERVAL_MS = 10_000;
-
-export type AddItemsInput = {
-  menu_item_id: string;
-  quantity: number;
-  option_ids?: string[];
-  note?: string | null;
-}[];
+const TOAST_DURATION_MS = 4000;
 
 export type MenuGroup = {
   key: string;
@@ -141,6 +154,33 @@ export default function OrderScreen(props: { seatToken: string }) {
   const menuGroups = createMemo(() =>
     groupMenuItems(categories(), menuItems()),
   );
+  // The cart lives only on this phone until 注文を確定 sends it in one
+  // request, so nothing reaches the kitchen without a review step.
+  const [cart, setCart] = createSignal<CartLine[]>([]);
+  const [cartOpen, setCartOpen] = createSignal(false);
+  const [toast, setToast] = createSignal<ToastMessage | null>(null);
+  const locked = () => order()?.status === "payment_requested";
+
+  let toastTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  function showToast(message: ToastMessage) {
+    setToast(message);
+    clearTimeout(toastTimeoutId);
+    toastTimeoutId = setTimeout(() => setToast(null), TOAST_DURATION_MS);
+  }
+  onCleanup(() => clearTimeout(toastTimeoutId));
+
+  // The bill can also be requested from a companion's phone or by staff;
+  // once it is, unsent cart lines can no longer be ordered, so say so
+  // rather than leave them hidden behind the waiting message.
+  createEffect(() => {
+    if (!locked() || untrack(cart).length === 0) return;
+    setCart([]);
+    setCartOpen(false);
+    showToast({
+      text: "会計要求中のため、カートの商品は注文されませんでした。",
+      tone: "warning",
+    });
+  });
 
   // Guards setOrder against out-of-order network responses: whichever
   // order-affecting request started most recently wins, so a slow
@@ -258,15 +298,19 @@ export default function OrderScreen(props: { seatToken: string }) {
     }
   }
 
-  async function handleAddItems(
-    items: AddItemsInput,
-  ): Promise<{ ok: boolean; message?: string }> {
-    setError("");
+  function handleAddToCart(entry: CartEntry) {
+    setCart((lines) => addToCart(lines, entry));
+  }
+
+  async function handleConfirmCart(): Promise<{
+    ok: boolean;
+    message?: string;
+  }> {
     const seq = ++orderSeq;
     const result = await jsonFetch<{ order: Order }>(
       `/api/order/${props.seatToken}/items`,
       "POST",
-      { items },
+      { items: toAddItemsInput(cart()) },
     );
     if (!result.ok) {
       return { ok: false, message: result.message };
@@ -274,7 +318,15 @@ export default function OrderScreen(props: { seatToken: string }) {
     if (result.data) {
       setOrderIfCurrent(seq, result.data.order);
     }
+    setCart([]);
+    showToast({ text: "注文しました！", tone: "success" });
     return { ok: true };
+  }
+
+  function showOrderSummary() {
+    document
+      .getElementById(ORDER_SUMMARY_ID)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function handleRequestPayment(): Promise<{
@@ -332,12 +384,33 @@ export default function OrderScreen(props: { seatToken: string }) {
         </Show>
 
         <Show when={ready()}>
-          <MenuList groups={menuGroups()} onAddItems={handleAddItems} />
+          <MenuList
+            groups={menuGroups()}
+            locked={locked()}
+            onAddToCart={handleAddToCart}
+          />
           <OrderSummary order={order()} />
         </Show>
       </main>
       <Show when={ready()}>
-        <CheckoutBar order={order()} onRequestPayment={handleRequestPayment} />
+        <BottomBar
+          order={order()}
+          cartCount={cartCount(cart())}
+          cartTotal={cartTotal(cart())}
+          toast={toast()}
+          onOpenCart={() => setCartOpen(true)}
+          onShowOrder={showOrderSummary}
+          onRequestPayment={handleRequestPayment}
+        />
+        <CartSheet
+          lines={cart()}
+          open={cartOpen()}
+          onOpenChange={setCartOpen}
+          onSetQuantity={(key, quantity) =>
+            setCart((lines) => setLineQuantity(lines, key, quantity))
+          }
+          onConfirm={handleConfirmCart}
+        />
       </Show>
     </Show>
   );

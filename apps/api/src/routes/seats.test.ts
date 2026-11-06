@@ -363,3 +363,57 @@ describe("GET /api/order/:seatToken with a retired seat", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("seat name uniqueness", () => {
+  async function postSeat(token: string, name: string) {
+    return app.request(
+      "/api/seats",
+      withAuth(token, jsonInit("POST", { name })),
+      env,
+    );
+  }
+
+  it("rejects a second active seat with the same name, on create and rename", async () => {
+    const { session_token: token } = await seedStore(
+      `Seat Dup ${crypto.randomUUID()}`,
+    );
+    expect((await postSeat(token, "テーブル1")).status).toBe(201);
+    expect((await postSeat(token, "テーブル1")).status).toBe(409);
+
+    const other = await postSeat(token, "テーブル2");
+    const otherId = ((await other.json()) as { data: { id: string } }).data.id;
+    const rename = await app.request(
+      `/api/seats/${otherId}`,
+      withAuth(token, jsonInit("PATCH", { name: "テーブル1" })),
+      env,
+    );
+    expect(rename.status).toBe(409);
+
+    // Renaming a seat to its own name is not a clash.
+    const same = await app.request(
+      `/api/seats/${otherId}`,
+      withAuth(token, jsonInit("PATCH", { name: "テーブル2" })),
+      env,
+    );
+    expect(same.status).toBe(200);
+  });
+
+  it("frees a retired seat's name, and doesn't compare across stores", async () => {
+    const { session_token: token } = await seedStore(
+      `Seat Reuse ${crypto.randomUUID()}`,
+    );
+    const first = await postSeat(token, "テラス");
+    const firstId = ((await first.json()) as { data: { id: string } }).data.id;
+    await app.request(
+      `/api/seats/${firstId}`,
+      withAuth(token, { method: "DELETE" }),
+      env,
+    );
+    expect((await postSeat(token, "テラス")).status).toBe(201);
+
+    const { session_token: otherToken } = await seedStore(
+      `Seat Other ${crypto.randomUUID()}`,
+    );
+    expect((await postSeat(otherToken, "テラス")).status).toBe(201);
+  });
+});

@@ -26,7 +26,7 @@ const renderPage = () =>
     </StoreContext.Provider>
   ));
 
-/** Both date inputs default to today, so every test sets them explicitly. */
+/** Both date inputs default relative to today, so tests set them explicitly. */
 const setDates = async (cover: string, deadline: string) => {
   fireEvent.input(await screen.findByLabelText("期間に含まれる日"), {
     target: { value: cover },
@@ -49,9 +49,25 @@ const createRoutes = (extra: MockRoute[] = []): MockRoute[] => [
   { url: "/api/shift/periods", json: data([]) },
 ];
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 
 describe("PeriodsPage", () => {
+  it("starts the form on the next half-month, not the one under way", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // 2026-09-20 12:00 JST: inside 9/16–9/30.
+    vi.setSystemTime(new Date("2026-09-20T03:00:00Z"));
+    vi.stubGlobal("fetch", mockFetch(createRoutes()));
+
+    renderPage();
+
+    expect(
+      await screen.findByText("10/1(木)〜10/15(木) の半月分を作成します。"),
+    ).toBeTruthy();
+  });
+
   it("derives the first half of a month from a date inside it", async () => {
     const fetchStub = mockFetch(createRoutes());
     vi.stubGlobal("fetch", fetchStub);

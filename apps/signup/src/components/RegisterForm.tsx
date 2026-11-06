@@ -2,12 +2,15 @@ import type { StoreCreatedResponse } from "@yorozu/core";
 import { jsonFetch } from "@yorozu/core/client";
 import { Button, ErrorAlert, Field } from "@yorozu/ui";
 import { createSignal, Show } from "solid-js";
-import { writeSignupHandoff } from "../handoff";
+import { readSignupHandoff, writeSignupHandoff } from "../handoff";
 import styles from "./RegisterForm.module.css";
 
 export default function RegisterForm() {
-  const [name, setName] = createSignal("");
-  const [email, setEmail] = createSignal("");
+  // Back from the code screen to fix a mistyped address: start from what
+  // was entered, so only the typo needs retyping.
+  const previous = readSignupHandoff();
+  const [name, setName] = createSignal(previous?.name ?? "");
+  const [email, setEmail] = createSignal(previous?.email ?? "");
   const [error, setError] = createSignal("");
   const [submitting, setSubmitting] = createSignal(false);
 
@@ -28,7 +31,11 @@ export default function RegisterForm() {
         setError(result.message ?? "登録に失敗しました");
         return;
       }
-      writeSignupHandoff({ email: email(), code: result.data?.code });
+      writeSignupHandoff({
+        email: email(),
+        name: name(),
+        code: result.data?.code,
+      });
       window.location.href = "/check-email";
     } finally {
       setSubmitting(false);

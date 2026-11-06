@@ -1,6 +1,11 @@
 import { A } from "@solidjs/router";
 import type { SchedulePeriodResponse } from "@yorozu/core";
-import { halfMonthPeriod, jstDayRange, todayJst } from "@yorozu/core";
+import {
+  halfMonthPeriod,
+  jstDayRange,
+  todayJst,
+  toJstDateString,
+} from "@yorozu/core";
 import { apiFetch, jsonFetch } from "@yorozu/core/client";
 import { Button, Card, ErrorAlert } from "@yorozu/ui";
 import { createSignal, For, onMount, Show } from "solid-js";
@@ -13,7 +18,11 @@ export default function PeriodsPage() {
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(true);
   const [creating, setCreating] = createSignal(false);
-  const [coverDate, setCoverDate] = createSignal(todayJst());
+  // Schedules are built ahead of time, so the form starts on the first day
+  // of the next half-month rather than the one already under way.
+  const [coverDate, setCoverDate] = createSignal(
+    toJstDateString(jstDayRange(halfMonthPeriod(todayJst()).end_date).to),
+  );
   const [deadline, setDeadline] = createSignal(todayJst());
 
   const load = async () => {

@@ -25,6 +25,10 @@ paths:
 
 - Success: `c.json({ data: ... }, status)`
 - Error: `errorResponse(code, message, status)` from `@yorozu/core`
+- Error `message`s are shown to users as-is, so write them as Japanese
+  display text ending in 「。」 (e.g. "座席が見つかりません。"), never English.
+  Zod messages come from the Japanese error map in
+  `packages/core/src/types/zod-ja.ts`; give a `.refine()` a Japanese message.
 
 ## Authentication patterns
 

@@ -283,6 +283,11 @@ export const members = sqliteTable(
       .references(() => stores.id),
     /** Login identity; UNIQUE globally (one email = one member, like stores.email). */
     email: text("email").notNull().unique(),
+    /**
+     * What schedules and member lists show. Null falls back to the email;
+     * trimmed and ≤ 50 chars by the API.
+     */
+    display_name: text("display_name"), // nullable
     role: text("role", { enum: ["owner", "staff"] })
       .notNull()
       .default("staff"),

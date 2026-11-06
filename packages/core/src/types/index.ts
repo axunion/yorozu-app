@@ -19,9 +19,19 @@ const priceDeltaValue = z.number().int().min(-1_000_000).max(1_000_000);
 // Stores
 // ---------------------------------------------------------------------------
 
+/** Store display name. Trimmed; must be 1–100 characters after trimming. */
+const storeName = z
+  .string()
+  .transform((s) => s.trim())
+  .pipe(
+    z
+      .string()
+      .min(1, "店舗名を入力してください。")
+      .max(100, "店舗名は100文字以内で入力してください。"),
+  );
+
 export const CreateStoreInput = z.object({
-  /** Store display name. Trimmed; must be 1–100 characters after trimming. */
-  name: displayName,
+  name: storeName,
   /** Owner email — the signup passcode is sent here. */
   email: z.email(),
 });
@@ -36,7 +46,7 @@ export interface StoreCreatedResponse {
 }
 
 export const UpdateStoreNameInput = z.object({
-  name: displayName,
+  name: storeName,
 });
 export type UpdateStoreNameInput = z.infer<typeof UpdateStoreNameInput>;
 
@@ -136,15 +146,44 @@ export interface EmailChangeVerifyResponse {
 // Staff (members)
 // ---------------------------------------------------------------------------
 
+/**
+ * A member's name as schedules and lists show it. Trimmed; blank clears it
+ * (null), and the UI falls back to the email.
+ */
+const memberDisplayName = z
+  .string()
+  .nullable()
+  .transform((s) => {
+    const trimmed = s?.trim() ?? "";
+    return trimmed.length === 0 ? null : trimmed;
+  })
+  .pipe(z.string().max(50).nullable());
+
 export const StaffInviteInput = z.object({
   email: z.email(),
   role: z.enum(["owner", "staff"]).default("staff"),
+  display_name: memberDisplayName.optional().default(null),
 });
 export type StaffInviteInput = z.infer<typeof StaffInviteInput>;
+
+/** Owner editing a member, or a member editing themselves. */
+export const UpdateMemberNameInput = z.object({
+  display_name: memberDisplayName,
+});
+export type UpdateMemberNameInput = z.infer<typeof UpdateMemberNameInput>;
+
+/** What every screen shows for a member: their name, else their email. */
+export function memberLabel(member: {
+  display_name: string | null;
+  email: string;
+}): string {
+  return member.display_name ?? member.email;
+}
 
 export interface StaffMemberResponse {
   id: string;
   email: string;
+  display_name: string | null;
   role: "owner" | "staff";
   status: "pending" | "active";
   created_at: number;
@@ -247,7 +286,7 @@ const optionGroupSelectFields = {
 };
 
 const optionGroupSelectRefinement = {
-  message: "min_select must be <= max_select",
+  message: "最小選択数は最大選択数以下にしてください。",
   path: ["min_select"],
 };
 
@@ -483,7 +522,7 @@ export const CreatePaymentInput = z
   .refine(
     (data) => data.discount_amount === 0 || data.discount_reason !== null,
     {
-      message: "discount_reason is required when discount_amount > 0",
+      message: "値引きする場合は理由を入力してください。",
       path: ["discount_reason"],
     },
   );

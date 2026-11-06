@@ -152,3 +152,10 @@
   white-space: nowrap;
   border: 0;
 }
+
+.submitHint {
+  margin: var(--space-2) 0 0;
+  text-align: right;
+  color: var(--color-muted-foreground);
+  font-size: var(--text-sm);
+}

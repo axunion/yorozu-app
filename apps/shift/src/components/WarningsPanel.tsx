@@ -1,10 +1,15 @@
-import type { LaborWarning, LaborWarningCode } from "@yorozu/core";
+import type {
+  AvailabilityWarning,
+  AvailabilityWarningCode,
+  LaborWarning,
+  LaborWarningCode,
+} from "@yorozu/core";
 import { Card } from "@yorozu/ui";
 import { For, Show } from "solid-js";
 import { formatWorkDate } from "../lib/format";
 import styles from "./WarningsPanel.module.css";
 
-const MESSAGE: Record<LaborWarningCode, string> = {
+const MESSAGE: Record<LaborWarningCode | AvailabilityWarningCode, string> = {
   DAILY_OVER_8H: "1日8時間を超えています",
   WEEKLY_OVER_40H: "週40時間を超えています",
   BREAK_REQUIRED_45: "6時間超の勤務に45分以上の休憩が必要です",
@@ -12,6 +17,8 @@ const MESSAGE: Record<LaborWarningCode, string> = {
   NO_REST_DAY: "7日連続の勤務になっています",
   OVER_WEEKLY_CAP: "本人の上限時間を超えています",
   MINOR_LATE_NIGHT: "18歳未満が深夜帯に入っています",
+  ON_REQUESTED_DAY_OFF: "休み希望の日に入っています",
+  OUTSIDE_AVAILABLE_BAND: "希望の時間帯から外れています",
 };
 
 /**
@@ -19,7 +26,7 @@ const MESSAGE: Record<LaborWarningCode, string> = {
  * "確認してください", never "エラー", because a manager may have a reason.
  */
 export default function WarningsPanel(props: {
-  warnings: LaborWarning[];
+  warnings: (LaborWarning | AvailabilityWarning)[];
   nameOf: (memberId: string) => string;
 }) {
   return (

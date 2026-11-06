@@ -31,6 +31,24 @@ Other entry points: `pnpm --filter @yorozu/e2e e2e:ui` for the Playwright UI,
 and `pnpm exec playwright show-trace <path>` for a failed run's trace (traces
 and screenshots are retained on failure only).
 
+### Cross-origin mode
+
+```sh
+pnpm e2e:cross-origin
+```
+
+Runs the same specs with the SPAs started with `VITE_API_BASE` set to the
+Worker's origin (`http://localhost:8787`), as production builds are, instead
+of relative `/api/*` through the Vite proxy. Every request is then
+cross-origin and goes through the API's CORS middleware (preflight, allowed
+methods, CORS headers on error responses), which the proxied default run never
+exercises. The API's `*_ORIGIN` vars already allowlist the
+dev ports. Both modes need those same fixed ports, so they are separate runs,
+and this one never reuses SPA dev servers left running from the other (the
+Worker is the same in both and is reused). The business-cycle spec asserts
+the menu photo's URL points at the API origin in this mode and at `/api/` in
+the default one, so a run can't silently take the wrong path.
+
 ## No database reset
 
 Unlike the manual checklist, the suite does **not** need `pnpm db:reset`. Each
@@ -49,10 +67,13 @@ to a stage:
 1. Register a store, verify by typing in the `[DEV]` passcode.
 2. Land in admin as the owner (proves the session cookie the API set on the
    verify response is sent back on the admin origin).
-3. Menu setup: one category, one categorized item, one uncategorized item.
+3. Menu setup: one category, one categorized item, one uncategorized item,
+   and a photo upload (a binary `PUT`, the request most likely to trip
+   CORS cross-origin).
 4. Seat creation, QR render, and the order link it issues.
 5. Staff open the order board — asserted still empty.
-6. Customer orders both items from the seat link; totals reconcile.
+6. Customer sees the photo, fills the cart with both items and confirms it;
+   totals reconcile.
 7. The order appears on the board and both items are marked served.
 8. The customer screen picks up the served status.
 9. Staff open the register — asserted still empty.

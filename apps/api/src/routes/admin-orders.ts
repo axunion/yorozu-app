@@ -1,6 +1,26 @@
-import { errorResponse, now, sumOrderItems } from "@yorozu/core";
+import {
+  AddOrderItemsInput,
+  errorResponse,
+  jstDayRange,
+  now,
+  sumOrderItems,
+  todayJst,
+} from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, asc, eq, gt, inArray, ne } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  exists,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  sum,
+} from "drizzle-orm";
 import { Hono } from "hono";
 import { type AuthEnv, requireStore } from "../middleware";
 import {
@@ -8,6 +28,8 @@ import {
   mapOrderItem,
   type OrderItemPayload,
 } from "../order-item";
+import { addItemsToSeatOrder, fetchOrderableMenu } from "../seat-order";
+import { bodyValidator } from "../validator";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -357,6 +379,248 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
     }
 
     return c.json({ data: await mapAdminOrderItem(db, storeId, result) });
+  })
+
+  /**
+   * GET /api/admin/orders/summary
+   * Counts for the admin nav badges and the dashboard: orders with an
+   * item still to serve, open staff calls, bills waiting at the register,
+   * and today's (JST) settled sales. Aggregates only, so every admin page can poll it cheaply.
+   * Open to both roles, like the board and register it summarizes.
+   *
+   * Response: 200 { data: { unserved_orders, open_calls, pending_bills,
+   *   today_sales: { total, count } } }
+   */
+  .get("/summary", async (c) => {
+    const { id: storeId } = c.var.store;
+    const db = createDb(c.env.DB);
+    const today = jstDayRange(todayJst());
+
+    const [billRows, unservedRows, callRows, salesRows] = await Promise.all([
+      db
+        .select({ n: count() })
+        .from(schema.orders)
+        .where(
+          and(
+            eq(schema.orders.store_id, storeId),
+            eq(schema.orders.status, "payment_requested"),
+          ),
+        ),
+      // Orders with something still to serve — a table that has everything
+      // and is just eating is not work waiting on the board. Driven from the
+      // store's few active orders, not its ever-growing order_items.
+      db
+        .select({ n: count() })
+        .from(schema.orders)
+        .where(
+          and(
+            eq(schema.orders.store_id, storeId),
+            inArray(schema.orders.status, ["open", "payment_requested"]),
+            exists(
+              db
+                .select({ id: schema.orderItems.id })
+                .from(schema.orderItems)
+                .where(
+                  and(
+                    eq(schema.orderItems.order_id, schema.orders.id),
+                    eq(schema.orderItems.store_id, storeId),
+                    eq(schema.orderItems.status, "ordered"),
+                  ),
+                ),
+            ),
+          ),
+        ),
+      db
+        .select({ n: count() })
+        .from(schema.staffCalls)
+        .where(
+          and(
+            eq(schema.staffCalls.store_id, storeId),
+            eq(schema.staffCalls.status, "open"),
+          ),
+        ),
+      db
+        .select({ total: sum(schema.payments.total_amount), n: count() })
+        .from(schema.payments)
+        .where(
+          and(
+            eq(schema.payments.store_id, storeId),
+            isNull(schema.payments.voided_at),
+            gte(schema.payments.paid_at, today.from),
+            lt(schema.payments.paid_at, today.to),
+          ),
+        ),
+    ]);
+
+    return c.json({
+      data: {
+        unserved_orders: unservedRows[0]?.n ?? 0,
+        open_calls: callRows[0]?.n ?? 0,
+        pending_bills: billRows[0]?.n ?? 0,
+        today_sales: {
+          total: Number(salesRows[0]?.total ?? 0),
+          count: salesRows[0]?.n ?? 0,
+        },
+      },
+    });
+  })
+
+  /**
+   * GET /api/admin/orders/entry
+   * What staff need to enter an order on a customer's behalf: the store's
+   * active seats and the orderable menu (same shape as the customer
+   * bootstrap). Open to both roles, unlike /api/seats and /api/menu.
+   *
+   * Response: 200 { data: { seats: { id, name }[], menu } }
+   */
+  .get("/entry", async (c) => {
+    const { id: storeId } = c.var.store;
+    const db = createDb(c.env.DB);
+    const [seats, menu] = await Promise.all([
+      db
+        .select({ id: schema.seats.id, name: schema.seats.name })
+        .from(schema.seats)
+        .where(
+          and(
+            eq(schema.seats.store_id, storeId),
+            eq(schema.seats.is_active, true),
+          ),
+        )
+        .orderBy(asc(schema.seats.created_at)),
+      fetchOrderableMenu(db, storeId),
+    ]);
+    return c.json({ data: { seats, menu } });
+  })
+
+  /**
+   * POST /api/admin/orders/seats/:seatId/items
+   * Staff order entry: adds items to the seat's active order exactly as the
+   * customer's POST /api/order/:seatToken/items does (same validation and
+   * snapshots), for guests without a phone or a spoken re-order.
+   *
+   * 404 for an unknown, retired or other-store seat.
+   *
+   * Response: 201 (new order) or 200 (appended), { data: { order } }
+   */
+  .post(
+    "/seats/:seatId/items",
+    bodyValidator(AddOrderItemsInput),
+    async (c) => {
+      const { id: storeId } = c.var.store;
+      const seatId = c.req.param("seatId");
+      const { items } = c.req.valid("json");
+      const db = createDb(c.env.DB);
+
+      const seatRows = await db
+        .select({ id: schema.seats.id })
+        .from(schema.seats)
+        .where(
+          and(
+            eq(schema.seats.id, seatId),
+            eq(schema.seats.store_id, storeId),
+            eq(schema.seats.is_active, true),
+          ),
+        )
+        .limit(1);
+      if (!seatRows[0]) {
+        return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
+      }
+
+      const result = await addItemsToSeatOrder(db, storeId, seatId, items);
+      if (result instanceof Response) return result;
+      return c.json(
+        { data: { order: result.order } },
+        result.created ? 201 : 200,
+      );
+    },
+  )
+
+  /**
+   * PATCH /api/admin/orders/:id/request-payment
+   * Sends an order to the register on the customer's behalf: 'open' →
+   * 'payment_requested', the same transition as the customer's
+   * 会計をお願いする — for a customer who walks to the register without
+   * tapping, or whose phone died.
+   *
+   * Idempotent: already 'payment_requested' → 200 unchanged.
+   * 409 if the order is 'paid'/'cancelled', or has no live (non-cancelled)
+   * item — there would be nothing to charge.
+   *
+   * Multi-tenant safe: store_id filter; 404 (not 403) on miss.
+   *
+   * Response: 200 { data: { id, status } }
+   */
+  .patch("/:id/request-payment", async (c) => {
+    const { id: storeId } = c.var.store;
+    const orderId = c.req.param("id");
+    const db = createDb(c.env.DB);
+
+    // Independent reads, so one round trip.
+    const [orderRows, liveItems] = await Promise.all([
+      db
+        .select()
+        .from(schema.orders)
+        .where(
+          and(
+            eq(schema.orders.id, orderId),
+            eq(schema.orders.store_id, storeId),
+          ),
+        )
+        .limit(1),
+      db
+        .select({ id: schema.orderItems.id })
+        .from(schema.orderItems)
+        .where(
+          and(
+            eq(schema.orderItems.order_id, orderId),
+            eq(schema.orderItems.store_id, storeId),
+            ne(schema.orderItems.status, "cancelled"),
+          ),
+        )
+        .limit(1),
+    ]);
+    const order = orderRows[0];
+    if (!order) {
+      return errorResponse("NOT_FOUND", "注文が見つかりません。", 404);
+    }
+
+    if (order.status === "payment_requested") {
+      return c.json({ data: { id: order.id, status: order.status } });
+    }
+
+    if (order.status !== "open") {
+      return errorResponse(
+        "CONFLICT",
+        "会計済みまたはキャンセル済みの注文は会計に回せません。",
+        409,
+      );
+    }
+
+    if (liveItems.length === 0) {
+      return errorResponse("CONFLICT", "会計できる明細がありません。", 409);
+    }
+
+    // Guarded on 'open' so a concurrent cancel or checkout isn't
+    // overwritten; zero rows changed means that race was lost.
+    const updated = await db
+      .update(schema.orders)
+      .set({ status: "payment_requested" })
+      .where(
+        and(
+          eq(schema.orders.id, orderId),
+          eq(schema.orders.store_id, storeId),
+          eq(schema.orders.status, "open"),
+        ),
+      );
+    if (updated.meta.changes === 0) {
+      return errorResponse(
+        "CONFLICT",
+        "注文の状態が変わったため会計に回せませんでした。",
+        409,
+      );
+    }
+
+    return c.json({ data: { id: order.id, status: "payment_requested" } });
   })
 
   /**

@@ -75,7 +75,11 @@ async function validateCategoryOwnership(
     )
     .limit(1);
   if (cat.length === 0) {
-    return errorResponse("VALIDATION_ERROR", "category_id is invalid", 400);
+    return errorResponse(
+      "VALIDATION_ERROR",
+      "選択されたカテゴリが見つかりません。",
+      400,
+    );
   }
   return undefined;
 }
@@ -104,7 +108,7 @@ async function validateOptionGroupIds(
   if (rows.length !== uniqueIds.length) {
     return errorResponse(
       "VALIDATION_ERROR",
-      "option_group_ids contains an invalid group",
+      "選択されたオプショングループが見つかりません。",
       400,
     );
   }
@@ -218,7 +222,7 @@ export const menuRouter = new Hono<AuthEnv>()
       .returning();
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Category not found", 404);
+      return errorResponse("NOT_FOUND", "カテゴリが見つかりません。", 404);
     }
     return c.json({ data: result });
   })
@@ -246,7 +250,7 @@ export const menuRouter = new Hono<AuthEnv>()
       )
       .limit(1);
     if (existing.length === 0) {
-      return errorResponse("NOT_FOUND", "Category not found", 404);
+      return errorResponse("NOT_FOUND", "カテゴリが見つかりません。", 404);
     }
 
     // Nullify category_id on child items, then delete the category atomically.
@@ -403,7 +407,7 @@ export const menuRouter = new Hono<AuthEnv>()
       .returning();
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Menu item not found", 404);
+      return errorResponse("NOT_FOUND", "メニュー商品が見つかりません。", 404);
     }
 
     if (input.option_group_ids !== undefined) {
@@ -444,7 +448,7 @@ export const menuRouter = new Hono<AuthEnv>()
       .limit(1);
     const item = existing[0];
     if (!item) {
-      return errorResponse("NOT_FOUND", "Menu item not found", 404);
+      return errorResponse("NOT_FOUND", "メニュー商品が見つかりません。", 404);
     }
 
     // Check whether any order_items from this store reference this item.
@@ -513,7 +517,7 @@ export const menuRouter = new Hono<AuthEnv>()
       .limit(1);
     const item = existing[0];
     if (!item) {
-      return errorResponse("NOT_FOUND", "Menu item not found", 404);
+      return errorResponse("NOT_FOUND", "メニュー商品が見つかりません。", 404);
     }
 
     const contentType = c.req.header("Content-Type") ?? "";
@@ -521,7 +525,7 @@ export const menuRouter = new Hono<AuthEnv>()
     if (!ext) {
       return errorResponse(
         "VALIDATION_ERROR",
-        "Content-Type must be image/jpeg, image/png, or image/webp",
+        "画像はJPEG・PNG・WebP形式でアップロードしてください。",
         400,
       );
     }
@@ -532,7 +536,7 @@ export const menuRouter = new Hono<AuthEnv>()
     if (declaredLength > IMAGE_MAX_BYTES) {
       return errorResponse(
         "PAYLOAD_TOO_LARGE",
-        "Image exceeds the 1 MB size limit",
+        "画像は1MB以下にしてください。",
         413,
       );
     }
@@ -541,7 +545,7 @@ export const menuRouter = new Hono<AuthEnv>()
     if (body.byteLength > IMAGE_MAX_BYTES) {
       return errorResponse(
         "PAYLOAD_TOO_LARGE",
-        "Image exceeds the 1 MB size limit",
+        "画像は1MB以下にしてください。",
         413,
       );
     }
@@ -566,7 +570,7 @@ export const menuRouter = new Hono<AuthEnv>()
       // Item was deleted concurrently between the ownership check above and
       // here — clean up the object we just wrote so it doesn't leak forever.
       await background(c, deleteImageObject(c.env.IMAGES, key));
-      return errorResponse("NOT_FOUND", "Menu item not found", 404);
+      return errorResponse("NOT_FOUND", "メニュー商品が見つかりません。", 404);
     }
 
     if (item.image_key) {
@@ -598,7 +602,7 @@ export const menuRouter = new Hono<AuthEnv>()
       .limit(1);
     const item = existing[0];
     if (!item) {
-      return errorResponse("NOT_FOUND", "Menu item not found", 404);
+      return errorResponse("NOT_FOUND", "メニュー商品が見つかりません。", 404);
     }
 
     const updated = await db
@@ -613,7 +617,7 @@ export const menuRouter = new Hono<AuthEnv>()
       .returning();
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Menu item not found", 404);
+      return errorResponse("NOT_FOUND", "メニュー商品が見つかりません。", 404);
     }
 
     if (item.image_key) {

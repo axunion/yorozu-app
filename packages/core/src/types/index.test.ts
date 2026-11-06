@@ -6,7 +6,10 @@ import {
   CreateOptionGroupInput,
   CreateOptionInput,
   EmailChangeVerifyInput,
+  memberLabel,
+  StaffInviteInput,
   UpdateItemInput,
+  UpdateMemberNameInput,
   UpdateOptionGroupInput,
   UpdateOptionInput,
   VerifyCodeInput,
@@ -314,5 +317,35 @@ describe("EmailChangeVerifyInput", () => {
 
   it("rejects a malformed code", () => {
     expect(() => EmailChangeVerifyInput.parse({ code: "abc" })).toThrow();
+  });
+});
+
+describe("member display_name", () => {
+  it("trims a name, and turns a blank one into null", () => {
+    expect(
+      UpdateMemberNameInput.parse({ display_name: "  山田 花子 " }),
+    ).toEqual({ display_name: "山田 花子" });
+    expect(UpdateMemberNameInput.parse({ display_name: "   " })).toEqual({
+      display_name: null,
+    });
+    expect(UpdateMemberNameInput.parse({ display_name: null })).toEqual({
+      display_name: null,
+    });
+  });
+
+  it("rejects a name over 50 characters", () => {
+    expect(
+      UpdateMemberNameInput.safeParse({ display_name: "あ".repeat(51) })
+        .success,
+    ).toBe(false);
+  });
+
+  it("leaves the name off an invite unless one is given", () => {
+    expect(StaffInviteInput.parse({ email: "a@b.jp" }).display_name).toBe(null);
+  });
+
+  it("labels a member by name, falling back to the email", () => {
+    expect(memberLabel({ display_name: "花子", email: "a@b.jp" })).toBe("花子");
+    expect(memberLabel({ display_name: null, email: "a@b.jp" })).toBe("a@b.jp");
   });
 });

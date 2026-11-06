@@ -8,6 +8,7 @@ function renderAs(role: StoreInfo["role"]) {
     id: "store-1",
     name: "テスト食堂",
     email: `${role}@test.internal`,
+    display_name: null,
     role,
   };
   return render(() => (

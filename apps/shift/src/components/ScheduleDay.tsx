@@ -1,14 +1,50 @@
-import type {
-  CoverageRow,
-  PositionResponse,
-  ShiftMemberResponse,
-  ShiftPatternResponse,
-  ShiftResponse,
+import {
+  type AvailabilitySubmissionLike,
+  type CoverageRow,
+  type DayAvailability,
+  dayAvailability,
+  type PositionResponse,
+  type ShiftMemberResponse,
+  type ShiftPatternResponse,
+  type ShiftResponse,
 } from "@yorozu/core";
 import { Button, ConfirmDialog } from "@yorozu/ui";
-import { createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { formatMinutes, formatWorkDate } from "../lib/format";
 import styles from "./ScheduleDay.module.css";
+
+/** Who to offer first: people who can work, then the unknowns, then day-off requests. */
+const AVAILABILITY_ORDER: Record<DayAvailability["kind"], number> = {
+  available: 0,
+  undecided: 1,
+  not_submitted: 2,
+  day_off: 3,
+};
+
+const WISH_CLASS: Record<DayAvailability["kind"], string> = {
+  available: styles.wishAvailable ?? "",
+  day_off: styles.wishDayOff ?? "",
+  undecided: "",
+  not_submitted: "",
+};
+
+function availabilityLabel(day: DayAvailability): string {
+  switch (day.kind) {
+    case "available":
+      return `勤務可 ${day.bands
+        .map(
+          (b) =>
+            `${formatMinutes(b.start_minutes)}–${formatMinutes(b.end_minutes)}`,
+        )
+        .join("、")}`;
+    case "day_off":
+      return "休み希望";
+    case "undecided":
+      return "未定";
+    case "not_submitted":
+      return "未提出";
+  }
+}
 
 export type NewShift = {
   member_id: string;
@@ -28,6 +64,7 @@ export default function ScheduleDay(props: {
   shifts: ShiftResponse[];
   coverage: CoverageRow[];
   members: ShiftMemberResponse[];
+  submissions: AvailabilitySubmissionLike[];
   positions: PositionResponse[];
   patterns: ShiftPatternResponse[];
   nameOf: (memberId: string) => string;
@@ -38,6 +75,32 @@ export default function ScheduleDay(props: {
 }) {
   const [memberId, setMemberId] = createSignal("");
   const [positionId, setPositionId] = createSignal("");
+
+  /** What each member asked for on this date. */
+  const availability = createMemo(
+    () =>
+      new Map(
+        props.members.map((member) => [
+          member.id,
+          dayAvailability(props.submissions, member.id, props.workDate),
+        ]),
+      ),
+  );
+  const dayOf = (memberId: string): DayAvailability =>
+    availability().get(memberId) ?? { kind: "not_submitted" };
+
+  /**
+   * Members, best fit first. Sorts the member objects themselves rather than
+   * fresh wrappers, so a schedule reload keeps the same <option> nodes and
+   * the select keeps showing the member it holds.
+   */
+  const roster = createMemo(() =>
+    [...props.members].sort(
+      (a, b) =>
+        AVAILABILITY_ORDER[dayOf(a.id).kind] -
+        AVAILABILITY_ORDER[dayOf(b.id).kind],
+    ),
+  );
 
   const add = (pattern: ShiftPatternResponse) => {
     if (!memberId()) return;
@@ -77,6 +140,22 @@ export default function ScheduleDay(props: {
                   <Show when={row.assigned < row.required}> 不足</Show>
                   <Show when={row.assigned > row.required}> 過剰</Show>
                 </span>
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
+
+      <Show when={roster().length > 0}>
+        <ul
+          class={styles.availability}
+          aria-label={`${formatWorkDate(props.workDate)}の希望`}
+        >
+          <For each={roster()}>
+            {(member) => (
+              <li class={`${styles.wish} ${WISH_CLASS[dayOf(member.id).kind]}`}>
+                <span class={styles.wishName}>{props.nameOf(member.id)}</span>
+                <span>{availabilityLabel(dayOf(member.id))}</span>
               </li>
             )}
           </For>
@@ -134,8 +213,13 @@ export default function ScheduleDay(props: {
             onChange={(e) => setMemberId(e.currentTarget.value)}
           >
             <option value="">スタッフを選ぶ</option>
-            <For each={props.members}>
-              {(member) => <option value={member.id}>{member.email}</option>}
+            <For each={roster()}>
+              {(member) => (
+                <option value={member.id}>
+                  {props.nameOf(member.id)}（
+                  {availabilityLabel(dayOf(member.id))}）
+                </option>
+              )}
             </For>
           </select>
         </label>

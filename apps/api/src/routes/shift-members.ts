@@ -85,6 +85,7 @@ export const shiftMembersRouter = new Hono<AuthEnv>()
         .select({
           id: schema.members.id,
           email: schema.members.email,
+          display_name: schema.members.display_name,
           role: schema.members.role,
         })
         .from(schema.members)
@@ -141,10 +142,10 @@ export const shiftMembersRouter = new Hono<AuthEnv>()
       const db = createDb(c.env.DB);
 
       if (!(await findMember(db, storeId, memberId))) {
-        return errorResponse("NOT_FOUND", "Member not found", 404);
+        return errorResponse("NOT_FOUND", "メンバーが見つかりません。", 404);
       }
       if (!(await ownsAllPositions(db, storeId, position_ids))) {
-        return errorResponse("NOT_FOUND", "Position not found", 404);
+        return errorResponse("NOT_FOUND", "ポジションが見つかりません。", 404);
       }
 
       // Replace wholesale: the client sends the state it wants, not a diff.
@@ -194,7 +195,7 @@ export const shiftMembersRouter = new Hono<AuthEnv>()
       const db = createDb(c.env.DB);
 
       if (!(await findMember(db, storeId, memberId))) {
-        return errorResponse("NOT_FOUND", "Member not found", 404);
+        return errorResponse("NOT_FOUND", "メンバーが見つかりません。", 404);
       }
 
       // One statement, not update-then-insert: two concurrent saves would

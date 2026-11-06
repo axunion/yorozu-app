@@ -17,9 +17,11 @@ function formatDelta(delta: number): string {
   return `${sign}¥${Math.abs(delta).toLocaleString()}`;
 }
 
+export const ORDER_SUMMARY_ID = "order-summary";
+
 export default function OrderSummary(props: { order: Order | null }) {
   return (
-    <section class={styles.section}>
+    <section class={styles.section} id={ORDER_SUMMARY_ID}>
       <h2 class={styles.heading}>ご注文内容</h2>
 
       <Show

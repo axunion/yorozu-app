@@ -1,14 +1,46 @@
 import { A } from "@solidjs/router";
 import { Show } from "solid-js";
 import { useStoreInfo } from "../layouts/AdminGuard";
-import AdminLayout from "../layouts/AdminLayout";
+import AdminLayout, { useAdminSummary } from "../layouts/AdminLayout";
+import { formatYen } from "../lib/format";
 import styles from "./DashboardPage.module.css";
+
+/** Today at a glance, from the same counts the nav badges poll. */
+function TodayStatus() {
+  const summary = useAdminSummary();
+  return (
+    <Show when={summary()}>
+      {(s) => (
+        <dl class={styles.stats}>
+          <div class={styles.stat}>
+            <dt>本日の売上</dt>
+            <dd>{formatYen(s().today_sales.total)}</dd>
+            <dd class={styles.statSub}>{s().today_sales.count}件</dd>
+          </div>
+          <div class={styles.stat}>
+            <dt>未提供の注文</dt>
+            <dd>{s().unserved_orders}件</dd>
+          </div>
+          <div class={styles.stat}>
+            <dt>呼び出し</dt>
+            <dd>{s().open_calls}件</dd>
+          </div>
+          <div class={styles.stat}>
+            <dt>会計待ち</dt>
+            <dd>{s().pending_bills}件</dd>
+          </div>
+        </dl>
+      )}
+    </Show>
+  );
+}
 
 export default function DashboardPage() {
   const store = useStoreInfo();
 
   return (
     <AdminLayout title="管理画面">
+      <TodayStatus />
       <div class={styles.menu}>
         <Show when={store.role === "owner"}>
           <A href="/menu" class={styles.menuLink}>

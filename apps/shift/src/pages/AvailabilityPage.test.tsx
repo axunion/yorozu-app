@@ -147,6 +147,33 @@ describe("AvailabilityPage", () => {
     expect(JSON.parse(String(submitCall[1].body)).submit).toBe(true);
   });
 
+  it("will not submit with every day left 未定, but still saves a draft", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetch([
+        { url: "/api/shift/periods/period-1", json: data(period) },
+        { url: "/api/shift/availability/period-1/me", json: submission([]) },
+      ]),
+    );
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByText("9/1(火)");
+
+    const submit = () =>
+      screen.getByRole("button", { name: "提出する" }) as HTMLButtonElement;
+    expect(submit().disabled).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "下書き保存" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+
+    await user.click(
+      screen.getAllByRole("button", { name: "休み" })[0] as Element,
+    );
+    expect(submit().disabled).toBe(false);
+  });
+
   it("sends the chosen band for an available day", async () => {
     const fetchStub = mockFetch([
       { url: "/api/shift/periods/period-1", json: data(period) },

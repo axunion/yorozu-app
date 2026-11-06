@@ -64,10 +64,10 @@ describe("ReceiptScreen", () => {
     await findByText("麺屋テスト");
     await findByText("テーブル1");
     await findByText("ラーメン");
-    // ¥1,600 appears 3 times: the ラーメン line (800×2), 小計, and 合計
-    // (no discount applied, so 小計 and 合計 coincide).
+    // ¥1,600 appears 4 times: the ラーメン line (800×2), 小計, 合計 (no
+    // discount applied, so they coincide), and the tax-inclusive 10%対象.
     const totals = await findAllByText("¥1,600");
-    expect(totals.length).toBe(3);
+    expect(totals.length).toBe(4);
   });
 
   it("shows a cancelled item struck through", async () => {
@@ -84,9 +84,12 @@ describe("ReceiptScreen", () => {
     const { findByText } = render(() => (
       <ReceiptScreen seatToken="test-token" orderId="order1" />
     ));
-    await findByText("10%対象");
-    await findByText("¥1,455");
-    await findByText("(内消費税 ¥145)");
+    const label = await findByText("10%対象");
+    // The base is tax-inclusive (1,455 + 145), so it reconciles with the
+    // 内消費税 amount beside it.
+    expect(label.closest("li")?.textContent).toBe(
+      "10%対象¥1,600(内消費税 ¥145)",
+    );
   });
 
   it("shows the discount line and reason when a discount was applied", async () => {

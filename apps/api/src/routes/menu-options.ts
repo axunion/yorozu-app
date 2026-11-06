@@ -114,7 +114,11 @@ export const menuOptionsRouter = new Hono<AuthEnv>()
       .returning();
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Option group not found", 404);
+      return errorResponse(
+        "NOT_FOUND",
+        "オプショングループが見つかりません。",
+        404,
+      );
     }
     return c.json({ data: result });
   })
@@ -133,7 +137,11 @@ export const menuOptionsRouter = new Hono<AuthEnv>()
     const db = createDb(c.env.DB);
 
     if (!(await optionGroupExists(db, groupId, storeId))) {
-      return errorResponse("NOT_FOUND", "Option group not found", 404);
+      return errorResponse(
+        "NOT_FOUND",
+        "オプショングループが見つかりません。",
+        404,
+      );
     }
 
     await db.batch([
@@ -174,7 +182,11 @@ export const menuOptionsRouter = new Hono<AuthEnv>()
     const db = createDb(c.env.DB);
 
     if (!(await optionGroupExists(db, groupId, storeId))) {
-      return errorResponse("NOT_FOUND", "Option group not found", 404);
+      return errorResponse(
+        "NOT_FOUND",
+        "オプショングループが見つかりません。",
+        404,
+      );
     }
 
     const rows = await db
@@ -196,7 +208,11 @@ export const menuOptionsRouter = new Hono<AuthEnv>()
     const db = createDb(c.env.DB);
 
     if (!(await optionGroupExists(db, groupId, storeId))) {
-      return errorResponse("NOT_FOUND", "Option group not found", 404);
+      return errorResponse(
+        "NOT_FOUND",
+        "オプショングループが見つかりません。",
+        404,
+      );
     }
 
     const { name, price_delta, sort_order } = c.req.valid("json");
@@ -252,7 +268,7 @@ export const menuOptionsRouter = new Hono<AuthEnv>()
         .returning();
       const result = updated[0];
       if (!result) {
-        return errorResponse("NOT_FOUND", "Option not found", 404);
+        return errorResponse("NOT_FOUND", "オプションが見つかりません。", 404);
       }
       return c.json({ data: result });
     },
@@ -281,7 +297,7 @@ export const menuOptionsRouter = new Hono<AuthEnv>()
       )
       .limit(1);
     if (existing.length === 0) {
-      return errorResponse("NOT_FOUND", "Option not found", 404);
+      return errorResponse("NOT_FOUND", "オプションが見つかりません。", 404);
     }
 
     await db

@@ -41,6 +41,7 @@ const OWNER_STORE = {
   id: "store-1",
   name: "テスト食堂",
   email: "owner@test.internal",
+  display_name: null,
   role: "owner" as const,
 };
 
@@ -99,7 +100,10 @@ describe("StaffManager — list", () => {
           method: "GET",
           ok: false,
           json: {
-            error: { code: "FORBIDDEN", message: "Owner access required" },
+            error: {
+              code: "FORBIDDEN",
+              message: "この操作はオーナーのみ行えます。",
+            },
           },
         },
       ]),
@@ -107,7 +111,7 @@ describe("StaffManager — list", () => {
 
     renderWithStore();
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Owner access required");
+    expect(alert.textContent).toContain("この操作はオーナーのみ行えます。");
   });
 });
 
@@ -317,5 +321,83 @@ describe("StaffManager — remove", () => {
       name: "削除 sole-owner@test.internal",
     });
     expect((soleOwnerRemoveBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("StaffManager — display name", () => {
+  const member = {
+    id: "m3",
+    email: "hanako@test.internal",
+    display_name: null,
+    role: "staff",
+    status: "active",
+    created_at: 1000,
+    activated_at: 1000,
+  };
+
+  it("sends an optional name with the invite", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch([
+      { url: "/api/staff", method: "GET", json: { data: [] } },
+      {
+        url: "/api/staff",
+        method: "POST",
+        json: { data: { ...member, display_name: "山田 花子" } },
+      },
+    ]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithStore();
+    await screen.findByText(/メンバーがいません/);
+    await user.type(
+      screen.getByLabelText("メールアドレス"),
+      "hanako@test.internal",
+    );
+    await user.type(screen.getByLabelText("表示名（任意）"), "山田 花子");
+    await user.click(screen.getByRole("button", { name: "招待する" }));
+
+    const post = fetchMock.mock.calls.find(
+      ([, init]) => (init as RequestInit | undefined)?.method === "POST",
+    );
+    expect(JSON.parse(String(post?.[1]?.body)).display_name).toBe("山田 花子");
+    expect(await screen.findByText("山田 花子")).toBeTruthy();
+  });
+
+  it("renames a member inline via PATCH", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetch([
+      { url: "/api/staff", method: "GET", json: { data: [member] } },
+      {
+        url: "/api/staff/m3",
+        method: "PATCH",
+        json: { data: { id: "m3", display_name: "花子" } },
+      },
+    ]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithStore();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "表示名を編集 hanako@test.internal",
+      }),
+    );
+    await user.type(screen.getByLabelText("表示名"), "花子");
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/staff/m3"),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ display_name: "花子" }),
+      }),
+    );
+    expect(await screen.findByText("花子")).toBeTruthy();
+    expect(screen.queryByLabelText("表示名")).toBeNull();
+    // Focus returns to the member's edit button instead of dropping to body.
+    await vi.waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toBe(
+        "表示名を編集 hanako@test.internal",
+      ),
+    );
   });
 });

@@ -63,7 +63,9 @@ invalid band.
 
 A period covers a **whole half-month** — the 1st–15th or the 16th–end of
 month. `POST /api/shift/periods` rejects any other range, so the owner form
-asks for one date the period should contain and derives the bounds.
+asks for one date the period should contain and derives the bounds. The
+form starts on the first day of the *next* half-month, since schedules are
+built ahead of the period they cover.
 
 ```
 collecting ──close-submissions──▶ building ──publish──▶ published
@@ -96,6 +98,10 @@ longer than 24 hours; a `day_off` entry carries no times at all.
 The whole save runs as one `db.batch`, chunked at 12 entries per statement —
 a routine half-month submission otherwise exceeds D1's limit of 100 bound
 parameters per query.
+
+**提出する** stays disabled while every day is 未定 — such a submission tells
+the manager nothing. A draft can still be saved empty. (Client-side only;
+the API accepts an empty submission.)
 
 The form offers **"copy the previous period"**, matched by weekday: it is
 what stands in for the standing weekday availability rules v1 deliberately
@@ -144,8 +150,22 @@ unit-tested place and the routes stay thin.
   too low.
 - **Non-submitters** — members with no `submitted` submission. A *draft*
   submission does not count. v1 shows the list; it sends no reminders.
+- **Availability on each day card** (`dayAvailability`) — every member with
+  what they asked for that date: 勤務可 with the band, 休み希望, 未定 (left
+  blank on a submitted form) or 未提出 (no submitted submission). The
+  「スタッフを選ぶ」 options carry the same label and are ordered available
+  → 未定 → 未提出 → 休み希望.
+- **Availability warnings** (`availabilityWarnings`) — `ON_REQUESTED_DAY_OFF`
+  for a shift on a requested day off, `OUTSIDE_AVAILABLE_BAND` for a shift
+  not inside any submitted band (touching bands count as one). Reported
+  once per member, date and code, however many shifts break it. Listed with the labour warnings under
+  「確認してください」, and just as advisory: a manager may have agreed the
+  change with the member. 未定 and 未提出 days raise nothing.
 
-**CSV export** of the period's shifts (date, staff, position, start, end,
+Members show as their display name, falling back to the email.
+
+**CSV export** of the period's shifts (date, staff name, email — unique
+when names collide or are unset — position, start, end,
 break, worked minutes), BOM-prefixed so Excel reads the Japanese correctly.
 
 ## Staff's own schedule (`/`)
@@ -171,5 +191,7 @@ a verified login lands back in this SPA rather than in admin. See [authenticatio
 - **Standing per-member availability rules.** "Copy the previous period"
   carries the same information without a table.
 - **Per-date requirement overrides** (holidays).
+- **A member × date grid overview** of the half-month; the builder is a
+  vertical list of day cards.
 - **Plan/pricing enforcement.** `subscriptions.plan` exists and is unused.
 - No time clock, attendance or payroll.

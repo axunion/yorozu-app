@@ -4,9 +4,11 @@ import CheckoutPage from "./pages/CheckoutPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import MenuPage from "./pages/MenuPage";
+import OrderEntryPage from "./pages/OrderEntryPage";
 import OrdersPage from "./pages/OrdersPage";
 import ReportsPage from "./pages/ReportsPage";
 import SalesPage from "./pages/SalesPage";
+import SeatPrintPage from "./pages/SeatPrintPage";
 import SeatsPage from "./pages/SeatsPage";
 import SettingsPage from "./pages/SettingsPage";
 import StaffPage from "./pages/StaffPage";
@@ -19,7 +21,9 @@ export default function App() {
         <Route path="/" component={DashboardPage} />
         <Route path="/menu" component={MenuPage} />
         <Route path="/seats" component={SeatsPage} />
+        <Route path="/seats/print" component={SeatPrintPage} />
         <Route path="/orders" component={OrdersPage} />
+        <Route path="/orders/new" component={OrderEntryPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/sales" component={SalesPage} />
         <Route path="/reports" component={ReportsPage} />

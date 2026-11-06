@@ -1,0 +1,96 @@
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: var(--text-sm);
+}
+
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(
+      auto-fill,
+      minmax(calc(var(--space-10) * 5), 1fr)
+    );
+  gap: var(--space-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+  break-inside: avoid;
+}
+
+.storeName {
+  font-size: var(--text-sm);
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+.qr {
+  width: 100%;
+  max-width: calc(var(--space-10) * 4);
+  aspect-ratio: 1 / 1;
+}
+
+.seatName {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-foreground);
+  overflow-wrap: anywhere;
+}
+
+.caption {
+  font-size: var(--text-xs);
+  color: var(--color-muted-foreground);
+}
+
+/* Paper: three cards across an A4 portrait page (3 × 3 per sheet), with
+   only the dashed cut lines and the cards themselves printed. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  .cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+
+  .card {
+    border-radius: 0;
+    height: 90mm;
+    justify-content: center;
+  }
+
+  .qr {
+    max-width: 50mm;
+  }
+}

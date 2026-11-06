@@ -7,9 +7,37 @@
   padding: var(--space-3) var(--space-4);
   padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
   box-shadow: var(--shadow-checkout-top);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.payButton {
+.orderedLink {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: var(--touch-target-min);
+  padding: 0 var(--space-1);
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-foreground);
+  cursor: pointer;
+}
+
+.orderedLink:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.orderedLinkAction {
+  color: var(--color-primary);
+  font-weight: var(--font-semibold);
+  text-decoration: underline;
+}
+
+.ctaButton {
   min-height: var(--order-cta-height);
 }
 

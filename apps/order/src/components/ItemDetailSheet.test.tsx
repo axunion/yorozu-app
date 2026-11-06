@@ -52,7 +52,7 @@ describe("ItemDetailSheet", () => {
         item={item}
         open={true}
         onOpenChange={vi.fn()}
-        onAddItems={vi.fn()}
+        onAddToCart={vi.fn()}
       />
     ));
 
@@ -71,11 +71,11 @@ describe("ItemDetailSheet", () => {
         item={item}
         open={true}
         onOpenChange={vi.fn()}
-        onAddItems={vi.fn()}
+        onAddToCart={vi.fn()}
       />
     ));
 
-    const submit = screen.getByRole("button", { name: /を注文する$/ });
+    const submit = screen.getByRole("button", { name: /をカートに追加$/ });
     expect((submit as HTMLButtonElement).disabled).toBe(true);
 
     await user.click(screen.getByRole("radio", { name: /^M/ }));
@@ -89,7 +89,7 @@ describe("ItemDetailSheet", () => {
         item={item}
         open={true}
         onOpenChange={vi.fn()}
-        onAddItems={vi.fn()}
+        onAddToCart={vi.fn()}
       />
     ));
 
@@ -119,7 +119,7 @@ describe("ItemDetailSheet", () => {
         item={item}
         open={true}
         onOpenChange={vi.fn()}
-        onAddItems={vi.fn()}
+        onAddToCart={vi.fn()}
       />
     ));
 
@@ -127,7 +127,7 @@ describe("ItemDetailSheet", () => {
     await user.click(screen.getByRole("checkbox", { name: /^アーモンド/ }));
     // price 500 + M(50) + アーモンド(50) = 600
     expect(
-      screen.getByRole("button", { name: "¥600 を注文する" }),
+      screen.getByRole("button", { name: "¥600 をカートに追加" }),
     ).toBeTruthy();
 
     await user.click(
@@ -135,63 +135,55 @@ describe("ItemDetailSheet", () => {
     );
     // quantity 2: 600 * 2 = 1200
     expect(
-      screen.getByRole("button", { name: "¥1,200 を注文する" }),
+      screen.getByRole("button", { name: "¥1,200 をカートに追加" }),
     ).toBeTruthy();
   });
 
-  it("submits option_ids in group order and the trimmed note, then calls onOpenChange(false)", async () => {
+  it("adds the item with option_ids in group order, labels, unit price and the trimmed note, then closes", async () => {
     const onOpenChange = vi.fn();
-    const onAddItems = vi.fn().mockResolvedValue({ ok: true });
+    const onAddToCart = vi.fn();
     const user = userEvent.setup();
     render(() => (
       <ItemDetailSheet
         item={item}
         open={true}
         onOpenChange={onOpenChange}
-        onAddItems={onAddItems}
+        onAddToCart={onAddToCart}
       />
     ));
 
     await user.click(screen.getByRole("radio", { name: /^L/ }));
     await user.click(screen.getByRole("checkbox", { name: /^チョコソース/ }));
     await user.type(screen.getByLabelText("ご要望（任意）"), "  氷少なめ  ");
-    await user.click(screen.getByRole("button", { name: /を注文する$/ }));
+    await user.click(
+      screen.getByRole("button", { name: "パフェの数量を増やす" }),
+    );
+    await user.click(screen.getByRole("button", { name: /をカートに追加$/ }));
 
-    expect(onAddItems).toHaveBeenCalledWith([
-      {
-        menu_item_id: "item1",
-        quantity: 1,
-        option_ids: ["o-l", "o-b"],
-        note: "氷少なめ",
-      },
-    ]);
+    expect(onAddToCart).toHaveBeenCalledWith({
+      menu_item_id: "item1",
+      name: "パフェ",
+      unit_price: 500 + 100 + 80,
+      quantity: 2,
+      option_ids: ["o-l", "o-b"],
+      option_labels: ["L", "チョコソース"],
+      note: "氷少なめ",
+    });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("shows the error message and keeps values when onAddItems fails", async () => {
-    const onAddItems = vi
-      .fn()
-      .mockResolvedValue({ ok: false, message: "在庫がありません。" });
-    const onOpenChange = vi.fn();
-    const user = userEvent.setup();
+  it("is exposed as a plain dialog, not an alertdialog", () => {
     render(() => (
       <ItemDetailSheet
         item={item}
         open={true}
-        onOpenChange={onOpenChange}
-        onAddItems={onAddItems}
+        onOpenChange={vi.fn()}
+        onAddToCart={vi.fn()}
       />
     ));
 
-    await user.click(screen.getByRole("radio", { name: /^S/ }));
-    await user.click(screen.getByRole("button", { name: /を注文する$/ }));
-
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("在庫がありません。");
-    expect(onOpenChange).not.toHaveBeenCalled();
-    expect(
-      (screen.getByRole("radio", { name: /^S/ }) as HTMLInputElement).checked,
-    ).toBe(true);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
   it("calls onOpenChange(false) when cancel is clicked", async () => {
@@ -202,7 +194,7 @@ describe("ItemDetailSheet", () => {
         item={item}
         open={true}
         onOpenChange={onOpenChange}
-        onAddItems={vi.fn()}
+        onAddToCart={vi.fn()}
       />
     ));
 

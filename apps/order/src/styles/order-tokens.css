@@ -57,9 +57,9 @@
   --touch-target-min: 44px; /* WCAG 2.1 §2.5.5 */
   --order-header-height: 80px; /* CategoryNav sticky offset; verify visually */
   --order-nav-height: 60px; /* CategoryNav's own height; used for menu scroll-margin, verify visually */
-  --order-cta-height: 52px; /* Sticky Checkout Bar button height */
+  --order-cta-height: 52px; /* Sticky Bottom Bar / bottom-sheet CTA height */
 
-  /* ── Sticky stacking order — Header above CategoryNav/CheckoutBar ─── */
+  /* ── Sticky stacking order — Header above CategoryNav/BottomBar ─── */
   --z-sticky-header: 20;
   --z-sticky-bar: 10;
 }

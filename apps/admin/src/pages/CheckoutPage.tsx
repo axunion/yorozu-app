@@ -3,7 +3,7 @@ import AdminLayout from "../layouts/AdminLayout";
 
 export default function CheckoutPage() {
   return (
-    <AdminLayout title="会計・レジ" backHref="/" backLabel="← 管理トップ">
+    <AdminLayout title="会計・レジ">
       <CheckoutPanel />
     </AdminLayout>
   );

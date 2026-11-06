@@ -74,10 +74,22 @@
   min-width: 0;
 }
 
-.memberEmail {
+.memberName {
   font-weight: var(--font-semibold);
   color: var(--color-foreground);
+  overflow-wrap: anywhere;
+}
+
+.memberEmail {
+  color: var(--color-muted-foreground);
   word-break: break-all;
+}
+
+.renameForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
 }
 
 .memberRole {

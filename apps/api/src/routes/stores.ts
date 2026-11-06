@@ -82,7 +82,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
       // Slug race-condition (TOCTOU between the pre-check and INSERT).
       return errorResponse(
         "INTERNAL_ERROR",
-        "Store registration failed. Please try again.",
+        "店舗の登録に失敗しました。再度お試しください。",
         500,
       );
     }
@@ -118,7 +118,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
       ]);
       return errorResponse(
         "INTERNAL_ERROR",
-        "Store registration failed. Please try again.",
+        "店舗の登録に失敗しました。再度お試しください。",
         500,
       );
     }
@@ -188,7 +188,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
 
       const result = updated[0];
       if (!result) {
-        return errorResponse("NOT_FOUND", "Store not found", 404);
+        return errorResponse("NOT_FOUND", "店舗が見つかりません。", 404);
       }
 
       return c.json({
@@ -230,7 +230,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Store not found", 404);
+      return errorResponse("NOT_FOUND", "店舗が見つかりません。", 404);
     }
 
     return c.json({ data: { id: result.id, status: result.status } });
@@ -276,7 +276,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
         .limit(1);
       const member = memberRows[0];
       if (!member) {
-        return errorResponse("NOT_FOUND", "Member not found", 404);
+        return errorResponse("NOT_FOUND", "メンバーが見つかりません。", 404);
       }
       const currentEmail = member.email;
 

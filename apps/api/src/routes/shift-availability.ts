@@ -146,7 +146,7 @@ export const shiftAvailabilityRouter = new Hono<AuthEnv>()
     const db = createDb(c.env.DB);
 
     if (!(await findPeriod(db, storeId, periodId))) {
-      return errorResponse("NOT_FOUND", "Schedule period not found", 404);
+      return errorResponse("NOT_FOUND", "シフト期間が見つかりません。", 404);
     }
 
     return c.json({
@@ -169,7 +169,7 @@ export const shiftAvailabilityRouter = new Hono<AuthEnv>()
 
     const period = await findPeriod(db, storeId, periodId);
     if (!period) {
-      return errorResponse("NOT_FOUND", "Schedule period not found", 404);
+      return errorResponse("NOT_FOUND", "シフト期間が見つかりません。", 404);
     }
     if (period.status !== "collecting") {
       return errorResponse(
@@ -293,7 +293,7 @@ export const shiftAvailabilityRouter = new Hono<AuthEnv>()
     const db = createDb(c.env.DB);
 
     if (!(await findPeriod(db, storeId, periodId))) {
-      return errorResponse("NOT_FOUND", "Schedule period not found", 404);
+      return errorResponse("NOT_FOUND", "シフト期間が見つかりません。", 404);
     }
 
     const [rows, members] = await Promise.all([

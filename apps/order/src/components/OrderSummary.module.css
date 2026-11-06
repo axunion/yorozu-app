@@ -1,4 +1,5 @@
 .section {
+  scroll-margin-top: calc(var(--order-header-height) + var(--order-nav-height));
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   padding: var(--space-5);

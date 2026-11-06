@@ -1,0 +1,24 @@
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
+}
+
+.actionLink {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+}
+
+.actionLink:hover {
+  background: var(--color-primary-hover);
+}
+
+.actionLink:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}

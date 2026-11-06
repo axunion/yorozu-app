@@ -5,7 +5,7 @@ import {
   UpdateSeatInput,
 } from "@yorozu/core";
 import { createDb, schema } from "@yorozu/db";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import { type AuthEnv, requireOwner, requireStore } from "../middleware";
 import { bodyValidator } from "../validator";
@@ -33,6 +33,34 @@ async function hasActiveOrder(
     .limit(1);
   return rows.length > 0;
 }
+
+/**
+ * True if another active seat in the store already has this name. Two
+ * 「テーブル1」 make printed QR cards easy to swap, so names stay unique
+ * among active seats; a retired seat's name is free to reuse.
+ */
+async function nameTaken(
+  db: ReturnType<typeof createDb>,
+  storeId: string,
+  name: string,
+  exceptSeatId?: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.seats.id })
+    .from(schema.seats)
+    .where(
+      and(
+        eq(schema.seats.store_id, storeId),
+        eq(schema.seats.is_active, true),
+        eq(schema.seats.name, name),
+        exceptSeatId ? ne(schema.seats.id, exceptSeatId) : undefined,
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+const DUPLICATE_NAME_MESSAGE = "同じ名前の座席がすでにあります。";
 
 // ---------------------------------------------------------------------------
 // Router
@@ -70,6 +98,7 @@ export const seatsRouter = new Hono<AuthEnv>()
    * POST /api/seats
    * Creates a new seat for the authenticated store.
    * Generates a unique qr_token (UUID v4) embedded in /order/:qr_token URLs.
+   * 409 if an active seat in the store already has the name.
    * Response: 201 { data: { id, store_id, name, qr_token, is_active, created_at } }
    */
   .post("/", bodyValidator(CreateSeatInput), async (c) => {
@@ -78,6 +107,9 @@ export const seatsRouter = new Hono<AuthEnv>()
     const id = newId();
     const qr_token = newId();
     const db = createDb(c.env.DB);
+    if (await nameTaken(db, storeId, name)) {
+      return errorResponse("CONFLICT", DUPLICATE_NAME_MESSAGE, 409);
+    }
     let returning: (typeof schema.seats.$inferSelect)[];
     try {
       returning = await db
@@ -96,7 +128,8 @@ export const seatsRouter = new Hono<AuthEnv>()
 
   /**
    * PATCH /api/seats/:id
-   * Renames a seat owned by the authenticated store.
+   * Renames a seat owned by the authenticated store. 409 if another active
+   * seat already has the name.
    * Response: 200 { data: <seat> }
    */
   .patch("/:id", bodyValidator(UpdateSeatInput), async (c) => {
@@ -104,6 +137,24 @@ export const seatsRouter = new Hono<AuthEnv>()
     const seatId = c.req.param("id");
     const { name } = c.req.valid("json");
     const db = createDb(c.env.DB);
+
+    // Existence first in the response (404 before 409), but one round trip.
+    const [existing, taken] = await Promise.all([
+      db
+        .select({ id: schema.seats.id })
+        .from(schema.seats)
+        .where(
+          and(eq(schema.seats.id, seatId), eq(schema.seats.store_id, storeId)),
+        )
+        .limit(1),
+      nameTaken(db, storeId, name, seatId),
+    ]);
+    if (existing.length === 0) {
+      return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
+    }
+    if (taken) {
+      return errorResponse("CONFLICT", DUPLICATE_NAME_MESSAGE, 409);
+    }
 
     const updated = await db
       .update(schema.seats)
@@ -115,7 +166,7 @@ export const seatsRouter = new Hono<AuthEnv>()
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Seat not found", 404);
+      return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
     }
     return c.json({ data: result });
   })
@@ -143,7 +194,7 @@ export const seatsRouter = new Hono<AuthEnv>()
       .limit(1);
     const seat = existing[0];
     if (!seat) {
-      return errorResponse("NOT_FOUND", "Seat not found", 404);
+      return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
     }
 
     if (!seat.is_active) {
@@ -191,7 +242,7 @@ export const seatsRouter = new Hono<AuthEnv>()
       )
       .limit(1);
     if (existing.length === 0) {
-      return errorResponse("NOT_FOUND", "Seat not found", 404);
+      return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
     }
 
     if (await hasActiveOrder(db, seatId, storeId)) {

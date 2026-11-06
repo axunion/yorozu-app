@@ -183,7 +183,7 @@ async function validateShiftPlacement(
 ): Promise<Response | null> {
   const refs = await resolveShiftRefs(db, storeId, input);
   if (!refs) {
-    return errorResponse("NOT_FOUND", "Shift target not found", 404);
+    return errorResponse("NOT_FOUND", "シフトの対象が見つかりません。", 404);
   }
 
   const dates = periodDates(refs.period.start_date, refs.period.end_date);
@@ -228,7 +228,7 @@ export const shiftScheduleRouter = new Hono<AuthEnv>()
 
     const period = await findPeriod(db, storeId, periodId);
     if (!period) {
-      return errorResponse("NOT_FOUND", "Schedule period not found", 404);
+      return errorResponse("NOT_FOUND", "シフト期間が見つかりません。", 404);
     }
 
     const published = period.status === "published";
@@ -356,7 +356,7 @@ export const shiftsRouter = new Hono<AuthEnv>()
     const db = createDb(c.env.DB);
 
     // Both queries are independent of each other, but if the target doesn't
-    // exist its "Shift not found" must win over a placement error — an
+    // exist its "シフトが見つかりません。" must win over a placement error — an
     // unknown or foreign id whose body happens to collide with the caller's
     // own schedule should not answer 409, which says nothing true about the
     // shift they asked to change.
@@ -374,7 +374,7 @@ export const shiftsRouter = new Hono<AuthEnv>()
       validateShiftPlacement(db, storeId, input, shiftId),
     ]);
     if (target.length === 0) {
-      return errorResponse("NOT_FOUND", "Shift not found", 404);
+      return errorResponse("NOT_FOUND", "シフトが見つかりません。", 404);
     }
     if (placementError) return placementError;
 
@@ -388,7 +388,7 @@ export const shiftsRouter = new Hono<AuthEnv>()
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Shift not found", 404);
+      return errorResponse("NOT_FOUND", "シフトが見つかりません。", 404);
     }
     return c.json({ data: result satisfies ShiftResponse });
   })
@@ -415,7 +415,7 @@ export const shiftsRouter = new Hono<AuthEnv>()
 
     const result = deleted[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Shift not found", 404);
+      return errorResponse("NOT_FOUND", "シフトが見つかりません。", 404);
     }
     return c.json({ data: result });
   });

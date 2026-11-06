@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import {
   ADMIN_ORIGIN,
   API_ORIGIN,
+  CROSS_ORIGIN,
   ORDER_ORIGIN,
   SHIFT_ORIGIN,
   SIGNUP_ORIGIN,
@@ -19,6 +20,23 @@ import {
  * unique email, and store-scoped isolation keeps runs from seeing each other's
  * menu, seats, orders or sales.
  */
+// CROSS_ORIGIN (`pnpm e2e:cross-origin`) starts the SPAs with VITE_API_BASE
+// set to the Worker's own origin, as production builds are, so every request
+// is cross-origin and goes through the API's CORS middleware rather than the
+// Vite /api proxy. Both modes need the same fixed ports (the API's *_ORIGIN
+// allowlist), so they are separate runs, and this one never reuses SPA dev
+// servers that may have been started for the other.
+const spaEnv: Record<string, string> = CROSS_ORIGIN
+  ? { VITE_API_BASE: API_ORIGIN }
+  : {};
+const spaServer = (filter: string, url: string) => ({
+  command: `pnpm --filter ${filter} dev`,
+  url,
+  env: spaEnv,
+  reuseExistingServer: !CROSS_ORIGIN,
+  timeout: 120_000,
+});
+
 export default defineConfig({
   testDir: "./tests",
   // The golden path deliberately waits on the real cross-app polling intervals
@@ -36,39 +54,25 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: CROSS_ORIGIN ? "chromium-cross-origin" : "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
   webServer: [
     {
       command: "pnpm --filter @yorozu/api dev",
       // /api/auth/me answers 401 unauthenticated; Playwright treats 401 as
       // "server is up", while the 404 on / would read as "not ready yet".
       url: `${API_ORIGIN}/api/auth/me`,
+      // The Worker itself is the same in both modes.
       reuseExistingServer: true,
       timeout: 120_000,
     },
-    {
-      command: "pnpm --filter @yorozu/admin dev",
-      url: ADMIN_ORIGIN,
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
-    {
-      command: "pnpm --filter @yorozu/order dev",
-      url: ORDER_ORIGIN,
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
-    {
-      command: "pnpm --filter @yorozu/signup dev",
-      url: SIGNUP_ORIGIN,
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
-    {
-      command: "pnpm --filter @yorozu/shift dev",
-      url: SHIFT_ORIGIN,
-      reuseExistingServer: true,
-      timeout: 120_000,
-    },
+    spaServer("@yorozu/admin", ADMIN_ORIGIN),
+    spaServer("@yorozu/order", ORDER_ORIGIN),
+    spaServer("@yorozu/signup", SIGNUP_ORIGIN),
+    spaServer("@yorozu/shift", SHIFT_ORIGIN),
   ],
 });

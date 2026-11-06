@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   absoluteRange,
+  availabilityWarnings,
   coverage,
+  dayAvailability,
   estimatedLaborCost,
   halfMonthPeriod,
   laborWarnings,
@@ -679,5 +681,136 @@ describe("estimatedLaborCost", () => {
     expect(result.per_date["2026-09-02"]).toBe(8400);
     expect(result.per_member.m1).toBe(16800);
     expect(result.unpriced_member_ids).toEqual(["m2"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Availability
+// ---------------------------------------------------------------------------
+
+const submitted = (
+  entries: {
+    work_date: string;
+    kind: "available" | "day_off";
+    start_minutes: number | null;
+    end_minutes: number | null;
+  }[],
+  overrides: Partial<{ member_id: string; status: "draft" | "submitted" }> = {},
+) => ({ member_id: "m1", status: "submitted" as const, entries, ...overrides });
+
+const band = (work_date: string, start: number, end: number) => ({
+  work_date,
+  kind: "available" as const,
+  start_minutes: start,
+  end_minutes: end,
+});
+
+const dayOff = (work_date: string) => ({
+  work_date,
+  kind: "day_off" as const,
+  start_minutes: null,
+  end_minutes: null,
+});
+
+describe("dayAvailability", () => {
+  it("reads a submitted band, a day off, and a blank date as undecided", () => {
+    const subs = [
+      submitted([band("2026-09-01", 600, 900), dayOff("2026-09-02")]),
+    ];
+    expect(dayAvailability(subs, "m1", "2026-09-01")).toEqual({
+      kind: "available",
+      bands: [{ start_minutes: 600, end_minutes: 900 }],
+    });
+    expect(dayAvailability(subs, "m1", "2026-09-02")).toEqual({
+      kind: "day_off",
+    });
+    expect(dayAvailability(subs, "m1", "2026-09-03")).toEqual({
+      kind: "undecided",
+    });
+  });
+
+  it("treats a draft, or no submission at all, as not submitted", () => {
+    const subs = [submitted([dayOff("2026-09-01")], { status: "draft" })];
+    expect(dayAvailability(subs, "m1", "2026-09-01").kind).toBe(
+      "not_submitted",
+    );
+    expect(dayAvailability(subs, "m2", "2026-09-01").kind).toBe(
+      "not_submitted",
+    );
+  });
+});
+
+describe("availabilityWarnings", () => {
+  it("warns about a shift on a requested day off", () => {
+    expect(
+      availabilityWarnings([shift()], [submitted([dayOff("2026-09-01")])]),
+    ).toEqual([
+      {
+        code: "ON_REQUESTED_DAY_OFF",
+        member_id: "m1",
+        work_date: "2026-09-01",
+      },
+    ]);
+  });
+
+  it("warns when a shift is not inside any submitted band, and not when it is", () => {
+    // 09:00–17:00 against 10:00–22:00: starts an hour early.
+    expect(
+      availabilityWarnings(
+        [shift()],
+        [submitted([band("2026-09-01", 600, 1320)])],
+      ),
+    ).toEqual([
+      {
+        code: "OUTSIDE_AVAILABLE_BAND",
+        member_id: "m1",
+        work_date: "2026-09-01",
+      },
+    ]);
+    // Exactly the band's edges, with a second band that doesn't fit.
+    expect(
+      availabilityWarnings(
+        [shift()],
+        [
+          submitted([
+            band("2026-09-01", 1080, 1320),
+            band("2026-09-01", 540, 1020),
+          ]),
+        ],
+      ),
+    ).toEqual([]);
+  });
+
+  it("reports a split shift on a day off once, not per shift", () => {
+    const split = [
+      shift({ start_minutes: 600, end_minutes: 840, break_minutes: 0 }),
+      shift({ start_minutes: 1020, end_minutes: 1260, break_minutes: 0 }),
+    ];
+    expect(
+      availabilityWarnings(split, [submitted([dayOff("2026-09-01")])]),
+    ).toHaveLength(1);
+  });
+
+  it("treats touching bands as one continuous band", () => {
+    const subs = [
+      submitted([band("2026-09-01", 840, 1080), band("2026-09-01", 600, 840)]),
+    ];
+    expect(dayAvailability(subs, "m1", "2026-09-01")).toEqual({
+      kind: "available",
+      bands: [{ start_minutes: 600, end_minutes: 1080 }],
+    });
+    expect(
+      availabilityWarnings(
+        [shift({ start_minutes: 720, end_minutes: 960, break_minutes: 0 })],
+        subs,
+      ),
+    ).toEqual([]);
+  });
+
+  it("raises nothing for an undecided or unsubmitted day", () => {
+    expect(
+      availabilityWarnings([shift()], [submitted([dayOff("2026-09-02")])]),
+    ).toEqual([]);
+    expect(availabilityWarnings([shift()], [])).toEqual([]);
   });
 });

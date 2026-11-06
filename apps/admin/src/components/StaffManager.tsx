@@ -21,6 +21,10 @@ export default function StaffManager() {
   const [members, setMembers] = createSignal<StaffMemberResponse[]>([]);
   const [error, setError] = createSignal("");
   const [email, setEmail] = createSignal("");
+  const [displayName, setDisplayName] = createSignal("");
+  const [editingId, setEditingId] = createSignal<string | null>(null);
+  const [editName, setEditName] = createSignal("");
+  const [savingName, setSavingName] = createSignal(false);
   const [role, setRole] = createSignal("staff");
   const [submitting, setSubmitting] = createSignal(false);
 
@@ -49,7 +53,7 @@ export default function StaffManager() {
       const result = await jsonFetch<StaffMemberResponse>(
         "/api/staff",
         "POST",
-        { email: email(), role: role() },
+        { email: email(), role: role(), display_name: displayName() },
       );
       if (!result.ok || !result.data) {
         setError(result.message ?? "招待に失敗しました。");
@@ -58,9 +62,52 @@ export default function StaffManager() {
       const invited = result.data;
       setMembers((prev) => [...prev, invited]);
       setEmail("");
+      setDisplayName("");
       setRole("staff");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const startEdit = (member: StaffMemberResponse) => {
+    setEditName(member.display_name ?? "");
+    setEditingId(member.id);
+  };
+
+  // The edit button and the form replace each other, so focus would drop to
+  // <body>; hand it back to the member's edit button instead.
+  const endEdit = (member: StaffMemberResponse) => {
+    setEditingId(null);
+    queueMicrotask(() =>
+      document
+        .querySelector<HTMLButtonElement>(
+          `[data-edit-member="${CSS.escape(member.id)}"]`,
+        )
+        ?.focus(),
+    );
+  };
+
+  const handleRename = async (e: SubmitEvent, member: StaffMemberResponse) => {
+    const id = member.id;
+    e.preventDefault();
+    setError("");
+    setSavingName(true);
+    try {
+      const result = await jsonFetch<{
+        id: string;
+        display_name: string | null;
+      }>(`/api/staff/${id}`, "PATCH", { display_name: editName() });
+      if (!result.ok || !result.data) {
+        setError(result.message ?? "表示名の保存に失敗しました。");
+        return;
+      }
+      const { display_name } = result.data;
+      setMembers((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, display_name } : m)),
+      );
+      endEdit(member);
+    } finally {
+      setSavingName(false);
     }
   };
 
@@ -91,6 +138,15 @@ export default function StaffManager() {
             onInput={(e) => setEmail(e.currentTarget.value)}
             placeholder="例：staff@example.com"
             required
+            disabled={submitting()}
+          />
+          <Field
+            id="staff-invite-name"
+            label="表示名（任意）"
+            value={displayName()}
+            onInput={(e) => setDisplayName(e.currentTarget.value)}
+            placeholder="例：山田 花子"
+            maxLength={50}
             disabled={submitting()}
           />
           <div class={styles.roleField}>
@@ -127,6 +183,9 @@ export default function StaffManager() {
                 return (
                   <li class={styles.memberItem}>
                     <div class={styles.memberInfo}>
+                      <span class={styles.memberName}>
+                        {member.display_name ?? "（表示名なし）"}
+                      </span>
                       <span class={styles.memberEmail}>{member.email}</span>
                       <span class={styles.memberRole}>
                         {ROLE_LABEL[member.role] ?? member.role}
@@ -139,6 +198,50 @@ export default function StaffManager() {
                         {member.status === "active" ? "有効" : "招待中"}
                       </StatusBadge>
                     </div>
+                    <Show
+                      when={editingId() === member.id}
+                      fallback={
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`表示名を編集 ${member.email}`}
+                          data-edit-member={member.id}
+                          onClick={() => startEdit(member)}
+                        >
+                          表示名を編集
+                        </Button>
+                      }
+                    >
+                      <form
+                        class={styles.renameForm}
+                        onSubmit={(e) => handleRename(e, member)}
+                      >
+                        <Field
+                          id={`staff-name-${member.id}`}
+                          label="表示名"
+                          value={editName()}
+                          onInput={(e) => setEditName(e.currentTarget.value)}
+                          onKeyDown={(e) =>
+                            e.key === "Escape" && endEdit(member)
+                          }
+                          ref={(el) => queueMicrotask(() => el.focus())}
+                          maxLength={50}
+                          disabled={savingName()}
+                        />
+                        <Button type="submit" size="sm" disabled={savingName()}>
+                          {savingName() ? "保存中..." : "保存"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={savingName()}
+                          onClick={() => endEdit(member)}
+                        >
+                          キャンセル
+                        </Button>
+                      </form>
+                    </Show>
                     <ConfirmDialog
                       triggerLabel="削除"
                       triggerDisabled={isSelf() || isLastOwner()}

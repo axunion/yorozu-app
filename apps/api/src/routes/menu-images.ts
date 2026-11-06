@@ -24,12 +24,12 @@ export const menuImagesRouter = new Hono<{ Bindings: Env }>()
     // reject anything outside that shape as defense-in-depth against future
     // reuse of the IMAGES binding for other, non-public object types.
     if (!key.startsWith("menu/")) {
-      return errorResponse("NOT_FOUND", "Image not found", 404);
+      return errorResponse("NOT_FOUND", "画像が見つかりません。", 404);
     }
 
     const object = await c.env.IMAGES.get(key);
     if (!object) {
-      return errorResponse("NOT_FOUND", "Image not found", 404);
+      return errorResponse("NOT_FOUND", "画像が見つかりません。", 404);
     }
 
     const headers = new Headers();
