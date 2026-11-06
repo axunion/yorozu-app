@@ -1,12 +1,15 @@
 import { render } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { readSignupHandoff } from "../handoff";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readSignupHandoff, writeSignupHandoff } from "../handoff";
 import RegisterForm from "./RegisterForm";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+// The form prefills from a leftover handoff, so start every test without one.
+beforeEach(() => sessionStorage.clear());
 
 describe("RegisterForm", () => {
   it("renders a store name input", () => {
@@ -169,5 +172,19 @@ describe("RegisterForm — handing over to the code screen", () => {
     ).toBeTruthy();
     expect(readSignupHandoff()).toBeUndefined();
     expect(navigation.href).toBe("");
+  });
+
+  it("reopens filled in when coming back from the code screen to fix the address", () => {
+    sessionStorage.clear();
+    writeSignupHandoff({ email: "owner@exmaple.com", name: "My Cafe" });
+
+    const { getByLabelText } = render(() => <RegisterForm />);
+
+    expect((getByLabelText(/店舗名/) as HTMLInputElement).value).toBe(
+      "My Cafe",
+    );
+    expect((getByLabelText(/メールアドレス/) as HTMLInputElement).value).toBe(
+      "owner@exmaple.com",
+    );
   });
 });

@@ -100,7 +100,10 @@ describe("StaffManager — list", () => {
           method: "GET",
           ok: false,
           json: {
-            error: { code: "FORBIDDEN", message: "Owner access required" },
+            error: {
+              code: "FORBIDDEN",
+              message: "この操作はオーナーのみ行えます。",
+            },
           },
         },
       ]),
@@ -108,7 +111,7 @@ describe("StaffManager — list", () => {
 
     renderWithStore();
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Owner access required");
+    expect(alert.textContent).toContain("この操作はオーナーのみ行えます。");
   });
 });
 

@@ -58,11 +58,11 @@ function bandRefinement<
 >(schema: z.ZodType<T>) {
   return schema
     .refine((v) => v.end_minutes > v.start_minutes, {
-      message: "end_minutes must be after start_minutes",
+      message: "終了時刻は開始時刻より後にしてください。",
       path: ["end_minutes"],
     })
     .refine((v) => v.end_minutes - v.start_minutes <= MINUTES_PER_DAY, {
-      message: "A band cannot be longer than 24 hours",
+      message: "時間帯は24時間以内にしてください。",
       path: ["end_minutes"],
     });
 }
@@ -138,7 +138,7 @@ export const UpdateMemberPositionsInput = z
     position_ids: z.array(z.string().min(1)).max(50),
   })
   .refine((v) => new Set(v.position_ids).size === v.position_ids.length, {
-    message: "position_ids must not repeat",
+    message: "同じポジションが重複しています。",
     path: ["position_ids"],
   });
 export type UpdateMemberPositionsInput = z.infer<
@@ -180,8 +180,7 @@ export const CreateSchedulePeriodInput = z
       }
     },
     {
-      message:
-        "A period must cover a whole half-month (1st-15th or 16th-end of month)",
+      message: "期間は半月単位（1〜15日、または16日〜月末）にしてください。",
       path: ["end_date"],
     },
   );
@@ -208,7 +207,7 @@ const AvailabilityEntryInput = z
         v.end_minutes > v.start_minutes &&
         v.end_minutes - v.start_minutes <= MINUTES_PER_DAY),
     {
-      message: "An available entry needs a band that runs forwards",
+      message: "勤務可の日は、終了が開始より後の時間帯を指定してください。",
       path: ["end_minutes"],
     },
   )
@@ -217,7 +216,7 @@ const AvailabilityEntryInput = z
       v.kind !== "day_off" ||
       (v.start_minutes === null && v.end_minutes === null),
     {
-      message: "A day_off entry covers the whole day and carries no times",
+      message: "休みの日に時刻は指定できません。",
       path: ["start_minutes"],
     },
   );
@@ -253,7 +252,7 @@ const withShiftRules = <T extends z.ZodType<z.infer<typeof shiftShape>>>(
   bandRefinement(schema).refine(
     (v) => v.break_minutes < v.end_minutes - v.start_minutes,
     {
-      message: "The break cannot be as long as the shift",
+      message: "休憩時間は勤務時間より短くしてください。",
       path: ["break_minutes"],
     },
   );

@@ -89,6 +89,11 @@ export default function CheckEmailPage() {
                 onSubmit={handleVerify}
                 onResend={handleResend}
               />
+              <p class={styles.note}>
+                メールアドレスを間違えた場合は{" "}
+                <a href="/">メールアドレスを修正する</a>
+                から入力し直してください。
+              </p>
               <Show when={devCode()}>
                 {(code) => (
                   <p class={styles.devNote}>[DEV] 確認コード: {code()}</p>

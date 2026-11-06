@@ -31,6 +31,10 @@ behavior.
    compensates by deleting the store + member rows so the owner can retry.
 4. Email delivery failure leaves the store `pending`; the owner recovers
    via the login form (which resends the signup link).
+5. The passcode screen offers 「メールアドレスを修正する」 back to the
+   registration form, refilled with the store name and address entered, so
+   a mistyped address only needs the typo fixed. The store registered under
+   the wrong address stays `pending` and unused.
 
 ### Login (`POST /api/auth/login`, form hosted in `apps/admin`)
 

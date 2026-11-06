@@ -149,7 +149,11 @@ export const shiftTemplatesRouter = new Hono<AuthEnv>()
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Shift pattern not found", 404);
+      return errorResponse(
+        "NOT_FOUND",
+        "シフトパターンが見つかりません。",
+        404,
+      );
     }
     return c.json({ data: result satisfies ShiftPatternResponse });
   })
@@ -178,7 +182,11 @@ export const shiftTemplatesRouter = new Hono<AuthEnv>()
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Shift pattern not found", 404);
+      return errorResponse(
+        "NOT_FOUND",
+        "シフトパターンが見つかりません。",
+        404,
+      );
     }
     return c.json({ data: result satisfies ShiftPatternResponse });
   })
@@ -218,7 +226,7 @@ export const shiftTemplatesRouter = new Hono<AuthEnv>()
       const db = createDb(c.env.DB);
 
       if (!(await ownsPosition(db, storeId, input.position_id))) {
-        return errorResponse("NOT_FOUND", "Position not found", 404);
+        return errorResponse("NOT_FOUND", "ポジションが見つかりません。", 404);
       }
 
       const id = newId();
@@ -247,7 +255,7 @@ export const shiftTemplatesRouter = new Hono<AuthEnv>()
       const db = createDb(c.env.DB);
 
       if (!(await ownsPosition(db, storeId, input.position_id))) {
-        return errorResponse("NOT_FOUND", "Position not found", 404);
+        return errorResponse("NOT_FOUND", "ポジションが見つかりません。", 404);
       }
 
       const updated = await db
@@ -265,7 +273,7 @@ export const shiftTemplatesRouter = new Hono<AuthEnv>()
       if (!result) {
         return errorResponse(
           "NOT_FOUND",
-          "Staffing requirement not found",
+          "必要人数の設定が見つかりません。",
           404,
         );
       }
@@ -296,7 +304,11 @@ export const shiftTemplatesRouter = new Hono<AuthEnv>()
 
     const result = deleted[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Staffing requirement not found", 404);
+      return errorResponse(
+        "NOT_FOUND",
+        "必要人数の設定が見つかりません。",
+        404,
+      );
     }
     return c.json({ data: result });
   });

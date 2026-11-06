@@ -136,7 +136,7 @@ describe("GET /api/shift/members", () => {
 
     expect(res.status).toBe(403);
     const body = (await res.json()) as { error: { message: string } };
-    expect(body.error.message).toContain("Owner");
+    expect(body.error.message).toContain("オーナー");
   });
 
   it("returns 403 for a store without the shift product", async () => {

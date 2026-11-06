@@ -118,7 +118,7 @@ const seatNotFoundResponse = {
   ok: false,
   status: 404,
   json: async () => ({
-    error: { code: "NOT_FOUND", message: "Seat not found" },
+    error: { code: "NOT_FOUND", message: "座席が見つかりません。" },
   }),
 };
 
@@ -143,7 +143,7 @@ describe("OrderScreen", () => {
 
     render(() => <OrderScreen seatToken="bad-token" />);
     await screen.findByText("ページが見つかりません");
-    expect(screen.queryByText("Seat not found")).toBeNull();
+    expect(screen.queryByText("座席が見つかりません。")).toBeNull();
     expect(screen.queryByRole("button", { name: "スタッフを呼ぶ" })).toBeNull();
   });
 

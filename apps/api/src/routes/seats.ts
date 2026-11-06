@@ -146,7 +146,7 @@ export const seatsRouter = new Hono<AuthEnv>()
       )
       .limit(1);
     if (existing.length === 0) {
-      return errorResponse("NOT_FOUND", "Seat not found", 404);
+      return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
     }
     if (await nameTaken(db, storeId, name, seatId)) {
       return errorResponse("CONFLICT", DUPLICATE_NAME_MESSAGE, 409);
@@ -162,7 +162,7 @@ export const seatsRouter = new Hono<AuthEnv>()
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Seat not found", 404);
+      return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
     }
     return c.json({ data: result });
   })
@@ -190,7 +190,7 @@ export const seatsRouter = new Hono<AuthEnv>()
       .limit(1);
     const seat = existing[0];
     if (!seat) {
-      return errorResponse("NOT_FOUND", "Seat not found", 404);
+      return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
     }
 
     if (!seat.is_active) {
@@ -238,7 +238,7 @@ export const seatsRouter = new Hono<AuthEnv>()
       )
       .limit(1);
     if (existing.length === 0) {
-      return errorResponse("NOT_FOUND", "Seat not found", 404);
+      return errorResponse("NOT_FOUND", "座席が見つかりません。", 404);
     }
 
     if (await hasActiveOrder(db, seatId, storeId)) {

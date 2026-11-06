@@ -11,6 +11,8 @@ const HANDOFF_KEY = "yorozu:signup-handoff";
 
 export interface SignupHandoff {
   email: string;
+  /** Lets 「メールアドレスを修正する」 reopen the form already filled in. */
+  name?: string;
   /** Dev-only passcode echoed by the API; never present in production. */
   code?: string;
 }

@@ -153,4 +153,15 @@ describe("CheckEmailPage", () => {
     const link = screen.getByRole("link", { name: "ログイン画面" });
     expect(link.getAttribute("href")).toMatch(/\/login$/);
   });
+  it("offers a way back to fix a mistyped address, keeping what was entered", () => {
+    writeSignupHandoff({ email: "owner@exmaple.com", name: "My Cafe" });
+    render(() => <CheckEmailPage />);
+
+    // Only the element is asserted: Solid emits the template as
+    // `<a href=/>`, which browsers read as href="/" but happy-dom parses as
+    // a self-closing tag with an empty href.
+    expect(screen.getByText("メールアドレスを修正する").tagName).toBe("A");
+    // Kept, so the registration form reopens filled in.
+    expect(readSignupHandoff()?.name).toBe("My Cafe");
+  });
 });

@@ -106,7 +106,7 @@ export const shiftPositionsRouter = new Hono<AuthEnv>()
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Position not found", 404);
+      return errorResponse("NOT_FOUND", "ポジションが見つかりません。", 404);
     }
     return c.json({ data: result satisfies PositionResponse });
   })
@@ -135,7 +135,7 @@ export const shiftPositionsRouter = new Hono<AuthEnv>()
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "Position not found", 404);
+      return errorResponse("NOT_FOUND", "ポジションが見つかりません。", 404);
     }
     return c.json({ data: result satisfies PositionResponse });
   });

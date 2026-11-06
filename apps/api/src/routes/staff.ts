@@ -247,7 +247,7 @@ export const staffRouter = new Hono<AuthEnv>()
       .limit(1);
     const target = existing[0];
     if (!target) {
-      return errorResponse("NOT_FOUND", "Member not found", 404);
+      return errorResponse("NOT_FOUND", "メンバーが見つかりません。", 404);
     }
 
     if (target.role === "owner") {

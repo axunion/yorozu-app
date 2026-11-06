@@ -124,7 +124,11 @@ export const authRouter = new Hono<{ Bindings: Env }>()
     const ts = now();
     const pepper = c.env.OTP_PEPPER;
     const invalidCode = () =>
-      errorResponse("INVALID_CODE", "Invalid or expired code", 400);
+      errorResponse(
+        "INVALID_CODE",
+        "確認コードが正しくないか、有効期限が切れています。",
+        400,
+      );
 
     const memberRows = await db
       .select({ id: schema.members.id, store_id: schema.members.store_id })

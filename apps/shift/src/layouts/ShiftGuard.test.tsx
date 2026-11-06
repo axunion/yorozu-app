@@ -49,7 +49,10 @@ describe("ShiftGuard", () => {
           url: "/api/auth/me",
           ok: false,
           status: 401,
-          json: apiError("UNAUTHORIZED", "Authentication required"),
+          json: apiError(
+            "UNAUTHORIZED",
+            "ログインが必要です。もう一度ログインしてください。",
+          ),
         },
       ]),
     );
@@ -77,7 +80,10 @@ describe("ShiftGuard", () => {
           url: "/api/shift/periods",
           ok: false,
           status: 403,
-          json: apiError("FORBIDDEN", "The shift product is not enabled"),
+          json: apiError(
+            "FORBIDDEN",
+            "この店舗ではシフト管理をご契約いただいていません。",
+          ),
         },
       ]),
     );

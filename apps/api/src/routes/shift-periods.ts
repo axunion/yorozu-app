@@ -103,7 +103,7 @@ export const shiftPeriodsRouter = new Hono<AuthEnv>()
 
     const period = await findPeriod(db, storeId, c.req.param("id"));
     if (!period) {
-      return errorResponse("NOT_FOUND", "Schedule period not found", 404);
+      return errorResponse("NOT_FOUND", "シフト期間が見つかりません。", 404);
     }
     return c.json({ data: period satisfies SchedulePeriodResponse });
   })
@@ -183,7 +183,7 @@ export const shiftPeriodsRouter = new Hono<AuthEnv>()
     // already moved on.
     const period = await findPeriod(db, storeId, periodId);
     if (!period) {
-      return errorResponse("NOT_FOUND", "Schedule period not found", 404);
+      return errorResponse("NOT_FOUND", "シフト期間が見つかりません。", 404);
     }
     return errorResponse(
       "CONFLICT",
@@ -216,7 +216,7 @@ export const shiftPeriodsRouter = new Hono<AuthEnv>()
 
     const period = await findPeriod(db, storeId, periodId);
     if (!period) {
-      return errorResponse("NOT_FOUND", "Schedule period not found", 404);
+      return errorResponse("NOT_FOUND", "シフト期間が見つかりません。", 404);
     }
     return errorResponse(
       "CONFLICT",
