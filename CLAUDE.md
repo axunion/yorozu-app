@@ -8,8 +8,8 @@ Bias toward caution over speed; on trivial tasks, use judgment.
 ## Tooling
 
 - **Linting/formatting:** Biome only — no ESLint, no Prettier.
-- **Pre-commit hooks:** lefthook runs `biome check --write` on staged files and
-  the full `pnpm test`. Do not bypass (`--no-verify`).
+- **Pre-commit hooks:** lefthook runs `biome check --write` on staged files and,
+  when TS/TSX files are staged, the full `pnpm test`. Do not bypass (`--no-verify`).
 - **Dependencies:** shared library versions are pinned once in the
   `pnpm-workspace.yaml` catalog; workspace `package.json` files reference them
   as `"catalog:"`. Add new shared deps to the catalog, not per-workspace.
@@ -17,8 +17,8 @@ Bias toward caution over speed; on trivial tasks, use judgment.
   `check`/`test`/`build` on pushes and PRs. Deployment is manual — see
   `docs/reference/deploy.md`.
 - **TypeScript:** every workspace extends `tsconfig.base.json` (strict,
-  `noUncheckedIndexedAccess`, `verbatimModuleSyntax`). Use `@yorozu/*` path
-  aliases for cross-package imports.
+  `noUncheckedIndexedAccess`, `verbatimModuleSyntax`). Import across packages
+  by their `@yorozu/*` package names.
 - **Testing runtime split:** `apps/api` tests run on the Workers runtime via
   `@cloudflare/vitest-plugin` (D1 migrations applied in setup). Frontend
   apps use vitest + `happy-dom`.
@@ -99,7 +99,5 @@ improvements is the `/ui-sweep` skill, which drives `inspector` in explore mode.
   Each app owns its domain components; move to `@yorozu/ui` only when 3+ apps
   need identical logic. See `§ Component Ownership Policy` in `apps/order/DESIGN.md`,
   `apps/admin/DESIGN.md` and `apps/shift/DESIGN.md`.
-- `docs/` — developer docs. `roadmap.md` is the phased product plan; `specs/` holds product
-  specs (shipped behavior + known limitations); `reference/` holds technical
-  specs (auth, deploy, monorepo ops); `proposals/` holds
-  in-progress/under-discussion designs. See `docs/README.md`.
+- `docs/` — developer docs, decided and current only (history is in git). See
+  `docs/README.md` for the layout.
