@@ -32,7 +32,7 @@ through the actual UIs instead of raw API calls.
    form, which shows its own `[DEV]` code once you request one.
 3. **Menu setup** (admin → Menu) — add at least one category-free menu
    item with a price. Optionally add a description/photo and an option
-   group to touch Phase 3 behavior.
+   group to touch photo and option behavior.
 4. **Seat/QR issuance** (admin → Seats) — create a seat and open its QR
    / order link.
 5. **Customer order** (`localhost:5174`, using the seat link from step 4)
@@ -56,7 +56,8 @@ product, which registration does not grant:
    not `shift`, so insert one row by hand:
 
    ```sh
-   pnpm --filter @yorozu/api exec wrangler d1 execute yorozu-app --local      --command "INSERT INTO subscriptions (id, store_id, product, plan, status, created_at)
+   pnpm --filter @yorozu/api exec wrangler d1 execute yorozu-app --local \
+     --command "INSERT INTO subscriptions (id, store_id, product, plan, status, created_at)
                 SELECT lower(hex(randomblob(16))), id, 'shift', NULL, 'active',
                        CAST(strftime('%s','now') AS INTEGER) * 1000 FROM stores;"
    ```

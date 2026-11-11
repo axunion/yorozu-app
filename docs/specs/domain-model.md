@@ -26,11 +26,11 @@ stores 1 ──── * subscriptions          (which products this store has bo
 ```
 
 - **stores** — one row per tenant. `email` is fixed at whatever address
-  created the store — historical/display only, not a login identity (see
-  **members** below; it used to double as the login id before Phase 5).
+  created the store — display only, not a login identity (see
+  **members** below).
 - **members** — one row per person who can log in to a store. `email` is
-  **UNIQUE globally** (same constraint shape stores.email used to have —
-  one email = one member, across all stores; a person can't be staff at
+  **UNIQUE globally** (one email = one member, across all stores; a person
+  can't be staff at
   two stores with the same email). `display_name` (nullable, trimmed,
   ≤ 50 chars) is what member lists, schedules and shift CSVs show, falling
   back to `email` when unset (`memberLabel`, `@yorozu/core`). `role`
@@ -87,17 +87,17 @@ stores 1 ──── * subscriptions          (which products this store has bo
   `member_id` (the dedup/rate-cap key — see below) and a denormalized
   `store_id` (avoids a join on every `requireStore`-guarded request).
   `magic_link_tokens.purpose` is `'signup' | 'login' | 'email_change' |
-  'invite'`; the nullable `new_email` column holds the pending target
-  address for `email_change` tokens only. `issueVerificationCode`'s supersede
+  'invite' | 'reactivate'`; the nullable `new_email` column holds the
+  pending target address for `email_change` tokens only. `issueVerificationCode`'s supersede
   (only one valid link per purpose) and hourly rate cap are scoped by
-  `member_id`, not `store_id` — a store can have multiple members now,
+  `member_id`, not `store_id` — a store can have multiple members,
   and unrelated members issuing tokens concurrently must not invalidate
   each other's link.
 
 - **subscriptions** — one row per `(store_id, product)`, unique on that
   pair. `product` is `'order' | 'shift'`, `status` is
-  `'active' | 'suspended'`, and `plan` is reserved and unused. Every
-  pre-existing store was grandfathered into `order`, so the order product
+  `'active' | 'suspended'`, and `plan` is reserved and unused. Signup
+  creates an `order` subscription for every store, so the order product
   needs no gate; `requireEntitlement('shift')` reads this table.
 - **positions** — a store's named roles. **Retired** (`is_active = false`),
   never deleted: `shifts.position_id` and

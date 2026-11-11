@@ -8,13 +8,13 @@ their own phone; staff manage orders, serving, and checkout from a browser.
 
 | Actor | Description | App |
 | --- | --- | --- |
-| Owner | Restaurant owner-operator. Signs up, configures the menu and seats, and is currently the only admin account. | `apps/signup`, `apps/admin` |
-| Staff | Floor/kitchen staff using the owner's logged-in session on a shared device. No individual accounts yet. | `apps/admin` |
+| Owner | Restaurant owner-operator. Signs up and configures the menu and seats. A store can have more than one owner. | `apps/signup`, `apps/admin` |
+| Staff | Floor/kitchen staff. Each has their own login (invited by an owner) with a limited role: orders and checkout, no menu, seat or account management. | `apps/admin`, `apps/shift` |
 | Customer | Diner seated at a table. Anonymous — identified only by the seat QR token. No account, no app install. | `apps/order` |
 
 Primary segment: small independent restaurants (1 location, a handful of
 staff) that want to reduce order-taking labor without POS hardware. One
-store = one tenant = one owner email.
+store = one tenant.
 
 ## Core value proposition
 
@@ -25,14 +25,14 @@ store = one tenant = one owner email.
 3. **Single source of truth** — orders, serving status, and payments live
    in one place with per-store isolation.
 
-## Current scope (Phase 1 — shipped)
+## Core business cycle
 
 The full business cycle works end to end, verified by
 `apps/api/src/routes/business-cycle.test.ts`:
 
 Store registration → emailed passcode verification → menu setup →
 seat/QR issuance → customer orders → admin order board (5s polling) →
-serve items → customer requests payment → cash checkout → paid.
+serve items → customer requests payment → checkout (cash, or card/QR recorded) → paid.
 
 ## Out of scope (deliberate non-goals for now)
 
@@ -46,8 +46,8 @@ serve items → customer requests payment → cash checkout → paid.
 - **Takeout / delivery** — dine-in only.
 
 These are non-goals to keep the product simple; revisit only with real
-user demand. Everything else that is missing is *planned* work — see
-[roadmap.md](../roadmap.md).
+user demand. Other gaps are listed under *Known limitations* in each
+feature spec; prioritized work is in [roadmap.md](../roadmap.md).
 
 ## A second product: shift management
 
@@ -73,6 +73,6 @@ tiers are undecided.
 ## Related documents
 
 - [Domain model](./domain-model.md) — entities, state machines, invariants
-- [Feature specs](./features/) — per-feature behavior, current and planned
-- [Roadmap](../roadmap.md) — phased plan toward a production-ready product
+- [Feature specs](./features/) — per-feature behavior and known limitations
+- [Roadmap](../roadmap.md) — backlog and engineering track
 - [Auth design](../reference/auth.md) — technical auth architecture

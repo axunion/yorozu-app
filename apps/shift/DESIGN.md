@@ -1,8 +1,8 @@
 # apps/shift — Design
 
-Design language for the shift-management SPA. Same 10-section shape as
+Design language for the shift-management SPA. Same section shape as
 [apps/admin/DESIGN.md](../admin/DESIGN.md) and
-[apps/order/DESIGN.md](../order/DESIGN.md).
+[apps/order/DESIGN.md](../order/DESIGN.md), plus a Screens section.
 
 Tokens live in `src/styles/shift-tokens.css`, imported **only** from
 `src/main.tsx`. Everything not overridden there comes from
@@ -66,8 +66,8 @@ Inherited from the base scale. Two rules specific to this app:
 ## 4. Component Stylings
 
 - **Choice buttons** (未定 / 勤務可 / 休み) — a `fieldset` of `aria-pressed`
-  buttons, not a radiogroup: the same decision admin's CheckoutPanel reached,
-  because a real ARIA radiogroup needs roving tabindex that adds nothing here.
+  buttons, not a radiogroup: a real ARIA radiogroup needs roving tabindex that
+  adds nothing here.
   The cost is that every button is its own tab stop, so a keyboard user pays
   three stops per day rather than one — acceptable at three choices, and the
   reason not to grow the group. Selected state is a border and background
@@ -75,8 +75,7 @@ Inherited from the base scale. Two rules specific to this app:
 - **Time inputs** — native `<input type="time">`, min 44px tall. The platform
   picker beats anything hand-rolled on a phone.
 - **Dropdowns** — native `<select>`, the same exception and for the same
-  reason: a manager assigns shifts from a phone in the back of house, where
-  the OS wheel picker beats a custom listbox. This is the only app in the
+  reason: on a phone the OS wheel picker beats a custom listbox. This is the only app in the
   monorepo that does not use `@yorozu/ui`'s Kobalte `Select`; use `Select`
   for anything that needs styling, grouping or a placeholder beyond what a
   native option list gives.
@@ -103,8 +102,8 @@ Inherited from the base scale. Two rules specific to this app:
 ## 6. Depth & Elevation
 
 Flat. The sticky header sits on the primary colour and needs no shadow to read
-as a layer; cards use a border rather than elevation. The only shadow in the
-app is whatever `@yorozu/ui`'s Card ships with.
+as a layer. The only shadow in the app is the one `@yorozu/ui`'s Card ships
+with; rows are separated by borders, not by more cards.
 
 ## 7. Do's and Don'ts
 
@@ -135,12 +134,6 @@ instead: day and shift rows are `flex-wrap` containers, so as width shrinks the
 choice buttons and time inputs drop under the date on their own, and content is
 capped by `--container-content` (60rem) and centred so it never runs
 edge-to-edge on a wide monitor.
-
-| Width | Behaviour |
-|---|---|
-| < 480px | Rows wrap: choices and times sit under the date |
-| 480–900px | Rows fit on one line: date, choices, times |
-| > 900px | Content capped at `--container-content`, centred |
 
 The staff screens are phone-first: that is where availability actually gets
 entered. The manager's grid is laptop-first, scrolls horizontally inside its own
@@ -173,15 +166,8 @@ semantics, and merging them would make `@yorozu/ui` a component library, which
 it deliberately is not.
 
 Token overrides belong in `src/styles/shift-tokens.css`, imported only from
-`src/main.tsx`:
-
-```css
-/* apps/shift/src/styles/shift-tokens.css
-   Import ONLY from apps/shift/src/main.tsx — never from shared packages. */
-:root {
-  --color-primary: #4338ca;
-}
-```
+`src/main.tsx`; that file is the canonical token list. The shared policy is in
+[apps/admin/DESIGN.md § 10](../admin/DESIGN.md#10-component-ownership-policy).
 
 ## 11. Screens
 

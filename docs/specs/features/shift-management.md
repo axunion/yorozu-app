@@ -13,9 +13,8 @@ what to offer.
 
 `subscriptions` records which products a store has bought:
 `(store_id, product, plan, status)`, unique on `(store_id, product)`.
-Registration writes the `order` subscription, and every store that existed
-before the table was grandfathered into it, so the order product needs no
-gate and carries no extra read per request.
+Registration writes the `order` subscription for every store, so the order
+product needs no gate and carries no extra read per request.
 
 `requireEntitlement(product)` returns **403 `FORBIDDEN`** on a miss — not
 404. The store, the session and the route all exist; this is the same
@@ -181,11 +180,10 @@ The shift SPA sends `app: "shift"` when verifying its passcode, which the
 API maps to `SHIFT_ORIGIN` from its own env and returns as `redirect_to`, so
 a verified login lands back in this SPA rather than in admin. See [authentication](./authentication.md).
 
-## Not in v1
+## Known limitations
 
 - **Post-publish changes** — absence reporting, staff-to-staff swaps with
-  manager approval, and the open-shift board. These need two more state
-  machines and a notification channel.
+  manager approval, and the open-shift board.
 - **Submission reminders.** The non-submitter list is what v1 offers
   instead; sending mail would mean a second outbound path beyond passcodes.
 - **Standing per-member availability rules.** "Copy the previous period"

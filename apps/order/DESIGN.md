@@ -5,8 +5,8 @@
 > reference when generating or implementing UI — both for AI agents and human
 > developers.
 >
-> **Scope:** `apps/order` only. For `apps/admin` see `apps/admin/DESIGN.md`.
-> Design specifications for `apps/signup` are out of scope. For component
+> **Scope:** `apps/order` only. See `apps/admin/DESIGN.md` and
+> `apps/shift/DESIGN.md` for the others (`apps/signup` has no design doc). For component
 > ownership rules see [§10 Component Ownership Policy](#10-component-ownership-policy).
 
 ---
@@ -30,8 +30,9 @@
 
 ## 2. Color Palette & Roles
 
-> **Implementation note:** Map these hex values to the `--color-*` CSS custom
-> properties in `packages/ui/src/styles/tokens.css`. The hex values here are
+> **Implementation note:** These hex values are implemented as the `--color-*`
+> CSS custom properties in `apps/order/src/styles/order-tokens.css`, which
+> overrides the defaults in `packages/ui/src/styles/tokens.css`. The hex values here are
 > canonical; the CSS variables are the implementation vehicle.
 
 ### Primary — Terracotta
@@ -166,9 +167,8 @@ Neither `palt` nor `kern` are used. No manual kerning applied.
 > **Implementation rule:** Hex values in this section are canonical design
 > references for human readability. When writing actual CSS, always use CSS
 > custom properties (`var(--color-*)`, `var(--space-*)`, `var(--radius-*)`,
-> etc.) — never hardcode hex or px directly. This is required for the Phase 3
-> store-theme override mechanism (`tokens.css` comment, lines 6–8) to work
-> correctly. The §2 implementation note gives the authoritative mapping
+> etc.) — never hardcode hex or px directly, so every value changes in one place
+> (`tokens.css`). The §2 implementation note gives the authoritative mapping
 > instruction.
 
 ### Buttons
@@ -595,26 +595,13 @@ Category chip (inactive): background #FFFFFF / border 1px solid #E7DED4 / radius
 
 ### Policy
 
-**`apps/order` and `apps/admin` each own their UI components independently.**
-The two apps serve different users (customers vs. store staff) and have distinct
-design requirements. Sharing components between them risks constraining either
-app's design flexibility.
-
-### Role of `@yorozu/ui`
-
-`packages/ui` (`@yorozu/ui`) provides **design tokens and minimal primitives
-only** — it is not a shared component library.
-
-**What belongs in `@yorozu/ui`:**
-- Design tokens (CSS custom properties in `packages/ui/src/styles/tokens.css`)
-- Truly generic primitives that every app can reuse unchanged (e.g. `Button`,
-  `Field`, `Select` — kept intentionally generic with no app-specific variants)
-
-**What does not belong in `@yorozu/ui`:**
-- Components that embed app-specific layout or domain logic (e.g. `MenuList`,
-  `OrderSummary`, `OrderBoard`)
-- App-specific visual decisions (e.g. the order app header color, the admin
-  dashboard layout)
+**`apps/order` owns its UI components independently** of `apps/admin` and
+`apps/shift`: the customer-facing design has its own requirements, and sharing
+components would constrain either side. The policy, and what does and does not
+belong in `@yorozu/ui`, are defined once in
+[apps/admin/DESIGN.md § 10](../admin/DESIGN.md#10-component-ownership-policy);
+it applies here unchanged. Order-specific components (e.g. `MenuList`,
+`OrderSummary`) and visual decisions (e.g. the header colour) stay in this app.
 
 ### Implementation guidelines
 
@@ -623,7 +610,5 @@ only** — it is not a shared component library.
   near-identical logic and structure.
 - When promoting, keep the API generic and lean on design tokens rather than
   hardcoded values.
-- Existing `@yorozu/ui` primitives (`Button`, `Card`, `Field`, `Select`,
-  `ConfirmDialog`, `ErrorAlert`) remain as general-purpose building blocks. If
-  the apps/order design spec diverges from a primitive's defaults, wrap it
-  locally rather than modifying the primitive.
+- If the apps/order design spec diverges from an `@yorozu/ui` primitive's
+  defaults, wrap it locally rather than modifying the primitive.

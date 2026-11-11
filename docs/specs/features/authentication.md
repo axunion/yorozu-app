@@ -28,7 +28,7 @@ behavior.
 3. Duplicate email → 400 with an explicit "already registered" message
    (checked against both `stores.email` and `members.email` — either can
    independently already hold the address). Failure to issue the token
-   compensates by deleting the store + member rows so the owner can retry.
+   compensates by deleting the store, member and subscription rows so the owner can retry.
 4. Email delivery failure leaves the store `pending`; the owner recovers
    via the login form (which resends the signup link).
 5. The passcode screen offers 「メールアドレスを修正する」 back to the
@@ -39,7 +39,7 @@ behavior.
 ### Login (`POST /api/auth/login`, form hosted in `apps/admin`)
 
 - Resolves by **`members.email`**, not `stores.email` — `stores.email` is
-  fixed at whatever address created the store and is no longer a login
+  fixed at whatever address created the store and is not a login
   identity (see "Store settings" below).
 - Always returns 200 with an identical body regardless of whether the
   email exists (anti-enumeration). Email delivery is deferred via
@@ -123,8 +123,9 @@ behavior.
   credential. 400 if the email already belongs to any member (global
   uniqueness — the caller is authenticated/owner here, so anti-enumeration
   doesn't apply). Rate-limited to `MAGIC_LINK_HOURLY_CAP` invites per
-  **store** per rolling hour (the per-member cap can't apply here — each
-  invite is a brand-new member with no prior history).
+  **store** per rolling hour, rejected with 400 `VALIDATION_ERROR` (not 429);
+  the per-member cap can't apply here — each invite is a brand-new member with
+  no prior history.
 - `GET /api/staff` — lists the calling store's members (`id, email,
   display_name, role, status, created_at, activated_at`).
 - `PATCH /api/staff/:id` — sets a member's `display_name` (trimmed,
@@ -146,10 +147,8 @@ behavior.
 
 ### Account lifecycle (`apps/admin` SettingsPage, owner-only "danger zone")
 
-Owner self-service only — this project has no billing integration and no
-platform-admin auth (roadmap Phase 5 item 5), so there is no external
-actor to trigger suspension. Billing-triggered suspension is deferred
-until a real billing system exists to trigger it.
+Owner self-service only — there is no billing integration and no
+platform-admin auth, so no external actor can trigger suspension.
 
 - **Suspend** — `POST /api/stores/me/suspend` (`requireStore`,
   `requireOwner`) sets `stores.status = 'suspended'` and, in the same
@@ -169,9 +168,7 @@ until a real billing system exists to trigger it.
   current name (400 otherwise) — a server-side safeguard independent of
   whatever client-side confirmation UI exists. On match: reads every
   store-scoped row, then hard-deletes all of it plus the `stores` row
-  itself in one `db.batch` (no soft-delete/retention — no accounting/audit
-  requirement exists for this project; revisit if a real pilot's
-  accounting needs surface one). Response is `200 { data: { export: {...} } }`
+  itself in one `db.batch` (no soft-delete or retention). Response is `200 { data: { export: {...} } }`
   — the pre-deletion data **is** the response body (one key per table,
   `sessions`/`magic_link_tokens`/`seats.qr_token` excluded as secrets, not
   business data — `qr_token` is a bearer credential for the customer order
@@ -180,13 +177,9 @@ until a real billing system exists to trigger it.
   action.
 - **What the export does not carry:** `subscriptions` (entitlement
   records, not the store's own data) and the shift-management tables.
-  Both are deleted with everything else. Leaving schedules out is a
-  deliberate v1 call rather than an oversight: a schedule is already
-  exportable in a more useful shape from the builder's per-period CSV,
-  and the delete path is a single ~25-statement batch whose response is
-  the export body, so adding nine more tables to it should be driven by
-  somebody actually asking. Revisit if a pilot store asks to take its
-  scheduling history with it.
+  Both are deleted with everything else. A schedule is exportable in a more
+  useful shape from the builder's per-period CSV, and the delete path is a
+  single ~25-statement batch whose response is the export body.
 - Frontend: "一時停止" (suspend, `ConfirmDialog`) redirects to `/login`
   afterward (the session is about to stop working anyway — same reasoning
   as the logout-all button). "アカウントを削除" (delete) requires typing the
@@ -224,79 +217,51 @@ until a real billing system exists to trigger it.
   `{ code }`) applies the pending address to `members.email`. It is
   session-authenticated rather than keyed on a submitted email because the
   code went to an address not yet in `members.email` — there is nothing to
-  resolve the member by. Requiring both a live session and the code is
-  strictly stronger than the link it replaces, which proved only the
-  latter. **No new session is issued** — the caller already has one, so the
+  resolve the member by. Requiring both a live session and the code proves
+  the account and the new address. **No new session is issued** — the caller already has one, so the
   change lands on the settings screen rather than bouncing them through a
   redirect. Being authenticated, errors are specific: a UNIQUE-constraint
   race (the address claimed by another member after the code was issued)
   returns `VALIDATION_ERROR` with the same wording as the up-front
   conflict check, not a generic invalid-code response.
-- `stores.email` itself has no edit path — it stays fixed at whatever
-  address created the store, now purely historical/display. If a "store
-  contact email" distinct from any member's login email is ever needed,
-  that's a new field, not `stores.email` reused.
+- `stores.email` itself has no edit path (see [domain-model.md](../domain-model.md)).
 - `magic_link_tokens.purpose` includes `'email_change'` (and `'invite'`,
   above); a nullable `new_email` column holds the pending target address
   for `email_change` tokens only (see [domain-model.md](../domain-model.md)).
 
 ### Passcode caps (rate limiting)
 
-- `issueVerificationCode` (`apps/api/src/auth.ts`) refuses to issue a code —
-  returning `null` instead — once a **member** has reached
-  `MAGIC_LINK_HOURLY_CAP` (5, `@yorozu/core` `domain/auth.ts`) issuances
-  in the last rolling hour, across signup-resend, login, email-change,
-  invite, and reactivate combined. Scoped per member (not per store): a
-  store can
-  have multiple members now, and two members issuing unrelated tokens
-  (concurrent logins, or two simultaneous staff invites) must not
-  invalidate each other's link. Callers (`POST /api/auth/login`,
-  `POST /api/stores/me/email-change`) skip sending on `null` but return
-  the exact same response as success — the anti-enumeration contract
-  must not change shape when a member is rate-limited.
-  `POST /api/stores` (initial signup) treats `null` as an issuance
-  failure (compensating store+member row delete, 500) since a brand-new
-  `member_id` can never realistically hit the cap. `POST /api/staff`
-  (invite) has its own separate store-scoped cap — see "Staff management"
-  above.
-- Superseding the previous unused token for a member+purpose (so only
-  one link is valid at a time) is done via `UPDATE ... SET used_at =
-  now()`, not `DELETE` — the row must survive for the cap's count
-  query to see it. `verify` already rejects any token with `used_at`
-  set, so this changes nothing about which tokens are accepted.
-- Complementary per-IP flood protection is Cloudflare WAF config, not
-  Worker code — see
+Mechanism and rationale are in [reference/auth.md](../../reference/auth.md#rate-limiting--two-independent-axes);
+what callers can observe:
+
+- A **member** gets at most `MAGIC_LINK_HOURLY_CAP` (5) passcodes per rolling
+  hour across signup-resend, login, email-change, invite and reactivate.
+  Past the cap, `POST /api/auth/login` and `POST /api/stores/me/email-change`
+  send nothing but return exactly the same response as success — the
+  anti-enumeration contract must not change shape. Initial signup treats a
+  refusal as an issuance failure (the compensating delete above, 500), since a
+  brand-new member cannot realistically hit the cap.
+- Invites have their own per-**store** cap (see "Staff management"), and
+  email-change attempts their own per-member cap (see "Store settings").
+- Verification allows `OTP_MAX_ATTEMPTS` (5) wrong guesses per live code.
+- Per-IP flood protection is Cloudflare WAF config, not Worker code — see
   [reference/deploy.md](../../reference/deploy.md).
-- Known gaps (both accepted trade-offs, not oversights): concurrent
-  requests can each pass the count check before any of their inserts
-  commit, so a client firing many requests in parallel can exceed the
-  cap (the original design explicitly accepts this — "an attacker
-  squeezing 6 instead of 5 emails changes nothing" — but unbounded
-  concurrency was not separately modeled); and the extra DB
-  read/write on the "issued" path versus the single read on the
-  "rate-limited" or "not-found" paths is a residual timing side
-  channel that a sufficiently patient attacker could use to infer
-  when a target has been rate-limited. Both are candidates for
-  hardening if abuse is observed in practice.
 
 ### Dev conveniences
 
-When `ENVIRONMENT === "development"` (explicit opt-in, never inferred),
-signup/login/email-change/invite responses include the passcode as `code`
-so local dev works without email delivery. The invite response also carries
-`invite_url` — the plain admin login page the invitee is pointed at, which
-holds no credential of its own.
+With `ENVIRONMENT === "development"` the signup, login, email-change and invite
+responses include the passcode as `code` (see
+[reference/auth.md](../../reference/auth.md#local-dev-skipping-email-delivery)).
+The invite response also carries `invite_url` — the plain admin login page the
+invitee is pointed at, which holds no credential of its own.
 
-## Known limitations (→ roadmap)
+## Known limitations
 
-- **Passcodes are easier to deny than links were** — anyone who knows a
+- **A third party can deny a member's login** — anyone who knows a
   member's address can burn their live code with 5 wrong guesses, and
   repeating that against re-sends reaches the hourly issuance cap, denying
-  that member login for roughly an hour. A Magic Link had no equivalent
-  surface: its token could not be guessed at, so a third party could not
-  touch it. Accepted because it is targeted harassment only and self-heals
-  within the hour, but it is a real regression against the previous design,
-  not a neutral swap.
+  that member login for roughly an hour. Accepted because it is targeted
+  harassment only and self-heals within the hour.
 - **A live passcode is recoverable from the database plus the pepper** —
   six digits is a 10⁶ space, so the keyed HMAC is what makes a D1 read alone
   insufficient. Anyone holding both the data and `OTP_PEPPER` can brute-force
@@ -305,23 +270,19 @@ holds no credential of its own.
   specific to passcodes.
 - **No notification to the old email address on email change** — a
   hijacked session could silently redirect future login links to an
-  attacker's inbox with no signal to the legitimate member. Deliberate
-  v1 scope decision (proof of control of the *new* address is
-  required; the old address is not). Hardening follow-up, tracked
-  here — no roadmap phase assigned yet.
+  attacker's inbox with no signal to the legitimate member. Proof of control of the *new*
+  address is required; the old address is not.
 - **No billing-triggered suspension** — only owner self-service pause
   exists; there is no billing system or platform-admin actor to suspend a
-  store externally. Revisit if/when a real billing integration exists.
+  store externally.
 - **Account deletion has no recovery path** — hard delete, no
   soft-delete/tombstone window, no notice to co-owners/staff before a
   single owner deletes the store. The response's JSON export is the only
-  copy of the data once deleted. Acceptable for the current pre-launch
-  scope (no real merchant data exists yet); revisit before a real pilot
-  if this needs a grace period or co-owner confirmation.
+  copy of the data once deleted.
 - **Delete reads and deletes are not one atomic transaction** — the
   pre-delete export reads run before the destructive `db.batch`, not
   inside it. A row created for the store in that narrow window (e.g. a
   customer placing an order via `qr_token` at the exact moment of
   deletion) would be deleted without ever appearing in the export.
-  Accepted trade-off given D1's batch API doesn't support reading
-  batch-internal state to build a response.
+  D1's batch API doesn't support reading batch-internal state to build a
+  response.

@@ -41,14 +41,15 @@ Passcodes cannot rely on that — six digits *is* brute-forceable — so
 ### Attributes
 
 ```
-Set-Cookie: session_token=<value>; HttpOnly; Secure; SameSite=None; Domain=.example.com; Max-Age=2592000
+Set-Cookie: session_token=<value>; HttpOnly; SameSite=None; Path=/; Max-Age=2592000; Secure; Domain=.example.com
 ```
 
 | Attribute | Value | Why |
 |---|---|---|
 | `HttpOnly` | — | Prevents JavaScript from reading the cookie |
-| `Secure` | — | Required for `SameSite=None` to work |
+| `Secure` | — | Required for `SameSite=None` to work. Set whenever the request is HTTPS or `ENVIRONMENT` is not `production` (`isSecureRequest`), so always in production |
 | `SameSite=None` | — | Allows the cookie to be sent on cross-origin requests |
+| `Path=/` | — | Sent on every API path |
 | `Domain=.example.com` | env var `COOKIE_DOMAIN` | Shared across all `*.example.com` subdomains |
 | `Max-Age=2592000` | 30 days | Sliding — see below, not a fixed clock from login |
 
@@ -109,8 +110,8 @@ fetch(url, { credentials: "include", ...init })
 ## Passcode flow
 
 Every purpose — signup, login, staff invite, email change and reactivation —
-is verified by a 6-digit code emailed to the address being proved. There is no
-`GET /api/auth/verify`; nothing in an email is a credential any more.
+is verified by a 6-digit code emailed to the address being proved. Verification is
+`POST`-only: nothing in an email is a credential.
 
 ```
 [Signup SPA]  POST /api/stores { name, email }
@@ -122,13 +123,13 @@ is verified by a 6-digit code emailed to the address being proved. There is no
 [Signup SPA]  window.location.href = redirect_to
 
 [Admin SPA]   mounts, AdminGuard calls GET /api/auth/me
-                  └─▶ API returns { id, name, email, role } — session valid
+                  └─▶ API returns { id, name, email, display_name, role } — session valid
 ```
 
 Login is the same from `POST /api/auth/login` onward. A store's login identity
-is a **member** row, not `stores.email` — that column is fixed at whatever
-address created the store and is historical/display only. A store's first
-member is always `role: 'owner'`; `POST /api/staff` (owner-only) invites more.
+is a **member** row, not `stores.email` (see
+[domain-model](../specs/domain-model.md)); roles and invites are in
+[authentication](../specs/features/authentication.md).
 
 ### Why codes rather than links
 
@@ -141,10 +142,9 @@ member is always `role: 'owner'`; `POST /api/staff` (owner-only) invites more.
    Links, Proofpoint URL Defense) follows links before the recipient does,
    consuming a single-use credential.
 
-It also closed a structural gap: `GET /verify` changed state (activating
-stores, applying email changes, minting sessions) over a method the CSRF guard
-in `apps/api/src/app.ts` does not cover. Verification is a `POST` now, so it
-sits behind that guard like every other mutation.
+Verification is a `POST`, so it sits behind the CSRF guard in
+`apps/api/src/app.ts` like every other mutation; a state-changing `GET` would
+not.
 
 ### Passcode storage at rest
 
@@ -175,24 +175,22 @@ is identified (below).
 
 `email_change` cannot use the first route: its code goes to the **new**
 address, which is not yet in `members.email`, so there is nothing to resolve
-the member by. Requiring a live session *and* the code is strictly stronger
-than the link it replaces, which proved only the latter. Being authenticated,
-it can also return specific errors, and it issues no new session — the change
-lands on the settings screen instead of bouncing the caller through a redirect.
+the member by. It is authenticated by the caller's session instead; the
+behavior is in
+[authentication](../specs/features/authentication.md#store-settings--rename--email-change-appsadmin-settingspage).
 
-`email_change` rows are excluded from the unauthenticated route's lookup *and*
-its attempt counter, so a pending email change cannot be burned by failed
-login guesses.
+Codes mailed to a different address (`new_email` set) are excluded from the
+unauthenticated route's lookup *and* its attempt counter, so a pending email
+change cannot be burned by failed login guesses.
 
 ### Where the browser goes next
 
 `POST /verify-code` returns `redirect_to` rather than issuing a 302. The value
-comes from `landingOrigin` — the same fixed env-backed map the old redirect
-used, so it can never become an open redirect. It is returned rather than
+comes from `landingOrigin` — a fixed env-backed map, so it can never become
+an open redirect. It is returned rather than
 followed because the signup SPA has to cross to the admin origin and does not
-carry that URL in its own env; `app` (`"admin" | "shift"`) selects it, and
-moved from `LoginInput` to `VerifyCodeInput` when the mail stopped carrying a
-URL to aim.
+carry that URL in its own env; `app` (`"admin" | "shift"`, a field of
+`VerifyCodeInput`) selects it.
 
 ### Invite is the one email with a link
 
@@ -215,9 +213,8 @@ UPDATE, not a DELETE, so the row survives for that count. `POST /api/staff`
 additionally enforces a **store**-scoped cap, since each invite creates a
 brand-new member with no history for the per-member cap to see.
 
-**Verification (new with passcodes).** `OTP_MAX_ATTEMPTS` (5) failed attempts
-consume a member's live codes. A 122-bit link needed no such limit; six digits
-does.
+**Verification.** `OTP_MAX_ATTEMPTS` (5) failed attempts consume a member's
+live codes; six digits need that limit.
 
 Both routes **claim the attempt before comparing anything**, and only compare
 the rows the claim returned:
@@ -247,17 +244,17 @@ Complementary per-IP WAF rate limiting is deploy config, not Worker code — see
 
 ### Accepted trade-offs
 
-- **Availability is lower than with links.** Anyone who knows a victim's
-  address can burn their live code with 5 wrong guesses, and repeating that
-  against re-sends reaches the hourly issuance cap — roughly an hour of denied
-  login. A link had no such surface, since its token could not be guessed at.
-  Targeted harassment only, and self-healing, but real.
-- **A passcode is recoverable from a live database plus the pepper.** The
-  pepper is what keeps a database read alone insufficient; anyone holding both
-  can brute-force a 10⁶ space. TTL is 10 minutes, codes are single-use, and
-  attempts are capped, which is what bounds the exposure.
-- **Verification is a new surface keyed by email.** `POST /verify-code` takes
-  an arbitrary address, which the old flow never did. A missing member spends
+The user-facing trade-offs (a third party can deny a member's login; a
+passcode is recoverable from the database plus the pepper) are listed under
+[Known limitations](../specs/features/authentication.md#known-limitations).
+Implementation-level ones:
+
+- **The issuance cap is not atomic.** Concurrent requests can each pass the
+  count check before any insert commits, so a parallel burst can exceed 5
+  emails; the extra D1 write on the "issued" path versus the single read on the
+  "rate-limited" path is also a residual timing side channel.
+- **Verification is keyed by email.** `POST /verify-code` takes an arbitrary
+  address. A missing member spends
   one dummy `hashOtpCode` so the branch is not trivially cheaper, but that
   does **not** equalize the two: the registered path also makes a D1 write,
   which dominates an HMAC by orders of magnitude, so response time still
@@ -299,10 +296,10 @@ It calls `GET /api/auth/me` on every protected route mount:
 
 - **401** → navigate to `/login` (replace history entry so Back does not loop)
 - **200** → render children with `StoreContext.Provider` providing
-  `{ id, name, email, role }` — `email` is the calling member's own login
+  `{ id, name, email, display_name, role }` — `email` is the calling member's own login
   email (see Passcode flow above), `role` is `'owner' | 'staff'`
 
-`GET /api/auth/me` is a lightweight session check endpoint added for this purpose.
+`GET /api/auth/me` is a lightweight session check.
 
 Child pages access the store info via `useStoreInfo()` (wraps `useContext(StoreContext)`).
 `role` gates the Staff page's nav link (`DashboardPage.tsx`) client-side;
@@ -317,7 +314,7 @@ navigate("/login");
 ```
 
 `navigate("/login")` is used instead of relying on the server's redirect response. A
-cross-origin 302 redirect to `SIGNUP_ORIGIN` would be followed by the browser transparently,
+cross-origin 302 redirect to the admin origin would be followed by the browser transparently,
 but that behavior is inconsistent across CORS preflight caching — using client-side navigation
 is more predictable.
 
@@ -346,8 +343,8 @@ POST /api/order/<qr_token>/items    — add items
 PATCH /api/order/<qr_token>/request-payment
 ```
 
-The `requireSeat` middleware in `apps/api` looks up the seat by `qr_token` and stores it on
-the Hono context for downstream handlers.
+The `requireSeat` middleware in `apps/api` looks up the active seat by `qr_token` (a retired
+seat gets 404) and stores it on the Hono context for downstream handlers.
 
 **`credentials: "include"` is still sent** (from `apiFetch`), but the API ignores the cookie
 for `/api/order/*` routes — they use `requireSeat` not `requireStore`.
@@ -387,7 +384,7 @@ for local dev when a proxy forwards `/api/*` to the Wrangler dev server.
 
 `SameSite=None; Secure` requires HTTPS. For local development:
 
-- Run all four servers on `localhost` with different ports. `localhost` is treated as a secure
+- Run all five servers (four SPAs and the API Worker) on `localhost` with different ports. `localhost` is treated as a secure
   context by browsers, so cookies work without TLS.
 - The cookie `Domain` attribute (`Domain=.example.com`) does **not** apply to `localhost` —
   the browser stores the cookie per `localhost` origin instead. This means cookie sharing

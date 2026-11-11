@@ -137,10 +137,8 @@ status color (open vs. `payment_requested`) — see
 `apps/admin/DESIGN.md` § Order Card (`OrderBoard`) for the deliberate
 exception this takes to the color-role rule.
 
-## Known limitations (→ roadmap)
+## Known limitations
 
 - **Polling, not push** — 5s latency and wasted requests; fine at
-  current scale. Durable Objects/SSE is a deliberate later optimization.
-  (Phase 5)
+  current scale.
 - **No kitchen/floor split or KDS mode** — one board for everything.
-  (Backlog)

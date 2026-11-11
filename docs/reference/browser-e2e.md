@@ -110,7 +110,7 @@ assertion from the component's own `onMount` load and prove nothing about
 polling. The "still empty" assertions before each hand-off are what keep it
 honest.
 
-Between them the specs cover all five polling channels in the product, each
+Between them the specs cover five of the product's six polling channels, each
 verified by mutation (breaking the interval makes exactly one step fail):
 
 | Channel | Interval | Asserted by |
@@ -120,6 +120,7 @@ verified by mutation (breaking the interval makes exactly one step fail):
 | `CheckoutPanel.loadPending` | 5s | business-cycle step 11 |
 | `OrderScreen.pollOrder` | 10s | business-cycle step 8 |
 | `OrderScreen.pollCall` | 5s | staff-call step 6 |
+| `AdminLayout.loadSummary` | 10s | not asserted by any spec |
 
 Waits use auto-retrying assertions rather than fixed sleeps. A passing run
 takes roughly a minute for all three specs.
