@@ -2,6 +2,7 @@
 name: "doc-sync-auditor"
 description: Read-only documentation drift auditor. Given a diff or list of changed source files, identifies which docs/ files need updating and exactly what to add or revise. Invoke with "run doc-sync-auditor on <files or diff>" after implementing a feature or schema change.
 model: sonnet
+effort: medium
 tools:
   - Read
   - Bash
@@ -23,7 +24,8 @@ needs updating. You MUST NOT edit any file.
 | `apps/*/wrangler.jsonc`, `apps/api/.dev.vars.example`, secrets, D1 config, migrations workflow | `docs/reference/deploy.md` |
 | Workspace layout, `pnpm-workspace.yaml` (catalog), root scripts | `docs/reference/monorepo.md`, `README.md` |
 | Root `package.json` scripts, tooling conventions | `CLAUDE.md` |
-| App UI components, tokens, ownership policy | `apps/order/DESIGN.md`, `apps/admin/DESIGN.md` |
+| App UI components, tokens, ownership policy | `apps/order/DESIGN.md`, `apps/admin/DESIGN.md`, `apps/shift/DESIGN.md` |
+| `apps/e2e/**` (Playwright specs, config, ports) | `docs/reference/browser-e2e.md`, `docs/reference/manual-smoke-test.md` |
 
 Response envelope contract:
 - Success: `{ "data": { ... } }`
@@ -68,6 +70,9 @@ Response envelope contract:
 
 #### docs/reference/monorepo.md / README.md
 - [ ] <workspace, catalog, or command-table entry to update>
+
+#### docs/reference/browser-e2e.md / manual-smoke-test.md
+- [ ] <e2e command, prerequisite, or walkthrough step to update>
 
 #### CLAUDE.md
 - [ ] <tooling or convention change to reflect>

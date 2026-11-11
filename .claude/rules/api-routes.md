@@ -34,7 +34,8 @@ paths:
 
 | Route type | Auth mechanism |
 |---|---|
-| Admin (menu, seats, orders, payments) | `session_token` HttpOnly cookie — enforced by `requireStore` middleware |
+| Admin (menu, seats, orders, payments) | `session_token` HttpOnly cookie — enforced by `requireStore` middleware; owner-only routes add `.use(requireOwner)` |
+| Shift (`/api/shift/*`) | Same cookie, plus `.use(requireEntitlement("shift"))` right after `requireStore` |
 | Customer order API | `qr_token` URL **path** parameter (`:seatToken`) — enforced by `requireSeat` middleware, applied inline per-route (not global `.use()`) |
 | Public (stores, auth) | No auth |
 

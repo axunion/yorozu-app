@@ -6,8 +6,8 @@ disable-model-invocation: true
 
 ## Tenant isolation checklist (before generating SQL)
 
-Canonical rules live in `.claude/agents/tenant-security-reviewer.md` — if the rules
-change, update that file first and keep this condensed copy in sync.
+This is the quick pass for schema changes; the full audit is
+`.claude/agents/tenant-security-reviewer.md`, which owns the tenant-isolation rules.
 
 If the schema change adds a tenant-scoped table, verify in `packages/db/src/schema.ts`:
 
