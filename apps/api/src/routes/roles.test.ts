@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Role enforcement (roadmap Phase 5 item 1): requireOwner gates
+ * Role enforcement: requireOwner gates
  * settings/menu/seat management to owner-role members; board/checkout
  * routes stay open to both roles.
  */

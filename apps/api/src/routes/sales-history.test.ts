@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Sales history & daily summary (roadmap Phase 2 item 2).
+ * Sales history & daily summary.
  * Covers GET /api/payments range filtering, validation, tenant
  * isolation, and cancelled-item handling.
  */

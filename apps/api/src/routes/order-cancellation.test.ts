@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Order cancellation & correction (roadmap Phase 2 item 1).
+ * Order cancellation & correction.
  * Covers the transition matrix, idempotency, cross-tenant isolation, and
  * paid-order guards for the four new endpoints, plus the checkout guard
  * extension in POST /api/payments.

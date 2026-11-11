@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Auth rate limiting (roadmap Phase 2 item 6, production-deploy gate):
+ * Auth rate limiting (production-deploy gate):
  * per-member hourly cap on passcode issuance, and the supersede-not-delete
  * prerequisite that makes the cap countable.
  */

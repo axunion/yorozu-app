@@ -4,8 +4,8 @@
  * Rules:
  *   - Raw hex/px/rem values belong here and ONLY here.
  *   - All other CSS files reference these via var(--...).
- *   - Phase 3 store-theme overrides --color-primary-* by setting inline
- *     styles on <html> or a wrapper element.
+ *   - A per-store theme (not built yet) would override --color-primary-* by
+ *     setting inline styles on <html> or a wrapper element.
  */
 :root {
   /* ── Typography ────────────────────────────────────────────────────────── */
@@ -26,7 +26,7 @@
   --leading-normal: 1.5;
 
   /* ── Brand — calm, official blue ──────────────────────────────────────── */
-  /* Phase 3: override these with store theme_color.                        */
+  /* A per-store theme would override these (not built yet).                */
   --color-primary: hsl(221 63% 42%);
   --color-primary-hover: hsl(221 66% 35%);
   --color-primary-active: hsl(221 70% 29%);

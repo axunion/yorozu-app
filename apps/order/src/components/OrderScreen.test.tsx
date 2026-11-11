@@ -280,7 +280,7 @@ describe("OrderScreen", () => {
     ));
     await findByText("コーヒー");
     expect(queryByRole("img")).toBeNull();
-    // Guards the proposal's "compact layout" requirement: no reserved
+    // Guards the "compact layout" requirement: no reserved
     // thumbnail space, not just no <img> tag.
     expect(container.querySelector('[class*="itemThumb"]')).toBeNull();
   });

@@ -677,7 +677,7 @@ describe("Business cycle: order cancellation (注文キャンセル・修正)", 
   });
 });
 
-describe("Business cycle: menu item photos/descriptions (Phase 3)", () => {
+describe("Business cycle: menu item photos/descriptions", () => {
   it("returns description and image_key on the customer bootstrap menu", async () => {
     const { session_token: token } = await seedStore(
       `Photos Descriptions ${crypto.randomUUID()}`,

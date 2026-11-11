@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Whole-check discounts (roadmap Phase 4 item 3).
+ * Whole-check discounts.
  * Covers POST /api/payments' `discount_amount`/`discount_reason`:
  * bounds, the reason requirement, server-computed totals, and that
  * both are reported back via GET /api/payments.

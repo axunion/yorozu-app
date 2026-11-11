@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Menu item photos (roadmap Phase 3 item 1): R2-backed upload, serving, and
+ * Menu item photos: R2-backed upload, serving, and
  * deletion of menu item images.
  */
 import { env } from "cloudflare:workers";

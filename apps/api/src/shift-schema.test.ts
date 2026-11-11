@@ -1,10 +1,9 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Shift-domain schema invariants (roadmap "Next product", slice 2).
+ * Shift-domain schema invariants.
  *
- * The tables land before any route that writes them, so what this slice
- * delivers is the set of rows D1 refuses. These tests insert through Drizzle
- * directly — there is no endpoint yet — and assert each CHECK constraint,
+ * These tests pin the set of rows D1 refuses. They insert through Drizzle
+ * directly, bypassing the routes, and assert each CHECK constraint,
  * unique index and foreign key rejects the shape it is there to stop. Because
  * the constraints live in the applied migration, what they verify is
  * `packages/db/drizzle/0018_*.sql`, not the TypeScript in schema.ts.

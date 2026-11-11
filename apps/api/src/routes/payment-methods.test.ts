@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Cashless payment methods (roadmap Phase 4 item 1).
+ * Cashless payment methods.
  * Covers POST /api/payments' `method` field: default, valid values,
  * validation, and that it's reported back via GET /api/payments.
  */

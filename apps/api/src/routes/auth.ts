@@ -98,9 +98,8 @@ export const authRouter = new Hono<{ Bindings: Env }>()
   /**
    * POST /api/auth/verify-code
    *
-   * Verifies an emailed passcode and creates a session, replacing the browser
-   * navigation the Magic Link flow used. Handles signup / login / reactivate /
-   * invite.
+   * Verifies an emailed passcode and creates a session. Handles signup / login /
+   * reactivate / invite.
    *
    * `email_change` is deliberately out of scope: its code is sent to the *new*
    * address, which is not yet in members.email, so the member cannot be
@@ -207,8 +206,8 @@ export const authRouter = new Hono<{ Bindings: Env }>()
     );
     // The caller is told where to go rather than redirected: the signup SPA
     // has to cross to the admin origin and does not carry that URL in its own
-    // env. Resolved from the same fixed env-backed map the Magic Link redirect
-    // through, so this is not a caller-supplied destination.
+    // env. Resolved from a fixed env-backed map, so this is not a
+    // caller-supplied destination.
     return c.json({
       data: { redirect_to: landingOrigin(c.env, targetApp) },
     });
@@ -329,7 +328,7 @@ export const authRouter = new Hono<{ Bindings: Env }>()
    * Deletes the current session and clears the cookie.
    * Only the session identified by the current cookie is removed;
    * sessions on other devices remain active.
-   * Redirects to the signup SPA (which hosts the login form).
+   * Redirects to the login page of the admin or shift origin (`?app=`).
    */
   .post("/logout", async (c) => {
     const token = getCookie(c, SESSION_TOKEN_COOKIE)?.trim() ?? "";
