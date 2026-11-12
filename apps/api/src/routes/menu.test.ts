@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Menu item description field (roadmap Phase 3 item 1).
+ * Menu item description field.
  */
 import { env } from "cloudflare:workers";
 import { createDb, schema } from "@yorozu/db";

@@ -18,7 +18,8 @@ Stack: Hono API on Cloudflare Workers / Drizzle ORM + Cloudflare D1 (SolidJS SPA
 Canonical secure implementations to reference:
 - `apps/api/src/routes/seats.ts` — ownership verify then operate pattern
 - `apps/api/src/routes/payments.ts` — `store_id` in SELECT, UPDATE, and batch writes
-- `apps/api/src/middleware.ts` — `requireStore` / `requireSeat` definitions
+- `apps/api/src/middleware.ts` — `requireStore` / `requireOwner` / `requireEntitlement` /
+  `requireSeat` definitions
 - `apps/api/src/routes/order.ts` — `SeatEnv` + `requireSeat` as inline per-route middleware
 - `apps/api/src/routes/auth.ts` — session/magic-link token issuance and verification
 - `packages/db/src/schema.ts` — denormalized `store_id` on `order_items` and `payments`
@@ -31,21 +32,26 @@ following three checks.
 
 ### store_id filter on every tenant query
 Every `db.select()`, `db.update()`, `db.delete()`, `db.insert()` that touches a
-tenant-scoped table (`menu_categories`, `menu_items`, `seats`, `orders`, `order_items`,
-`payments`, `sessions`, `magic_link_tokens`) MUST include:
+tenant-scoped table (any table in `packages/db/src/schema.ts` with a `store_id` column —
+grep the schema for the current list rather than trusting a copy here) MUST include:
 `and(eq(table.id, id), eq(table.store_id, storeId))` — or equivalent.
 Flag any query that filters by `id` alone without a `store_id` check.
 
 ### Cross-tenant 404 convention
 When an `id` is not found OR belongs to another store, the response MUST be 404 (never
 403). Reason: 403 leaks existence of the resource to an attacker. Flag any
-`errorResponse("FORBIDDEN", ...)` or `c.json({}, 403)` used for ownership checks.
+`errorResponse("FORBIDDEN", ...)` or `c.json({}, 403)` used for ownership checks. A 403
+is correct only for a gate on the caller's own session — `requireOwner` (role) and
+`requireEntitlement` (subscription) — where the store, session and route all exist.
 
 ### Auth middleware coverage
 Every router that serves tenant data behind a session cookie MUST call
 `.use(requireStore)` at the router level, or `requireSeat` as inline per-route
 middleware (for `:seatToken` routes). Flag any new `new Hono<AuthEnv>()` or
-`new Hono<SeatEnv>()` chain missing middleware.
+`new Hono<SeatEnv>()` chain missing middleware. Also check the gates layered on top:
+routers under `/api/shift` need `requireEntitlement("shift")` right after
+`requireStore`, and owner-only routes (menu, seats, staff, shift configuration) need
+`requireOwner`. Flag a new route that skips the gate its siblings carry.
 
 ### New tables without store_id
 Any new table in `packages/db/src/schema.ts` that stores per-store data MUST have a

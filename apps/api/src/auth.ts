@@ -46,10 +46,9 @@ export function isSecureRequest(
  * response identical to the success case — a visible 429 would leak that the
  * address belongs to someone.
  *
- * Rows live in `magic_link_tokens`, which kept its name through the move off
- * Magic Links: renaming it would touch every query and migration for no
- * behavioural gain. The stored value is `hashOtpCode(rowId, code, pepper)`
- * rather than the `hashToken(uuid)` that table used to hold:
+ * Rows live in `magic_link_tokens`, which kept the name of the earlier
+ * link-based flow: renaming it would touch every query and migration for no
+ * behavioural gain. The stored value is `hashOtpCode(rowId, code, pepper)`:
  *
  *  - keyed on the pepper, because a 6-digit code has 10^6 possibilities and
  *    an unkeyed digest of one falls to brute force from a database read;

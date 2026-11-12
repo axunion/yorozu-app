@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Digital receipt (roadmap Phase 4 item 2).
+ * Digital receipt.
  * Covers GET /api/order/:seatToken/receipt/:orderId: content, seat
  * scoping, paid-only availability, and the tax breakdown.
  */

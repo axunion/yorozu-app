@@ -94,7 +94,7 @@ export async function sendVerificationCodeEmail(
  *
  * `loginUrl` is rendered only when supplied (invite). The others deliberately
  * carry no link at all: a URL is what mail-security scanners follow ahead of
- * the recipient, and following one is what used to consume the credential.
+ * the recipient, and following one would consume a single-use credential.
  */
 export function buildEmailContent(
   purpose: Purpose,

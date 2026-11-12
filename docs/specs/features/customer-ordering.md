@@ -1,7 +1,7 @@
 # Feature: Customer Ordering
 
 The `apps/order` SPA, reached by scanning a seat QR code
-(`/order/:qr_token`). Anonymous; the token in the URL path is the only
+(`/:seatToken` on the order SPA's own origin). Anonymous; the token in the URL path is the only
 credential (`requireSeat` middleware).
 
 ## Current behavior
@@ -65,8 +65,9 @@ lost on reload, and lines with the same item, options and note merge.
 
 ### Adding items (`POST /api/order/:seatToken/items`)
 
-- Accepts 1..n items of `{ menu_item_id, quantity 1–99, option_ids?:
-  string[], note?: string | null }`.
+- Accepts 1–50 items of `{ menu_item_id, quantity 1–99, option_ids?:
+  string[] (≤ 20), note?: string | null }`; more than 50 lines rejects the
+  whole request with a validation message (the cart is not capped client-side).
 - The first submission lazily creates the order (`status = 'open'`,
   201); later submissions append to it (200). A partial unique index
   makes concurrent first-orders safe.
@@ -161,18 +162,14 @@ QR). The check clears when staff completes payment; the next scan starts
 fresh. The seat's `qr_token` stays valid afterward, so the digital
 receipt above remains reachable.
 
-## Known limitations (→ roadmap)
+## Known limitations
 
 - **No customer self-cancel** — once an order reaches the kitchen,
   voiding an item or the whole order is staff-mediated only
-  (`docs/specs/features/order-fulfillment.md`); the cart's confirm step
+  ([order-fulfillment](./order-fulfillment.md)); the cart's confirm step
   removes most of the need for it, and a "call staff" button covers the
-  rest. (Deliberate v1 decision — revisit with pilot feedback)
-- **Cart size** — the API accepts at most 50 lines per request; a cart
-  with more distinct lines is rejected as a whole with a validation
-  message. Not capped client-side, since a table rarely comes close.
-- **Japanese only.** (Backlog)
+  rest.
+- **Japanese only.**
 - **No formal 領収書 (addressee receipt)** — the digital receipt above
   covers レシート only; a 領収書 needs the store's registered
-  name/address and an addressee line. Not built speculatively;
-  revisit only if demanded. (Backlog)
+  name/address and an addressee line.

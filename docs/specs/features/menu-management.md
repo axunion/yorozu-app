@@ -5,7 +5,9 @@ Owner-managed catalog of categories and items, edited in `apps/admin`
 
 ## Current behavior
 
-All endpoints require the `session_token` cookie (`requireStore`).
+All endpoints require the `session_token` cookie (`requireStore`) and an
+owner session (`requireOwner`; a staff session gets 403), except
+`GET /api/menu/images/:key`, which is public.
 
 ### Categories (`/api/menu/categories`)
 
@@ -73,7 +75,7 @@ duplication). See
   the group's options and its attachments to items in one `db.batch`.
 - `GET` / `POST /api/menu/option-groups/:groupId/options` — nested
   option list / create. Fields: name (1–100 chars), `price_delta` (int
-  JPY, **may be negative**, no bound — the resulting unit price must
+  JPY, **may be negative**, within ±1,000,000 — the resulting unit price must
   stay positive, enforced at order-submission time not here),
   `sort_order`.
 - `PATCH` / `DELETE /api/menu/option-groups/:groupId/options/:optionId`
@@ -84,26 +86,19 @@ duplication). See
   `[]` detaches all). `GET`/`POST`/`PATCH` item responses embed
   `option_group_ids`.
 
-## Known limitations (→ roadmap)
+## Known limitations
 
-- **No allergen / dietary info.** (Phase 3, alongside descriptions)
-- **No tax-rate metadata** — needed for 8%/10% receipt breakdown.
-  (Phase 4)
+- **No allergen / dietary info.**
 - **No menu scheduling** — no lunch/dinner menus or time-limited items.
-  (Backlog)
 - Deleting an item that sits in an *active* order is allowed; the order
-  keeps its snapshot but the kitchen may be surprised. Acceptable for
-  now; revisit with cancellation work. (Phase 2, note only)
+  keeps its snapshot but the kitchen may be surprised.
 - **No optimistic-concurrency guard on image upload** — two concurrent
   uploads to the *same* item (e.g. two admin tabs) can leak the losing
   request's R2 object (it's written before the DB update, and only the
   request that read the "old" key deletes it). Same-tenant only,
-  storage-cost impact, not a cross-tenant exposure. Revisit if it comes
-  up in practice.
+  storage-cost impact, not a cross-tenant exposure.
 - Photo content is not verified to match its declared `Content-Type`
   (no magic-byte check) — `X-Content-Type-Options: nosniff` on the
   serving endpoint is the mitigation, not a substitute for validation.
-  Acceptable v1 trade-off given uploads require an authenticated store
-  session.
-- Allergen/dietary labels and category images / multiple photos per
-  item are deferred, not designed here.
+  Uploads require an authenticated store session.
+- **No category images and no multiple photos per item.**

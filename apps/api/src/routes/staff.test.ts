@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Staff management (roadmap Phase 5 item 1): owner invites/lists/removes
+ * Staff management: owner invites/lists/removes
  * members of their own store.
  */
 import { env } from "cloudflare:workers";

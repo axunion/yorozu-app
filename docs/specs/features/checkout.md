@@ -77,8 +77,7 @@ renders both so staff can double-check the bill before settling it.
   their amounts are already excluded from `total_amount`. Line items
   carry the same selected-options/note fields as the board and
   pending-bills endpoints, but the admin SalesPage does not render them
-  yet (not required by the proposal that shipped options/notes; only
-  OrderBoard and CheckoutPanel display them).
+  yet (only OrderBoard and CheckoutPanel display them).
 - Validation (400): both params required, integers, `from < to`, range
   ≤ 62 days.
 - No pagination and no server-side aggregation — the admin SalesPage
@@ -111,7 +110,7 @@ renders both so staff can double-check the bill before settling it.
   hour-of-day (`toJstHour`, 24 buckets), rendered as simple `%`-width
   bars (no charting dependency).
 - **CSV export**: item ranking and weekday breakdown each have a
-  "CSVダウンロード" button (`downloadCsv`, `apps/admin/src/lib/download.ts`
+  CSV download button (`downloadCsv`, `apps/admin/src/lib/download.ts`
   — BOM-prefixed, CRLF rows, shared with the account-data export). The
   hourly breakdown has no export button (24 rows is easy to eyeball;
   not requested).
@@ -120,9 +119,8 @@ renders both so staff can double-check the bill before settling it.
 
 - `menu_items.tax_rate` (8 or 10, default 10) is snapshotted onto
   `order_items.tax_rate_snapshot` at order time, same rule as price —
-  not exposed in the admin UI in v1 (every item is dine-in
-  standard-rate today), it exists so receipts stay correct if takeout
-  or a rate change ever arrives.
+  not exposed in the admin UI: every item is dine-in standard-rate
+  (10), and the column exists so receipts stay correct if a rate changes.
 - `computeTaxBreakdown` (`@yorozu/core`) buckets **pre-discount** line
   totals by rate, then derives each bucket's tax portion via the
   inclusive-tax formula (`tax = total − round(total / (1 + rate/100))`)
@@ -134,19 +132,15 @@ renders both so staff can double-check the bill before settling it.
   [customer-ordering.md](./customer-ordering.md#digital-receipt-get-apiorderseattokenreceiptorderid));
   not currently surfaced on the admin side.
 
-## Known limitations (→ roadmap)
+## Known limitations
 
 - **No invoice registration number (T + 13 digits)** on receipts, so they
   are not 適格簡易請求書 under the invoice system; there is no store field
-  for it yet. Decide together with the formal 領収書 backlog item.
-- **No split billing** — one order, one payment. Deferred to backlog;
-  revisit only on real demand (see
-  `docs/proposals/payments-expansion.md`).
+  for it yet. Decide together with a formal 領収書 (see customer-ordering.md).
+- **No split billing** — one order, one payment (see `roadmap.md`).
 - **No true payment-processor integration** — card/QR are recorded, not
-  actually charged through a processor. (Backlog; evaluate only if
-  pilot restaurants don't already own a terminal.)
+  actually charged through a processor.
 - **No per-staff audit trail** — discount/void reasons are recorded,
   but `payments` has no column capturing which member applied them.
-  Sessions are per-member since Phase 5 item 1, so the acting member is
-  known at request time; it just isn't persisted onto the payment row.
-  Deferred to backlog; revisit only on real demand.
+  Sessions are per-member, so the acting member is known at request
+  time; it just isn't persisted onto the payment row.

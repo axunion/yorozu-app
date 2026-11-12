@@ -19,6 +19,7 @@ body {
   font-family: var(--font-sans);
   background: var(--color-background);
   color: var(--color-foreground);
-  line-height: var(--leading-normal);
+  font-size: var(--body-font-size, 1rem);
+  line-height: var(--body-line-height, var(--leading-normal));
   -webkit-font-smoothing: antialiased;
 }

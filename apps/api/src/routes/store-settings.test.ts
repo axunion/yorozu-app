@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Store settings (roadmap Phase 2 item 4): rename and owner email change.
+ * Store settings: rename and owner email change.
  */
 import { env } from "cloudflare:workers";
 import {

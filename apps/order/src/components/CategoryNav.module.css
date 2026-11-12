@@ -9,6 +9,9 @@
   scrollbar-width: none;
   background: var(--color-background);
   padding: var(--space-2) var(--space-4);
+}
+
+.navScrolled {
   box-shadow: var(--shadow-sm);
 }
 

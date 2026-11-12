@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Item options / modifiers (roadmap Phase 3 item 2): customer bootstrap
+ * Item options / modifiers: customer bootstrap
  * embedding, order submission validation, snapshot durability, and
  * checkout totals.
  */

@@ -397,7 +397,7 @@ export const magicLinkTokens = sqliteTable(
     used_at: integer("used_at"), // nullable
     /**
      * Failed verification attempts against this row. A 6-digit passcode is
-     * guessable in a way the Magic Link UUID it replaced was not, so issuance limits
+     * guessable (10^6 possibilities), so issuance limits
      * (MAGIC_LINK_HOURLY_CAP) are not enough on their own — this bounds online
      * guessing. Reaching OTP_MAX_ATTEMPTS consumes the row via used_at.
      */
@@ -429,7 +429,7 @@ export const seats = sqliteTable(
       .notNull()
       .references(() => stores.id),
     name: text("name").notNull(),
-    /** UUID v4 embedded in QR code URL: /order/:qr_token */
+    /** UUID v4 embedded in the QR code URL: `{ORDER_ORIGIN}/{qr_token}` */
     qr_token: text("qr_token").notNull().unique(),
     /**
      * Soft-delete flag. Retired seats (false) keep their row — and name —

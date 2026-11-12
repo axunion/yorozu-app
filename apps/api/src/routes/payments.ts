@@ -298,7 +298,8 @@ export const paymentsRouter = new Hono<AuthEnv>()
    * If either statement fails the entire batch is rolled back, preventing
    * orphaned payment records when the order UPDATE would have failed.
    *
-   * Duplicate payment detection: the UNIQUE constraint on payments.order_id
+   * Duplicate payment detection: the partial unique index
+   * `idx_one_settled_payment_per_order` (settled, non-voided payments only)
    * blocks concurrent payments for the same order. The error message is checked
    * to distinguish UNIQUE violations (409) from other DB failures (500).
    *

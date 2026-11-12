@@ -5,8 +5,8 @@
 > reference when generating or implementing UI — both for AI agents and human
 > developers.
 >
-> **Scope:** `apps/admin` only. Design specifications for `apps/order` and
-> `apps/signup` are out of scope. For component ownership rules see
+> **Scope:** `apps/admin` only. `apps/order` and `apps/shift` have their own
+> `DESIGN.md`; `apps/signup` has none. For component ownership rules see
 > [§10 Component Ownership Policy](#10-component-ownership-policy).
 
 ---
@@ -95,8 +95,7 @@
 
 | Role | Hex | Usage |
 |------|-----|-------|
-| Solid | `#DC2626` | Danger button fill |
-| Solid Hover | `#B91C1C` | Hovered danger button |
+| Solid | `#DC2626` | Danger button hover fill |
 | Foreground | `#DC2626` | Danger text / icon |
 | Background | `#FEF2F2` | Danger alert background |
 | Border | `#FCA5A5` | Danger alert border |
@@ -286,11 +285,11 @@ payments since 00:00 JST, with the count), 未提供の注文, 呼び出し and
 sections (menu, seats, orders, checkout, sales, reports, staff, settings)
 as navigation links.
 
-- Container: Surface card / `border-radius: radius-lg` / `padding: space-8` /
-  `border: 2px dashed border` — signals "interim" state (scaffold placeholder)
+- Links container: Surface card / `border-radius: radius-lg` / `padding: space-8` /
+  `border: 2px dashed border`
 - Links: 16px / 600 / `#1D4ED8` — hover: underline
 - Layout: single column, centered
-- The "スタッフ管理" (staff management) link renders only when
+- The メニュー管理, 座席管理・QR 発行 and スタッフ管理 links render only when
   `useStoreInfo().role === "owner"` (`<Show>`) — hidden for a `staff`-role
   session. Client-side only; `requireOwner` on the API is the real guard.
 
@@ -359,8 +358,8 @@ their visual state must communicate urgency instantly.
   `var(--color-muted-foreground)`
   below 10 minutes; ≥ 10 minutes escalates to `var(--color-warning-fg)`
   / 600 weight; ≥ 20 minutes to `var(--color-danger-fg)` / 700 weight.
-  Recomputed on every card re-render, so it advances with the existing
-  5s poll — no dedicated timer.
+  Recomputed on every card re-render, so it advances with the order board's
+  own 5s poll (not the tab-bar summary poll) — no dedicated timer.
   **Deliberate exception to the color-role rule in §2:** the warning/
   danger tokens here signal wait-time severity, a second escalation
   axis independent of the card's own status color (open vs.
@@ -368,8 +367,7 @@ their visual state must communicate urgency instantly.
   warning-amber background *and* a warning-amber age badge at once —
   accepted because the badge's small size, distinct position (header,
   next to the total), and text content ("N分") keep it legible as a
-  separate signal rather than a restyled status badge. Revisit if pilot
-  feedback shows this reads as confusing in practice.
+  separate signal rather than a restyled status badge.
 - Order total: `margin-left: auto` / 18px / 700 / `#0F172A` / `tabular-nums`
 - "注文をキャンセル" — `ConfirmDialog` (`danger` variant / `sm` size), placed
   last in the header. Cascades to cancel every non-cancelled item.
@@ -531,7 +529,7 @@ image on confirm — old printed codes stop working immediately); "無効化"
 (`ConfirmDialog`, `danger` — the row disappears from the active list on
 success). A "無効化した座席を表示" checkbox toggle reveals a read-only
 retired-seats list (name + a `danger`-tone "無効" Status Badge, no
-actions — no un-retire in v1). A primary 「QR コードを印刷」 link above the
+actions — a retired seat cannot be un-retired). A primary 「QR コードを印刷」 link above the
 manager opens the print sheet (`SeatPrintSheet`): a responsive grid of
 dashed-border cards on screen, three per row and 90mm tall on A4 paper.
 
@@ -832,7 +830,7 @@ Input Border:         #B8C2D0
 
 Alert (new orders):   solid #EA580C / bg #FFEDD5 / border #FB923C / fg #C2410C
 Warning (pay req):    solid #D97706 / bg #FFFBEB / border #FCD34D / fg #B45309
-Danger (delete only): solid #DC2626 / hover #B91C1C / bg #FEF2F2 / border #FCA5A5
+Danger (delete only): solid #DC2626 (hover fill) / bg #FEF2F2 / border #FCA5A5
 Success (served):     solid #16A34A / hover #15803D / bg #ECFDF3 / border #86EFAC / fg #15803D
 
 Font stack: system-ui, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
@@ -860,7 +858,7 @@ Colors (use var(--color-*) in CSS — hex shown for reference only):
   Warning (payment requested — amber, status only):
     bg #FFFBEB / border-left 4px solid #D97706 / badge fg #B45309
   Danger (delete actions — red, never status):
-    button bg #FEF2F2 / fg #DC2626 / hover fills solid #B91C1C
+    button bg #FEF2F2 / fg #DC2626 / hover fills solid #DC2626
   Success (served / available — green):
     button solid #16A34A / badge bg #ECFDF3 / fg #15803D
 
@@ -889,11 +887,13 @@ Header: background #1D4ED8 / text #FFFFFF / sticky top / full viewport width
 
 ### Policy
 
-**`apps/admin` owns its UI components independently from `apps/order`.**
-The two apps serve different users (store staff vs. customers) and have
-fundamentally different design requirements and colour systems. Sharing
-components between them risks constraining either app's design flexibility
-and would force the shared component to accommodate two incompatible palettes.
+**Each app (`apps/admin`, `apps/order`, `apps/shift`) owns its UI components
+independently.** The apps serve different users (store staff, customers,
+scheduling) and have different design requirements and colour systems.
+Sharing components between them risks constraining each app's design
+flexibility and would force the shared component to accommodate incompatible
+palettes. This section is the canonical statement of the policy; the other
+apps' `DESIGN.md` files link here.
 
 ### Role of `@yorozu/ui`
 
@@ -917,68 +917,11 @@ only** — it is not a shared component library.
 
 ### Admin palette override
 
-`apps/admin` declares a `:root` block in its own global CSS entry point
-(e.g. the file imported by `apps/admin/src/main.tsx`) that re-declares
-every token that differs from the shared base. Because `:root` matches the
-document root, this block must live exclusively in the admin app's CSS
-bundle — it must never be imported into `apps/order` or `apps/signup`.
-Placing it at `apps/admin/src/styles/admin-tokens.css` (imported only from
-`apps/admin/src/main.tsx`) is the recommended approach.
-
-The full list of tokens to override:
-
-```css
-/* apps/admin/src/styles/admin-tokens.css
-   Import ONLY from apps/admin/src/main.tsx — never from shared packages. */
-:root {
-  /* ── Primary — Professional Deep Blue ─────────────────────────────── */
-  --color-primary:            #1D4ED8;
-  --color-primary-hover:      #1E40AF;
-  --color-primary-active:     #1E3A8A;
-  --color-primary-foreground: #FFFFFF;
-  --color-primary-subtle:     #EFF4FF;
-
-  /* ── Neutrals — Cool Slate ─────────────────────────────────────────── */
-  --color-background:         #EEF1F6;
-  --color-surface-alt:        #F8FAFC;
-  --color-foreground:         #0F172A;
-  --color-muted-foreground:   #475569;
-  --color-subtle-foreground:  #94A3B8;
-  --color-border:             #CBD5E1;
-  --color-input:              #B8C2D0;
-  --color-ring:               #1D4ED8;
-
-  /* ── Alert — New Order (signature high-visibility) ─────────────────── */
-  --color-alert-solid:        #EA580C;
-  --color-alert-fg:           #C2410C;
-  --color-alert-bg:           #FFEDD5;
-  --color-alert-border:       #FB923C;
-
-  /* ── Warning — Amber (payment requested) ──────────────────────────── */
-  --color-warning-bg:         #FFFBEB;
-  --color-warning-border:     #FCD34D;
-  --color-warning-fg:         #B45309;
-
-  /* ── Danger — Red (destructive actions only) ───────────────────────── */
-  --color-danger-bg:          #FEF2F2;
-  --color-danger-border:      #FCA5A5;
-  --color-danger-fg:          #DC2626;
-
-  /* ── Success — Green (served / available / complete) ──────────────── */
-  --color-success:            #16A34A;
-  --color-success-hover:      #15803D;
-  --color-success-active:     #166534;
-  --color-success-bg:         #ECFDF3;
-  --color-success-border:     #86EFAC;
-  --color-success-fg:         #15803D;
-
-  /* ── Typography ─────────────────────────────────────────────────────── */
-  --font-bold:                700;
-}
-```
-
-These overrides are declared in `apps/admin` only and never touch
-`packages/ui/src/styles/tokens.css`.
+`apps/admin` re-declares every token that differs from the shared base in
+`apps/admin/src/styles/admin-tokens.css`, a `:root` block imported only from
+`apps/admin/src/main.tsx`. Because `:root` is global, that file must never be
+imported into another app or a shared package. It is the canonical list of the
+admin tokens; the hex values in §2 are the design reference for it.
 
 ### Implementation guidelines
 
@@ -986,7 +929,7 @@ These overrides are declared in `apps/admin` only and never touch
 - Consider promoting to `@yorozu/ui` only when three or more apps need
   near-identical logic and structure with a generic, token-driven API.
 - When promoting, keep the API generic and lean on design tokens rather than
-  hardcoded values so both apps can theme it independently.
+  hardcoded values so each app can theme it independently.
 - Existing `@yorozu/ui` primitives (`Button`, `Card`, `Field`, `Select`,
   `ConfirmDialog`, `ErrorAlert`) are general-purpose building blocks. If the
   admin design spec diverges from a primitive's defaults, wrap it locally

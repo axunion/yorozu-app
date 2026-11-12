@@ -5,7 +5,8 @@ Each seat's QR code is the customer's only credential.
 
 ## Current behavior
 
-All endpoints require the `session_token` cookie (`requireStore`).
+All endpoints require the `session_token` cookie (`requireStore`) and an
+owner session (`requireOwner`; a staff session gets 403).
 
 - `GET /api/seats` — active seats only, ordered by creation time.
   `?include_inactive=true` also returns retired seats (admin history
@@ -46,8 +47,7 @@ URL grants ordering rights for that seat. Tokens are unguessable UUIDs
 and never expire on their own (only replaced via rotation, or made
 unusable via retirement).
 
-## Known limitations (→ roadmap)
+## Known limitations
 
 - **No occupancy view** — admin cannot see "which tables are currently
-  active" at a glance outside the order board. (Backlog, likely falls
-  out of a table-status dashboard)
+  active" at a glance outside the order board.

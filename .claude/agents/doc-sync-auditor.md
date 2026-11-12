@@ -2,6 +2,7 @@
 name: "doc-sync-auditor"
 description: Read-only documentation drift auditor. Given a diff or list of changed source files, identifies which docs/ files need updating and exactly what to add or revise. Invoke with "run doc-sync-auditor on <files or diff>" after implementing a feature or schema change.
 model: sonnet
+effort: medium
 tools:
   - Read
   - Bash
@@ -18,12 +19,15 @@ needs updating. You MUST NOT edit any file.
 |---|---|
 | `apps/api/src/routes/*` endpoint behavior visible to users (endpoints, guards, status codes, flows) | `docs/specs/features/*.md` (one per feature area) |
 | `packages/db/src/schema.ts` (entities, state machines, DB-enforced invariants) | `docs/specs/domain-model.md` |
-| Shipped roadmap items | `docs/roadmap.md` (item marked ✅ Shipped, proposal folded & deleted — see `docs/README.md`) |
+| A backlog or engineering-track item that is now built | `docs/roadmap.md` (remove the item; its behavior goes in `specs/` — see `docs/README.md`) |
 | `apps/api/src/middleware.ts`, `apps/api/src/auth.ts`, `apps/api/src/routes/auth.ts`, `apps/api/src/routes/stores.ts` (auth flows, session/token lifecycle, cookies, CORS) | `docs/reference/auth.md` |
 | `apps/*/wrangler.jsonc`, `apps/api/.dev.vars.example`, secrets, D1 config, migrations workflow | `docs/reference/deploy.md` |
 | Workspace layout, `pnpm-workspace.yaml` (catalog), root scripts | `docs/reference/monorepo.md`, `README.md` |
 | Root `package.json` scripts, tooling conventions | `CLAUDE.md` |
-| App UI components, tokens, ownership policy | `apps/order/DESIGN.md`, `apps/admin/DESIGN.md` |
+| `.github/workflows/ci.yml`, `lefthook.yml`, `biome.json`, `tsconfig.base.json`, `devEngines` | `CLAUDE.md` (Tooling), `README.md`, `docs/reference/monorepo.md`, `docs/reference/deploy.md` |
+| `.claude/**` (agents, skills, rules) | `CLAUDE.md` (Subagents) |
+| App UI components, tokens, ownership policy | `apps/order/DESIGN.md`, `apps/admin/DESIGN.md`, `apps/shift/DESIGN.md` |
+| `apps/e2e/**` (Playwright specs, config, ports) | `docs/reference/browser-e2e.md`, `docs/reference/manual-smoke-test.md` |
 
 Response envelope contract:
 - Success: `{ "data": { ... } }`
@@ -58,7 +62,7 @@ Response envelope contract:
 - [ ] <user-visible behavior, state machine, or invariant to update; resolved Known-limitations line to remove>
 
 #### docs/roadmap.md
-- [ ] <shipped item to mark ✅ / proposal link to repoint>
+- [ ] <built item to remove from the backlog / engineering track>
 
 #### docs/reference/auth.md
 - [ ] <auth flow step, env var, or cookie/CORS detail to update>
@@ -68,6 +72,9 @@ Response envelope contract:
 
 #### docs/reference/monorepo.md / README.md
 - [ ] <workspace, catalog, or command-table entry to update>
+
+#### docs/reference/browser-e2e.md / manual-smoke-test.md
+- [ ] <e2e command, prerequisite, or walkthrough step to update>
 
 #### CLAUDE.md
 - [ ] <tooling or convention change to reflect>

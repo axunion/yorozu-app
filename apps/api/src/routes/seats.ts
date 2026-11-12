@@ -97,7 +97,7 @@ export const seatsRouter = new Hono<AuthEnv>()
   /**
    * POST /api/seats
    * Creates a new seat for the authenticated store.
-   * Generates a unique qr_token (UUID v4) embedded in /order/:qr_token URLs.
+   * Generates a unique qr_token (UUID v4) embedded in the order URL (`{ORDER_ORIGIN}/{qr_token}`).
    * 409 if an active seat in the store already has the name.
    * Response: 201 { data: { id, store_id, name, qr_token, is_active, created_at } }
    */

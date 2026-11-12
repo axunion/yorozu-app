@@ -308,7 +308,7 @@ describe("laborWarnings", () => {
       start_minutes: 540,
       end_minutes: 1079,
       break_minutes: 59,
-    }); // 480 worked, the proposal's 8h00-with-59-minutes case
+    }); // 480 worked, the 8h00-with-59-minutes case
 
     expect(codes([exactly])).not.toContain("BREAK_REQUIRED_60");
   });

@@ -387,8 +387,7 @@ export const storesRouter = new Hono<{ Bindings: Env }>()
    * Authenticated by session rather than keyed on a submitted email, because
    * the code went to an address that is not yet in members.email — there is
    * nothing to resolve the member by. Requiring both a live session and the
-   * code is strictly stronger than the Magic Link this replaces, which proved
-   * only the latter.
+   * code proves the account and the new address.
    *
    * No new session is issued: the caller already has one, so they stay on the
    * settings screen instead of being bounced through a redirect.

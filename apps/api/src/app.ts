@@ -23,7 +23,7 @@ import { storesRouter } from "./routes/stores";
 // CORS middleware
 // ---------------------------------------------------------------------------
 
-// Cross-origin requests from the three SPAs require CORS with credentials.
+// Cross-origin requests from the four SPAs require CORS with credentials.
 // The allowed origins are read from env at request time so they can be
 // configured per-environment without rebuilding the Worker.
 //

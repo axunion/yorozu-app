@@ -19,23 +19,20 @@ All packages are `"private": true` — nothing is published to npm.
 
 ---
 
-## pnpm version
+## Toolchain versions
 
-The root `package.json` pins pnpm exactly, in `packageManager`. pnpm reads that
-field and **switches itself to the pinned version** before running, so you do
-not need that version installed — any reasonably recent pnpm will do, and CI
-(`pnpm/action-setup` with no `version` input) resolves the same field.
+The root `package.json` pins the toolchain in `devEngines`: Node `^26` and
+pnpm `^12`, both with `onFail: "download"`, so pnpm fetches the pinned
+versions itself and any reasonably recent pnpm on the machine will do. CI
+repeats the majors in `.github/workflows/ci.yml` (`pnpm/action-setup`
+`version: 12`, `setup-node` `node-version: 26`) because `pnpm/action-setup`
+does not read `devEngines`. Bump all three places together.
 
-This pin is load-bearing, not hygiene. The lockfile carries a
-`packageManagerDependencies` section that only pnpm 11 understands; an older
-pnpm drops it silently on `pnpm install`, reports the lockfile as up to date,
-and CI then rejects the install with `Cannot update packageManagerDependencies
-with "frozen-lockfile"`. `devEngines.packageManager` repeats the same version
-with `onFail: "error"` as a backstop for environments where the automatic
-switch is turned off.
-
-When bumping pnpm, change both fields together — pnpm warns and ignores
-`packageManager` if the two disagree.
+The pnpm pin is load-bearing, not hygiene. The lockfile carries a
+`packageManagerDependencies` section that only recent pnpm (11 and later)
+understands; an older pnpm drops it silently on `pnpm install`, reports the
+lockfile as up to date, and CI then rejects the install with `Cannot update
+packageManagerDependencies with "frozen-lockfile"`.
 
 ---
 
@@ -109,15 +106,14 @@ Then run `pnpm install` to create the symlink.
 1. Create the directory under `apps/` or `packages/`.
 2. Add a `package.json` with `"name": "@yorozu/<name>"` and `"private": true`.
 3. Run `pnpm install` — pnpm will discover it automatically from `pnpm-workspace.yaml`.
-4. Update the root `tsconfig.json` paths if the package exports types consumed by other packages.
+4. Add the package to each consumer's `dependencies` as `workspace:*`, add an `exports` map
+   if other packages import subpaths, and give it a `tsconfig.json` extending `tsconfig.base.json`.
 
 ---
 
 ## Dependency boundary enforcement
 
-Currently enforced by convention and code review. Planned: fail CI when a forbidden
-cross-package import is detected (a Biome plugin or a small custom check — the repo is
-Biome-only, so no ESLint-based rule).
+Enforced by convention and code review only.
 
 Forbidden imports to watch for:
 

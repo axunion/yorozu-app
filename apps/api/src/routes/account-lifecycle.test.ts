@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Account lifecycle (roadmap Phase 5 item 2): owner self-service
+ * Account lifecycle: owner self-service
  * suspend/reactivate, and delete + export.
  */
 import { env } from "cloudflare:workers";

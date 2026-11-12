@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Payment void/refund (roadmap Phase 4 item 5).
+ * Payment void/refund.
  * Covers PATCH /api/payments/:id/void: reversal, order reopening,
  * idempotency, the reason requirement, and the one-active-order-per-seat
  * conflict when the seat has already moved on.
@@ -350,7 +350,7 @@ describe("PATCH /api/payments/:id/void", () => {
       env,
     );
 
-    // Correct the check: reopen payment_requested → open (existing Phase 2
+    // Correct the check: reopen payment_requested → open (existing
     // admin flow), add a missed item, then request payment again.
     const reopenRes = await app.request(
       `/api/admin/orders/${orderId}/reopen`,

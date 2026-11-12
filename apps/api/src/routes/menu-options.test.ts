@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Item options / modifiers (roadmap Phase 3 item 2): option group and
+ * Item options / modifiers: option group and
  * option CRUD, plus tenant isolation and cascade-delete behavior.
  */
 import { env } from "cloudflare:workers";

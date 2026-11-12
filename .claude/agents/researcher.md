@@ -26,7 +26,8 @@ you can check the pinned version in `pnpm-workspace.yaml` (catalog) or a workspa
 1. **Current API usage**: Hono routing/middleware chaining on Cloudflare Workers,
    Drizzle ORM query patterns against D1, SolidJS reactivity primitives, Kobalte
    component composition (Select, Dialog, ConfirmDialog), Vitest's Workers pool
-   (`@cloudflare/vitest-plugin`) configuration. Look it up. Do not answer from
+   (`@cloudflare/vitest-plugin`) configuration, Zod 4 (its API differs from Zod 3 in
+   ways memory gets wrong), and Cloudflare R2 / Wrangler config. Look it up. Do not answer from
    memory.
 2. **Version fit**: check the version this project pins before trusting any doc page.
    Flag it when current docs describe an API the pinned version doesn't have, or when

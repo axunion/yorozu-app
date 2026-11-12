@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 /**
- * Seat lifecycle (roadmap Phase 2 item 5): rename, soft-delete, QR rotation.
+ * Seat lifecycle: rename, soft-delete, QR rotation.
  */
 import { env } from "cloudflare:workers";
 import { createDb, schema } from "@yorozu/db";

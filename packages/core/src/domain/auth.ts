@@ -35,8 +35,8 @@ export const OTP_CODE_LENGTH = 6;
 /**
  * One-time passcode lifetime: 10 minutes in milliseconds.
  *
- * Shorter than the 15 minutes the Magic Link used, because a 6-digit code is
- * guessable in a way a 122-bit UUID is not — but not so short that Resend's
+ * Kept short because a 6-digit code is guessable in a way a 122-bit UUID is
+ * not — but not so short that Resend's
  * delivery latency or a receiving server's greylisting eats the whole window.
  */
 export const OTP_TTL_MS = 10 * 60 * 1000;
