@@ -206,7 +206,9 @@ ordered ──(staff marks served)──▶ served
 ```
 
 - `ordered → served` and `served → ordered` (un-serve, `PATCH
-  .../unserve`) are idempotent at the API level.
+  .../unserve`) are idempotent at the API level, and both are rejected (409)
+  for a `cancelled` item or once the parent order is not `open` or
+  `payment_requested`.
 - `ordered | served → cancelled` (void, `PATCH .../cancel`) is terminal
   and idempotent; rejected (409) once the parent order is `paid` or
   `cancelled`. `sumOrderItems` excludes `cancelled` items from every

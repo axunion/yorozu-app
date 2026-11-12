@@ -1,5 +1,9 @@
 /**
  * Field — label + input + optional error message.
+ *
+ * An app can tune the input through these custom properties (defaults below
+ * keep the phone-friendly 16px input): --field-padding, --field-font-size,
+ * --field-radius, --field-border-width.
  */
 
 .field {
@@ -15,11 +19,11 @@
 }
 
 .input {
-  padding: var(--space-2) var(--space-3);
-  border: 1.5px solid var(--color-input);
-  border-radius: var(--radius-md);
+  padding: var(--field-padding, var(--space-2) var(--space-3));
+  border: var(--field-border-width, 1.5px) solid var(--color-input);
+  border-radius: var(--field-radius, var(--radius-md));
   font-family: var(--font-sans);
-  font-size: var(--text-base);
+  font-size: var(--field-font-size, var(--text-base));
   color: var(--color-foreground);
   background: var(--color-surface);
   width: 100%;
@@ -31,8 +35,9 @@
 }
 
 .input:focus {
-  outline: none;
-  border-color: var(--color-ring);
+  outline: 2px solid var(--color-ring);
+  outline-offset: 1px;
+  border-color: transparent;
 }
 
 .input:disabled {
@@ -46,7 +51,7 @@
 }
 
 .inputError:focus {
-  border-color: var(--color-danger-fg);
+  outline-color: var(--color-danger-fg);
 }
 
 .error {

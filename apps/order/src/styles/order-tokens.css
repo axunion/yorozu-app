@@ -62,4 +62,7 @@
   /* ── Sticky stacking order — Header above CategoryNav/BottomBar ─── */
   --z-sticky-header: 20;
   --z-sticky-bar: 10;
+
+  /* ── Body text — 16px / 1.6 ─────────────────────────────────────────── */
+  --body-line-height: 1.6;
 }

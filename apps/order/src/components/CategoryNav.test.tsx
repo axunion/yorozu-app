@@ -1,6 +1,6 @@
 import { render } from "@solidjs/testing-library";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import CategoryNav from "./CategoryNav";
 import type { Category, MenuItem } from "./OrderScreen";
 import { groupMenuItems } from "./OrderScreen";
@@ -152,5 +152,51 @@ describe("CategoryNav", () => {
 
     expect(donburiChip.getAttribute("aria-current")).toBe("true");
     expect(sushiChip.getAttribute("aria-current")).toBeNull();
+  });
+
+  describe("scroll shadow", () => {
+    const groups = groupMenuItems(
+      [{ id: "cat1", name: "ドリンク", sort_order: 0 }],
+      [
+        {
+          id: "item1",
+          category_id: "cat1",
+          name: "コーヒー",
+          price: 500,
+          sort_order: 0,
+          description: null,
+          image_key: null,
+          option_groups: [],
+        },
+      ],
+    );
+
+    afterEach(() => {
+      Object.defineProperty(window, "scrollY", {
+        value: 0,
+        configurable: true,
+      });
+    });
+
+    function scrollTo(y: number) {
+      Object.defineProperty(window, "scrollY", {
+        value: y,
+        configurable: true,
+      });
+      window.dispatchEvent(new Event("scroll"));
+    }
+
+    it("has no shadow until content scrolls beneath it", () => {
+      scrollTo(0);
+      const { getByRole } = render(() => <CategoryNav groups={groups} />);
+      const nav = getByRole("navigation", { name: "カテゴリー" });
+      expect(nav.className).not.toContain("navScrolled");
+
+      scrollTo(40);
+      expect(nav.className).toContain("navScrolled");
+
+      scrollTo(0);
+      expect(nav.className).not.toContain("navScrolled");
+    });
   });
 });

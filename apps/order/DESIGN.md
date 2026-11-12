@@ -220,7 +220,7 @@ Sticky bar at the top of the viewport. Identifies the seat and screen context.
 - Text: `#FFFFFF`
 - Padding: 16px 24px
 - Screen Title: 20px / 600 — seat name (e.g. "Table 3")
-- Subtitle: 12px / 400 / opacity 0.8 — "Self Order" label
+- Subtitle: 12px / 400 / opacity 0.8 — 「セルフオーダー」 label
 
 ---
 

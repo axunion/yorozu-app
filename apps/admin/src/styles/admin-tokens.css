@@ -58,4 +58,17 @@
 
   /* ── Layout ─────────────────────────────────────────────────────────── */
   --container-login-card: 400px;
+
+  /* ── Touch targets — admin is desktop/tablet, so 40px rather than 44px ── */
+  --touch-target-min: 40px;
+
+  /* ── Body text — 15px / 1.6 ─────────────────────────────────────────── */
+  --body-font-size: 0.9375rem;
+  --body-line-height: 1.6;
+
+  /* ── Inputs (@yorozu/ui Field) — compact desktop forms ──────────────── */
+  --field-padding: var(--space-1) var(--space-2);
+  --field-font-size: var(--text-sm);
+  --field-radius: var(--radius-sm);
+  --field-border-width: 1px;
 }

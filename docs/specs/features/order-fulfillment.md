@@ -19,7 +19,10 @@ orders. Requires the `session_token` cookie (`requireStore`).
 
 ### Serving (`PATCH /api/admin/orders/items/:id/serve`)
 
-- Marks a single line item `served`. Idempotent; cross-tenant ids → 404.
+- Marks a single line item `served`. Cross-tenant ids → 404. 409 if the item
+  is `cancelled`, or if the parent order is not active (not `open` or
+  `payment_requested`) — the same guards as un-serving. Idempotent while the
+  order is active.
 
 ### Un-serving (`PATCH /api/admin/orders/items/:id/unserve`)
 

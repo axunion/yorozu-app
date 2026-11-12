@@ -157,6 +157,77 @@ describe("PATCH /api/admin/orders/items/:id/cancel", () => {
 });
 
 // ---------------------------------------------------------------------------
+// PATCH /api/admin/orders/items/:id/serve
+// ---------------------------------------------------------------------------
+
+describe("PATCH /api/admin/orders/items/:id/serve", () => {
+  const serve = (token: string, itemId: string) =>
+    app.request(
+      `/api/admin/orders/items/${itemId}/serve`,
+      withAuth(token, { method: "PATCH" }),
+      env,
+    );
+
+  it("transitions an ordered item to served", async () => {
+    const { token, itemId } = await setupOrderWithItem();
+    const res = await serve(token, itemId);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { status: string } };
+    expect(body.data.status).toBe("served");
+  });
+
+  it("is idempotent when the item is already served", async () => {
+    const { token, itemId } = await setupOrderWithItem();
+    await serve(token, itemId);
+    const res = await serve(token, itemId);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { status: string } };
+    expect(body.data.status).toBe("served");
+  });
+
+  it("returns 409 and keeps the item cancelled when it is cancelled", async () => {
+    const { token, itemId } = await setupOrderWithItem();
+    await app.request(
+      `/api/admin/orders/items/${itemId}/cancel`,
+      withAuth(token, { method: "PATCH" }),
+      env,
+    );
+    const res = await serve(token, itemId);
+    expect(res.status).toBe(409);
+    expect(await getItemStatus(itemId)).toBe("cancelled");
+  });
+
+  it("returns 409 for an already-served item once the order is paid", async () => {
+    const { token, orderId, itemId } = await setupOrderWithItem();
+    await serve(token, itemId);
+    await forceOrderStatus(orderId, "paid");
+    const res = await serve(token, itemId);
+    expect(res.status).toBe(409);
+    expect(await getItemStatus(itemId)).toBe("served");
+  });
+
+  it.each(["paid", "cancelled"] as const)(
+    "returns 409 and leaves the item ordered when the parent order is %s",
+    async (status) => {
+      const { token, orderId, itemId } = await setupOrderWithItem();
+      await forceOrderStatus(orderId, status);
+      const res = await serve(token, itemId);
+      expect(res.status).toBe(409);
+      expect(await getItemStatus(itemId)).toBe("ordered");
+    },
+  );
+
+  it("returns 404 for another store's item (cross-tenant)", async () => {
+    const owner = await setupOrderWithItem();
+    const { session_token: otherToken } = await seedStore(
+      `Other Store ${crypto.randomUUID()}`,
+    );
+    const res = await serve(otherToken, owner.itemId);
+    expect(res.status).toBe(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PATCH /api/admin/orders/items/:id/unserve
 // ---------------------------------------------------------------------------
 

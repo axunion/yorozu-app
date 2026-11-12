@@ -190,8 +190,11 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
    * PATCH /api/admin/orders/items/:id/serve
    * Marks a single order item as 'served'.
    *
-   * Idempotent: if the item is already 'served', returns 200 with the current
-   * state without re-updating the DB.
+   * Returns 409 if the item is 'cancelled' (terminal), or if the parent order
+   * is not active (i.e. not 'open' or 'payment_requested') — the same guards
+   * as unserve, checked first. Idempotent while the order is active: if the
+   * item is already 'served', returns 200 with the current state without
+   * re-updating the DB.
    *
    * Multi-tenant safe: the store_id filter prevents cross-tenant access.
    * Returns 404 (not 403) for items that don't belong to the store to avoid
@@ -204,9 +207,54 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
     const itemId = c.req.param("id");
     const db = createDb(c.env.DB);
 
-    // Single UPDATE + RETURNING handles 404, idempotency, and transition in one round-trip.
-    // Returns 0 rows when item not found or belongs to another store → 404.
-    // Returns the row regardless of prior status, so already-served items return 200 idempotently.
+    const itemRows = await db
+      .select()
+      .from(schema.orderItems)
+      .where(
+        and(
+          eq(schema.orderItems.id, itemId),
+          eq(schema.orderItems.store_id, storeId),
+        ),
+      )
+      .limit(1);
+    const item = itemRows[0];
+    if (!item) {
+      return errorResponse("NOT_FOUND", "注文明細が見つかりません。", 404);
+    }
+
+    if (item.status === "cancelled") {
+      return errorResponse(
+        "CONFLICT",
+        "キャンセル済みの明細は提供済みにできません。",
+        409,
+      );
+    }
+
+    const orderRows = await db
+      .select({ status: schema.orders.status })
+      .from(schema.orders)
+      .where(
+        and(
+          eq(schema.orders.id, item.order_id),
+          eq(schema.orders.store_id, storeId),
+        ),
+      )
+      .limit(1);
+    const order = orderRows[0];
+    if (
+      !order ||
+      (order.status !== "open" && order.status !== "payment_requested")
+    ) {
+      return errorResponse("CONFLICT", "この注文は操作できない状態です。", 409);
+    }
+
+    if (item.status === "served") {
+      return c.json({ data: await mapAdminOrderItem(db, storeId, item) });
+    }
+
+    // The write repeats both guards: a cancel or a checkout that lands between
+    // the reads above and this UPDATE must not be overwritten (D1 has no
+    // transactions to hold the reads open).
     const updated = await db
       .update(schema.orderItems)
       .set({ status: "served" })
@@ -214,13 +262,25 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
         and(
           eq(schema.orderItems.id, itemId),
           eq(schema.orderItems.store_id, storeId),
+          ne(schema.orderItems.status, "cancelled"),
+          exists(
+            db
+              .select({ id: schema.orders.id })
+              .from(schema.orders)
+              .where(
+                and(
+                  eq(schema.orders.id, schema.orderItems.order_id),
+                  inArray(schema.orders.status, ["open", "payment_requested"]),
+                ),
+              ),
+          ),
         ),
       )
       .returning();
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "注文明細が見つかりません。", 404);
+      return errorResponse("CONFLICT", "この明細は提供済みにできません。", 409);
     }
 
     return c.json({ data: await mapAdminOrderItem(db, storeId, result) });
@@ -362,6 +422,8 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
       return c.json({ data: await mapAdminOrderItem(db, storeId, item) });
     }
 
+    // `status <> 'cancelled'` keeps a cancel that lands after the read above
+    // terminal instead of flipping the item back to ordered.
     const updated = await db
       .update(schema.orderItems)
       .set({ status: "ordered" })
@@ -369,13 +431,18 @@ export const adminOrdersRouter = new Hono<AuthEnv>()
         and(
           eq(schema.orderItems.id, itemId),
           eq(schema.orderItems.store_id, storeId),
+          ne(schema.orderItems.status, "cancelled"),
         ),
       )
       .returning();
 
     const result = updated[0];
     if (!result) {
-      return errorResponse("NOT_FOUND", "注文明細が見つかりません。", 404);
+      return errorResponse(
+        "CONFLICT",
+        "キャンセル済みの明細は元に戻せません。",
+        409,
+      );
     }
 
     return c.json({ data: await mapAdminOrderItem(db, storeId, result) });
